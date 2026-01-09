@@ -7,9 +7,15 @@ import com.xuanjiao.client.dto.StageApproverDTO;
 import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
 import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.RoleDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.mapper.WorkflowMapper;
 import com.xuanjiao.infrastructure.mapper.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.mapper.StageApproverMapper;
+import com.xuanjiao.infrastructure.mapper.UserMapper;
+import com.xuanjiao.infrastructure.mapper.RoleMapper;
+import com.xuanjiao.infrastructure.mapper.DeptMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -30,6 +36,12 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Resource
     private StageApproverMapper approverMapper;
+    @Resource
+    private UserMapper userMapper;
+    @Resource
+    private RoleMapper roleMapper;
+    @Resource
+    private DeptMapper deptMapper;
 
     @Override
     public List<WorkflowDTO> list() {
@@ -144,6 +156,23 @@ public class WorkflowServiceImpl implements WorkflowService {
         dto.setId(entity.getId());
         dto.setApproverType(entity.getApproverType());
         dto.setApproverId(entity.getApproverId());
+        // 根据类型查询名称
+        String name = getApproverName(entity.getApproverType(), entity.getApproverId());
+        dto.setApproverName(name);
         return dto;
+    }
+
+    private String getApproverName(String type, Long id) {
+        if ("USER".equals(type)) {
+            UserDO user = userMapper.selectById(id);
+            return user != null ? "[用户] " + (user.getRealName() != null ? user.getRealName() : user.getUsername()) : "[用户] 未知";
+        } else if ("ROLE".equals(type)) {
+            RoleDO role = roleMapper.selectById(id);
+            return role != null ? "[角色] " + role.getName() : "[角色] 未知";
+        } else if ("DEPT".equals(type)) {
+            DeptDO dept = deptMapper.selectById(id);
+            return dept != null ? "[部门] " + dept.getName() : "[部门] 未知";
+        }
+        return "未知";
     }
 }

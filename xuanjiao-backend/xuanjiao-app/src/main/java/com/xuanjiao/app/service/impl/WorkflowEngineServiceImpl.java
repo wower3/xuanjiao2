@@ -139,6 +139,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         if ("OR".equals(stage.getApproveType())) {
             // 或签：任一通过即可
             stageCompleted = tasks.stream().anyMatch(t -> "APPROVED".equals(t.getStatus()));
+            // 如果或签完成，取消该层其他待办任务
+            if (stageCompleted) {
+                cancelPendingTasks(instanceId, currentStageId);
+            }
         } else {
             // 会签：全部通过
             stageCompleted = tasks.stream().allMatch(t -> "APPROVED".equals(t.getStatus()));
@@ -146,6 +150,19 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
         if (stageCompleted) {
             moveToNextStage(instanceId, currentStageId);
+        }
+    }
+
+    private void cancelPendingTasks(Long instanceId, Long stageId) {
+        // 将该层所有PENDING状态的任务改为CANCELLED
+        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
+               .eq(ApprovalTaskDO::getStageId, stageId)
+               .eq(ApprovalTaskDO::getStatus, "PENDING");
+        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(wrapper);
+        for (ApprovalTaskDO task : pendingTasks) {
+            task.setStatus("CANCELLED");
+            taskMapper.updateById(task);
         }
     }
 

@@ -29,6 +29,8 @@
               v-if="row.type === 'IMAGE'"
               :src="`/api/asset/preview/${row.id}`"
               :preview-src-list="[`/api/asset/preview/${row.id}`]"
+              :preview-teleported="true"
+              :z-index="99999"
               fit="cover"
               style="width:80px;height:60px"
             />
