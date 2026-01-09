@@ -1,0 +1,46 @@
+# Claude Code
+.claude/
+
+# Logs
+*.log
+
+# Upload files
+files/
+
+# OS files
+nul
+Thumbs.db
+.DS_Store
+
+# Build output
+target/
+build/
+dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Node modules
+node_modules/
+*/node_modules/
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# Temp files
+*.tmp
+*.temp
+*.bak

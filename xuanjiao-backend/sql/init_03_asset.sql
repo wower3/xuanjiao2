@@ -1,0 +1,22 @@
+-- 素材表
+DROP TABLE IF EXISTS asset;
+CREATE TABLE asset (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '素材ID',
+    name VARCHAR(200) NOT NULL COMMENT '素材名称',
+    type VARCHAR(20) NOT NULL COMMENT '类型：VIDEO/IMAGE/DOCUMENT',
+    file_path VARCHAR(500) NOT NULL COMMENT '文件路径',
+    thumbnail_path VARCHAR(500) DEFAULT NULL COMMENT '缩略图路径',
+    file_size BIGINT DEFAULT 0 COMMENT '文件大小(字节)',
+    md5 VARCHAR(32) NOT NULL COMMENT '文件MD5',
+    status VARCHAR(20) DEFAULT 'DRAFT' COMMENT '状态：DRAFT/PENDING/AVAILABLE/LOCKED',
+    copyright VARCHAR(500) DEFAULT NULL COMMENT '版权信息',
+    upload_user_id BIGINT NOT NULL COMMENT '上传用户ID',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_md5 (md5),
+    KEY idx_type (type),
+    KEY idx_status (status),
+    KEY idx_upload_user (upload_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='素材表';
