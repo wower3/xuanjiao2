@@ -3,7 +3,13 @@
     <el-card>
       <template #header>
         <div class="header">
-          <el-input v-model="workflow.name" placeholder="流程名称" style="width:200px" />
+          <div class="header-left">
+            <el-input v-model="workflow.name" placeholder="流程名称" style="width:200px" />
+            <el-select v-model="workflow.type" placeholder="流程类型" style="width:150px">
+              <el-option label="素材录入审批" value="ASSET_UPLOAD" />
+              <el-option label="素材使用审批" value="ASSET_USAGE" />
+            </el-select>
+          </div>
           <div>
             <el-button @click="$router.back()">返回</el-button>
             <el-button type="primary" @click="save">保存</el-button>
@@ -24,7 +30,7 @@
               </div>
             </div>
             <div class="stage-body">
-              <el-tag v-for="a in stage.approvers" :key="a.approverId" closable @close="removeApprover(index, a)">
+              <el-tag v-for="a in stage.approvers" :key="`${a.approverType}_${a.approverId}`" closable @close="removeApprover(index, a)">
                 {{ a.approverName }}
               </el-tag>
               <el-button link type="primary" @click="editStage(index)">+ 添加审批人</el-button>
@@ -77,7 +83,7 @@ import { getDeptList } from '@/api/dept'
 
 const route = useRoute()
 const router = useRouter()
-const workflow = reactive({ id: null as any, name: '', description: '' })
+const workflow = reactive({ id: null as any, name: '', description: '', type: 'ASSET_UPLOAD' })
 const stages = ref<any[]>([])
 const showApproverDialog = ref(false)
 const approverType = ref('USER')
@@ -96,6 +102,9 @@ async function loadData() {
     const res = await getWorkflowById(Number(id))
     Object.assign(workflow, res.data)
     stages.value = res.data.stages || []
+  } else {
+    // 新建时默认为素材录入审批
+    workflow.type = 'ASSET_UPLOAD'
   }
 }
 
@@ -195,6 +204,10 @@ async function save() {
     ElMessage.warning('请输入流程名称')
     return
   }
+  if (!workflow.type) {
+    ElMessage.warning('请选择流程类型')
+    return
+  }
   // 验证每层必须有审批人
   for (let i = 0; i < stages.value.length; i++) {
     if (!stages.value[i].approvers || stages.value[i].approvers.length === 0) {
@@ -217,6 +230,7 @@ onMounted(loadData)
 
 <style scoped>
 .header { display: flex; justify-content: space-between; }
+.header-left { display: flex; gap: 10px; align-items: center; }
 .stages { padding: 20px; }
 .stage-item { border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
 .stage-header { padding: 10px; background: #f5f5f5; display: flex; justify-content: space-between; }

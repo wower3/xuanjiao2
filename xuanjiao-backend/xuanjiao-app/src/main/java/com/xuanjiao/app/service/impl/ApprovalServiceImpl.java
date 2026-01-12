@@ -28,6 +28,8 @@ public class ApprovalServiceImpl implements ApprovalService {
     private UserMapper userMapper;
     @Resource
     private WorkflowEngineService workflowEngineService;
+    @Resource
+    private UsageApplyMapper usageApplyMapper;
 
     @Override
     public PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize) {
@@ -62,8 +64,9 @@ public class ApprovalServiceImpl implements ApprovalService {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
 
-        // 如果是素材审批，更新素材状态
+        // 根据业务类型更新对应业务状态
         if ("ASSET".equals(instance.getBusinessType())) {
+            // 素材录入审批：更新素材状态
             AssetDO asset = assetMapper.selectById(instance.getBusinessId());
             if (asset != null) {
                 if ("APPROVED".equals(instance.getStatus())) {
@@ -72,6 +75,18 @@ public class ApprovalServiceImpl implements ApprovalService {
                 } else if ("REJECTED".equals(instance.getStatus())) {
                     asset.setStatus("REJECTED");
                     assetMapper.updateById(asset);
+                }
+            }
+        } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
+            // 素材使用申请审批：更新申请状态
+            UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
+            if (usageApply != null) {
+                if ("APPROVED".equals(instance.getStatus())) {
+                    usageApply.setStatus("APPROVED");
+                    usageApplyMapper.updateById(usageApply);
+                } else if ("REJECTED".equals(instance.getStatus())) {
+                    usageApply.setStatus("REJECTED");
+                    usageApplyMapper.updateById(usageApply);
                 }
             }
         }
@@ -96,11 +111,19 @@ public class ApprovalServiceImpl implements ApprovalService {
                 map.put("workflowName", workflow.getName());
             }
 
-            // 获取业务名称（素材名称）
+            // 获取业务名称（素材名称或使用申请）
             if ("ASSET".equals(instance.getBusinessType())) {
                 AssetDO asset = assetMapper.selectById(instance.getBusinessId());
                 if (asset != null) {
                     map.put("businessName", asset.getName());
+                }
+            } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
+                UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
+                if (usageApply != null) {
+                    AssetDO asset = assetMapper.selectById(usageApply.getAssetId());
+                    if (asset != null) {
+                        map.put("businessName", "使用申请：" + asset.getName());
+                    }
                 }
             }
 
@@ -132,6 +155,14 @@ public class ApprovalServiceImpl implements ApprovalService {
             AssetDO asset = assetMapper.selectById(instance.getBusinessId());
             if (asset != null) {
                 map.put("businessName", asset.getName());
+            }
+        } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
+            UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
+            if (usageApply != null) {
+                AssetDO asset = assetMapper.selectById(usageApply.getAssetId());
+                if (asset != null) {
+                    map.put("businessName", "使用申请：" + asset.getName());
+                }
             }
         }
         return map;

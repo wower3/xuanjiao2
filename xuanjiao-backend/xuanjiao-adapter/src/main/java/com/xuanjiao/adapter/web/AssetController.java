@@ -1,6 +1,7 @@
 package com.xuanjiao.adapter.web;
 
 import com.xuanjiao.app.service.AssetService;
+import com.xuanjiao.app.service.UsageApplyService;
 import com.xuanjiao.client.dto.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -19,6 +20,9 @@ public class AssetController {
 
     @Resource
     private AssetService assetService;
+
+    @Resource
+    private UsageApplyService usageApplyService;
 
     @ApiOperation("上传素材")
     @PostMapping("/upload")
@@ -62,6 +66,30 @@ public class AssetController {
         MediaType mediaType = getMediaType(asset.getType());
         return ResponseEntity.ok()
                 .contentType(mediaType)
+                .body(new FileSystemResource(file));
+    }
+
+    @ApiOperation("下载素材")
+    @GetMapping("/download/{id}")
+    public ResponseEntity<?> download(@PathVariable Long id, @RequestAttribute("userId") Long userId) {
+        AssetDTO asset = assetService.getById(id);
+        if (asset == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // 检查使用权限：素材上传者或已通过使用审批的用户可下载
+        boolean canDownload = asset.getUploadUserId().equals(userId) ||
+                usageApplyService.canUseAsset(id, userId);
+        if (!canDownload) {
+            return ResponseEntity.status(403).body("您没有下载此素材的权限，请先申请使用");
+        }
+        File file = new File(asset.getFilePath());
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+        MediaType mediaType = getMediaType(asset.getType());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header("Content-Disposition", "attachment; filename=\"" + asset.getName() + "\"")
                 .body(new FileSystemResource(file));
     }
 

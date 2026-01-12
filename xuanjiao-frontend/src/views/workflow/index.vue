@@ -7,9 +7,23 @@
           <el-button type="primary" @click="$router.push('/workflow/design')">新建流程</el-button>
         </div>
       </template>
+      <el-form :inline="true">
+        <el-form-item label="流程类型">
+          <el-select v-model="typeFilter" placeholder="全部" clearable @change="loadData">
+            <el-option label="素材录入审批" value="ASSET_UPLOAD" />
+            <el-option label="素材使用审批" value="ASSET_USAGE" />
+          </el-select>
+        </el-form-item>
+      </el-form>
       <el-table :data="list" v-loading="loading">
         <el-table-column prop="name" label="流程名称" />
         <el-table-column prop="description" label="描述" />
+        <el-table-column prop="type" label="类型" width="120">
+          <template #default="{ row }">
+            <el-tag v-if="!row.type || row.type === 'ASSET_UPLOAD'" type="primary">素材录入</el-tag>
+            <el-tag v-else type="success">素材使用</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="version" label="版本" width="80" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
@@ -38,12 +52,19 @@ import { getWorkflowList, updateWorkflowStatus } from '@/api/workflow'
 
 const loading = ref(false)
 const list = ref([])
+const typeFilter = ref('')
 
 async function loadData() {
   loading.value = true
   try {
     const res = await getWorkflowList()
-    list.value = res.data || []
+    let workflows = res.data || []
+    if (typeFilter.value) {
+      workflows = workflows.filter((w: any) => w.type === typeFilter.value)
+    } else if (typeFilter.value === '') {
+      // 不过滤
+    }
+    list.value = workflows
   } finally {
     loading.value = false
   }

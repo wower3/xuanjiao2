@@ -22,12 +22,13 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResultDTO login(LoginCmd cmd) {
         User user = userRepository.findByUsername(cmd.getUsername());
+        // 统一错误提示，不区分用户不存在和密码错误
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new RuntimeException("用户名或密码错误");
         }
         String encryptPwd = DigestUtil.md5Hex(cmd.getPassword());
         if (!encryptPwd.equals(user.getPassword())) {
-            throw new RuntimeException("密码错误");
+            throw new RuntimeException("用户名或密码错误");
         }
         if (user.getStatus() != 1) {
             throw new RuntimeException("用户已被禁用");

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { resetSessionTimeout, clearSessionTimeout } from '@/utils/sessionTimeout'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -9,6 +10,10 @@ export const useUserStore = defineStore('user', () => {
   function setToken(t: string) {
     token.value = t
     localStorage.setItem('token', t)
+    // 登录成功后启动会话超时计时器
+    if (t) {
+      resetSessionTimeout()
+    }
   }
 
   function setUserInfo(info: any) {
@@ -28,6 +33,8 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = null
     permissions.value = []
     localStorage.removeItem('token')
+    // 清除会话超时计时器
+    clearSessionTimeout()
   }
 
   return { token, userInfo, permissions, setToken, setUserInfo, setPermissions, hasPermission, logout }

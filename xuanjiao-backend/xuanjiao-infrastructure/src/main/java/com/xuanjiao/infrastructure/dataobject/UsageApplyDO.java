@@ -5,15 +5,17 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("workflow")
-public class WorkflowDO {
+@TableName("usage_apply")
+public class UsageApplyDO {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String name;
-    private String description;
-    private Integer version;
-    private Integer status;
-    private String type; // 流程类型：ASSET_UPLOAD-素材录入, ASSET_USAGE-素材使用
+    private Long assetId;
+    private Long userId;
+    private String purpose;
+    private String scope;
+    private Long workflowId;
+    private String status;
+    private Long approvalInstanceId;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     @TableField(fill = FieldFill.INSERT_UPDATE)
