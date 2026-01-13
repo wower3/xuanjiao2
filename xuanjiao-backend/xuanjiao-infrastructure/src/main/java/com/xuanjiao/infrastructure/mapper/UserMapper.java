@@ -11,7 +11,6 @@ import java.util.List;
 public interface UserMapper extends BaseMapper<UserDO> {
 
     @Select("SELECT u.id FROM sys_user u " +
-            "INNER JOIN sys_user_role ur ON u.id = ur.user_id " +
-            "WHERE ur.role_id = #{roleId} AND u.status = 1 AND u.deleted = 0")
+            "WHERE u.role_id = #{roleId} AND u.status = 1 AND u.deleted = 0")
     List<Long> selectUserIdsByRoleId(@Param("roleId") Long roleId);
 }

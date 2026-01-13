@@ -8,5 +8,7 @@ public interface AssetService {
     AssetDTO upload(MultipartFile file, AssetUploadCmd cmd, Long userId);
     AssetDTO getById(Long id);
     PageResult<AssetDTO> query(AssetQueryCmd cmd);
+    PageResult<AssetDTO> queryWithRoleFilter(AssetQueryCmd cmd, Long userId);
     void delete(Long id);
+    void updateStatusByApplicationId(Long applicationId, String status);
 }

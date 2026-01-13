@@ -2,6 +2,7 @@ package com.xuanjiao.client.dto;
 
 import lombok.Data;
 import javax.validation.constraints.NotBlank;
+import java.util.List;
 
 @Data
 public class AssetUploadCmd {
@@ -13,4 +14,12 @@ public class AssetUploadCmd {
 
     private String copyright;
     private Long workflowId;
+
+    // New fields for material entry
+    private Long applicationId;
+    private List<Long> tagIds;
+    private String copyrightFilePath;
+    private String copyrightText;
+    private String description;
+    private String publishChannel;
 }

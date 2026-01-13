@@ -23,6 +23,18 @@ public class DeptController {
         return Result.success(deptService.list());
     }
 
+    @ApiOperation("部门树")
+    @GetMapping("/tree")
+    public Result<List<DeptDTO>> tree() {
+        return Result.success(deptService.getTree());
+    }
+
+    @ApiOperation("获取部门详情")
+    @GetMapping("/{id}")
+    public Result<DeptDTO> getById(@PathVariable Long id) {
+        return Result.success(deptService.getById(id));
+    }
+
     @ApiOperation("保存部门")
     @PostMapping
     public Result<Void> save(@RequestBody DeptDTO dto) {
@@ -42,5 +54,11 @@ public class DeptController {
     public Result<Void> delete(@PathVariable Long id) {
         deptService.delete(id);
         return Result.success();
+    }
+
+    @ApiOperation("生成部门编号")
+    @GetMapping("/generate-code")
+    public Result<String> generateCode() {
+        return Result.success(deptService.generateCode());
     }
 }

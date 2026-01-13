@@ -23,6 +23,12 @@ public class RoleController {
         return Result.success(roleService.list());
     }
 
+    @ApiOperation("获取角色详情")
+    @GetMapping("/{id}")
+    public Result<RoleDTO> getById(@PathVariable Long id) {
+        return Result.success(roleService.getById(id));
+    }
+
     @ApiOperation("新增角色")
     @PostMapping
     public Result<Void> create(@RequestBody RoleDTO dto) {
@@ -42,5 +48,18 @@ public class RoleController {
     public Result<Void> delete(@PathVariable Long id) {
         roleService.delete(id);
         return Result.success();
+    }
+
+    @ApiOperation("分配角色菜单权限")
+    @PostMapping("/{roleId}/menus")
+    public Result<Void> assignMenus(@PathVariable Long roleId, @RequestBody List<Long> menuIds) {
+        roleService.assignMenus(roleId, menuIds);
+        return Result.success();
+    }
+
+    @ApiOperation("获取角色菜单权限")
+    @GetMapping("/{roleId}/menus")
+    public Result<List<Long>> getRoleMenus(@PathVariable Long roleId) {
+        return Result.success(roleService.getMenuIdsByRoleId(roleId));
     }
 }

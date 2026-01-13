@@ -9,7 +9,6 @@
               <el-icon><View v-if="previewMode === 'image'" /><List v-else /></el-icon>
               {{ previewMode === 'image' ? '列表模式' : '预览模式' }}
             </el-button>
-            <el-button type="primary" @click="showUpload = true">上传素材</el-button>
           </div>
         </div>
       </template>
@@ -74,45 +73,6 @@
       />
     </el-card>
 
-    <el-dialog v-model="showUpload" title="上传素材" width="500px">
-      <el-form :model="uploadForm" label-width="80px">
-        <el-form-item label="素材名称">
-          <el-input v-model="uploadForm.name" />
-        </el-form-item>
-        <el-form-item label="素材类型">
-          <el-select v-model="uploadForm.type">
-            <el-option label="视频" value="VIDEO" />
-            <el-option label="图片" value="IMAGE" />
-            <el-option label="文档" value="DOCUMENT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="选择文件">
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFileChange"
-          >
-            <el-button type="primary">选择文件</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="审批流程">
-          <el-select v-model="uploadForm.workflowId" placeholder="不选择则直接通过" clearable>
-            <el-option
-              v-for="wf in uploadWorkflowList"
-              :key="wf.id"
-              :label="wf.name"
-              :value="wf.id"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showUpload = false">取消</el-button>
-        <el-button type="primary" @click="handleUpload" :loading="uploading">上传</el-button>
-      </template>
-    </el-dialog>
-
     <el-dialog v-model="showPreview" title="素材预览" width="800px">
       <div class="preview-content">
         <img v-if="previewAsset?.type === 'IMAGE'" :src="previewUrl" style="max-width:100%" />
@@ -158,28 +118,23 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { getAssetList, deleteAsset, uploadAsset } from '@/api/asset'
+import { getAssetList, deleteAsset } from '@/api/asset'
 import { getWorkflowList } from '@/api/workflow'
 import { applyUsage, downloadAsset } from '@/api/usageApply'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { View, List, VideoCamera, Document } from '@element-plus/icons-vue'
 
 const loading = ref(false)
-const showUpload = ref(false)
-const uploading = ref(false)
 const showApply = ref(false)
 const applying = ref(false)
 const list = ref([])
 const total = ref(0)
 const query = reactive({ name: '', type: '', pageNum: 1, pageSize: 10 })
-const uploadForm = reactive({ name: '', type: 'IMAGE', workflowId: null as number | null })
-const uploadFile = ref<File | null>(null)
 const showPreview = ref(false)
 const previewAsset = ref<any>(null)
 const previewUrl = ref('')
 const previewMode = ref<'image' | 'list'>('image')
 const workflowList = ref<any[]>([])
-const uploadWorkflowList = ref<any[]>([])
 const usageWorkflowList = ref<any[]>([])
 const currentAsset = ref<any>(null)
 const applyForm = reactive({ purpose: '', scope: '', workflowId: null as number | null })
@@ -200,8 +155,6 @@ async function loadWorkflows() {
     const res = await getWorkflowList()
     const workflows = (res.data || []).filter((w: any) => w.status === 1)
     workflowList.value = workflows
-    // 录入审批流程
-    uploadWorkflowList.value = workflows.filter((w: any) => !w.type || w.type === 'ASSET_UPLOAD')
     // 使用审批流程
     usageWorkflowList.value = workflows.filter((w: any) => w.type === 'ASSET_USAGE')
   } catch (e) {
@@ -277,32 +230,6 @@ async function handleDelete(row: any) {
   await deleteAsset(row.id)
   ElMessage.success('删除成功')
   loadData()
-}
-
-function handleFileChange(file: any) {
-  uploadFile.value = file.raw
-  if (!uploadForm.name) {
-    uploadForm.name = file.name
-  }
-}
-
-async function handleUpload() {
-  if (!uploadFile.value) {
-    ElMessage.warning('请选择文件')
-    return
-  }
-  uploading.value = true
-  try {
-    await uploadAsset(uploadFile.value, uploadForm)
-    ElMessage.success('上传成功')
-    showUpload.value = false
-    uploadFile.value = null
-    uploadForm.name = ''
-    uploadForm.workflowId = null
-    loadData()
-  } finally {
-    uploading.value = false
-  }
 }
 
 onMounted(() => {

@@ -18,6 +18,11 @@ public class AssetDO {
     private String status;
     private String copyright;
     private Long uploadUserId;
+    private Long applicationId;
+    private String copyrightFilePath;
+    private String copyrightText;
+    private String description;
+    private String publishChannel;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     @TableField(fill = FieldFill.INSERT_UPDATE)

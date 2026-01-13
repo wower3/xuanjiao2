@@ -11,6 +11,8 @@ public class UserDTO {
     private String phone;
     private Long deptId;
     private String deptName;
+    private Long roleId;
+    private String roleName;
+    private String roleType;
     private Integer status;
-    private String roleCodes;
 }

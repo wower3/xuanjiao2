@@ -2,6 +2,7 @@ package com.xuanjiao.client.dto;
 
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class AssetDTO {
@@ -16,6 +17,12 @@ public class AssetDTO {
     private String copyright;
     private Long uploadUserId;
     private String uploadUserName;
+    private Long applicationId;
+    private String copyrightFilePath;
+    private String copyrightText;
+    private String description;
+    private String publishChannel;
+    private List<TagDTO> tags;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

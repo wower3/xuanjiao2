@@ -1,6 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores/user'
-import { getCurrentPermissionCodes } from '@/api/permission'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -23,6 +21,16 @@ const router = createRouter({
           component: () => import('@/views/asset/index.vue')
         },
         {
+          path: 'asset/material-list',
+          name: 'MaterialList',
+          component: () => import('@/views/asset/material-list.vue')
+        },
+        {
+          path: 'asset/material-entry',
+          name: 'MaterialEntry',
+          component: () => import('@/views/asset/material-entry.vue')
+        },
+        {
           path: 'workflow',
           name: 'Workflow',
           component: () => import('@/views/workflow/index.vue')
@@ -36,6 +44,16 @@ const router = createRouter({
           path: 'approval',
           name: 'Approval',
           component: () => import('@/views/approval/index.vue')
+        },
+        {
+          path: 'task/draft',
+          name: 'DraftBox',
+          component: () => import('@/views/task/draft.vue')
+        },
+        {
+          path: 'task/in-progress',
+          name: 'WorkflowInProgress',
+          component: () => import('@/views/task/workflow-in-progress.vue')
         },
         {
           path: 'log',
@@ -56,30 +74,23 @@ const router = createRouter({
           path: 'system/role',
           name: 'Role',
           component: () => import('@/views/system/role.vue')
+        },
+        {
+          path: 'system/menu',
+          name: 'Menu',
+          component: () => import('@/views/system/menu.vue')
         }
       ]
     }
   ]
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   if (to.meta.requiresAuth !== false && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
     next('/')
-  } else if (token) {
-    const userStore = useUserStore()
-    // 如果还没有加载权限，则加载
-    if (userStore.permissions.length === 0) {
-      try {
-        const res = await getCurrentPermissionCodes()
-        userStore.setPermissions(res.data || [])
-      } catch (e) {
-        console.error('加载权限失败', e)
-      }
-    }
-    next()
   } else {
     next()
   }

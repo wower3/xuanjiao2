@@ -41,8 +41,8 @@ public class AssetController {
 
     @ApiOperation("分页查询素材")
     @GetMapping("/list")
-    public Result<PageResult<AssetDTO>> list(AssetQueryCmd cmd) {
-        return Result.success(assetService.query(cmd));
+    public Result<PageResult<AssetDTO>> list(AssetQueryCmd cmd, @RequestAttribute("userId") Long userId) {
+        return Result.success(assetService.queryWithRoleFilter(cmd, userId));
     }
 
     @ApiOperation("删除素材")

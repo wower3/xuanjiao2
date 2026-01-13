@@ -9,6 +9,9 @@ import java.time.LocalDateTime;
 public class DeptDO {
     @TableId(type = IdType.AUTO)
     private Long id;
+    private String code;
+    private Integer level;
+    private String fullCode;
     private String name;
     private Long parentId;
     private Long leaderId;

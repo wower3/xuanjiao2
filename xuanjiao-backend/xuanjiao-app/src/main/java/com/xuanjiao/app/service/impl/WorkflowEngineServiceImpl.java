@@ -2,8 +2,11 @@ package com.xuanjiao.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.service.WorkflowEngineService;
+import com.xuanjiao.app.service.MaterialApplicationService;
+import com.xuanjiao.app.service.AssetService;
 import com.xuanjiao.infrastructure.dataobject.*;
 import com.xuanjiao.infrastructure.mapper.*;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
@@ -28,6 +31,12 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     private ApprovalTaskMapper taskMapper;
     @Resource
     private UserMapper userMapper;
+    @Resource
+    @Lazy
+    private MaterialApplicationService materialApplicationService;
+    @Resource
+    @Lazy
+    private AssetService assetService;
 
     @Override
     @Transactional
@@ -69,6 +78,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
             instance.setStatus("REJECTED");
             instanceMapper.updateById(instance);
+
+            // Update material application and assets status to REJECTED
+            handleWorkflowRejection(instance.getBusinessType(), instance.getBusinessId());
             return;
         }
         // 检查当前阶段是否完成
@@ -186,6 +198,29 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             // 没有下一阶段，流程结束
             instance.setStatus("APPROVED");
             instanceMapper.updateById(instance);
+
+            // Workflow completed: Update material application and assets status
+            handleWorkflowCompletion(instance.getBusinessType(), instance.getBusinessId());
         }
+    }
+
+    private void handleWorkflowCompletion(String businessType, Long businessId) {
+        if ("MATERIAL_ENTRY".equals(businessType)) {
+            // Update material application status to APPROVED
+            materialApplicationService.updateStatus(businessId, "APPROVED");
+            // Update all associated assets status to APPROVED
+            assetService.updateStatusByApplicationId(businessId, "APPROVED");
+        }
+        // Add other business types here if needed (e.g., ASSET_USAGE)
+    }
+
+    private void handleWorkflowRejection(String businessType, Long businessId) {
+        if ("MATERIAL_ENTRY".equals(businessType)) {
+            // Update material application status to REJECTED
+            materialApplicationService.updateStatus(businessId, "REJECTED");
+            // Update all associated assets status to REJECTED
+            assetService.updateStatusByApplicationId(businessId, "REJECTED");
+        }
+        // Add other business types here if needed (e.g., ASSET_USAGE)
     }
 }

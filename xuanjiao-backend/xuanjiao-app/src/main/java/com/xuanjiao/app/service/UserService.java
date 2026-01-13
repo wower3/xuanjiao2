@@ -6,6 +6,7 @@ import java.util.List;
 public interface UserService {
     UserDTO getCurrentUser(Long userId);
     List<UserDTO> list();
+    List<UserDTO> listByBranchDept(Long currentUserId);
     UserDTO getById(Long id);
     void create(UserDTO userDTO);
     void update(UserDTO userDTO);

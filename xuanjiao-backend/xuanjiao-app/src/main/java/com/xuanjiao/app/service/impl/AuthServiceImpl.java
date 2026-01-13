@@ -2,10 +2,13 @@ package com.xuanjiao.app.service.impl;
 
 import cn.hutool.crypto.digest.DigestUtil;
 import com.xuanjiao.app.service.AuthService;
+import com.xuanjiao.app.service.UserService;
 import com.xuanjiao.app.util.JwtUtil;
 import com.xuanjiao.client.dto.*;
 import com.xuanjiao.domain.user.entity.User;
 import com.xuanjiao.domain.user.repository.UserRepository;
+import com.xuanjiao.infrastructure.dataobject.RoleDO;
+import com.xuanjiao.infrastructure.mapper.RoleMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
@@ -18,6 +21,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Resource
     private JwtUtil jwtUtil;
+
+    @Resource
+    private RoleMapper roleMapper;
 
     @Override
     public LoginResultDTO login(LoginCmd cmd) {
@@ -38,6 +44,17 @@ public class AuthServiceImpl implements AuthService {
         result.setToken(token);
         UserDTO userDTO = new UserDTO();
         BeanUtils.copyProperties(user, userDTO);
+
+        // 填充角色信息
+        if (user.getRoleId() != null) {
+            RoleDO role = roleMapper.selectById(user.getRoleId());
+            if (role != null) {
+                userDTO.setRoleId(role.getId());
+                userDTO.setRoleName(role.getName());
+                userDTO.setRoleType(role.getRoleType());
+            }
+        }
+
         result.setUser(userDTO);
         return result;
     }

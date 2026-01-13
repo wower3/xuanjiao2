@@ -12,6 +12,8 @@ public class RoleDO {
     private String code;
     private String name;
     private String description;
+    private String deptScope;
+    private String roleType;
     private Integer status;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

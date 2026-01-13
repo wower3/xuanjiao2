@@ -10,6 +10,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +39,26 @@ public class AssetRepositoryImpl implements AssetRepository {
         Page<AssetDO> page = new Page<>(offset / limit + 1, limit);
         Page<AssetDO> result = assetMapper.selectPage(page, wrapper);
         return result.getRecords().stream().map(this::convert).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Asset> findByApplicationId(Long applicationId) {
+        List<AssetDO> list = assetMapper.selectByApplicationId(applicationId);
+        return list.stream().map(this::convert).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Asset> findByStatusList(String name, String type, List<String> statusList, int offset, int limit) {
+        LambdaQueryWrapper<AssetDO> wrapper = buildQueryWrapperWithStatusList(name, type, statusList);
+        Page<AssetDO> page = new Page<>(offset / limit + 1, limit);
+        Page<AssetDO> result = assetMapper.selectPage(page, wrapper);
+        return result.getRecords().stream().map(this::convert).collect(Collectors.toList());
+    }
+
+    @Override
+    public long countByStatusList(String name, String type, List<String> statusList) {
+        LambdaQueryWrapper<AssetDO> wrapper = buildQueryWrapperWithStatusList(name, type, statusList);
+        return assetMapper.selectCount(wrapper);
     }
 
     @Override
@@ -76,6 +97,21 @@ public class AssetRepositoryImpl implements AssetRepository {
         }
         if (StringUtils.hasText(status)) {
             wrapper.eq(AssetDO::getStatus, status);
+        }
+        wrapper.orderByDesc(AssetDO::getCreateTime);
+        return wrapper;
+    }
+
+    private LambdaQueryWrapper<AssetDO> buildQueryWrapperWithStatusList(String name, String type, List<String> statusList) {
+        LambdaQueryWrapper<AssetDO> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(name)) {
+            wrapper.like(AssetDO::getName, name);
+        }
+        if (StringUtils.hasText(type)) {
+            wrapper.eq(AssetDO::getType, type);
+        }
+        if (statusList != null && !statusList.isEmpty()) {
+            wrapper.in(AssetDO::getStatus, statusList);
         }
         wrapper.orderByDesc(AssetDO::getCreateTime);
         return wrapper;
