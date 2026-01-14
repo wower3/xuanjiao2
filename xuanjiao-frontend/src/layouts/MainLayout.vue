@@ -84,6 +84,16 @@ async function loadMenus() {
         icon: iconMap[sub.icon] || MenuIcon
       }))
     }))
+
+    // 如果当前是根路径，重定向到用户有权限的第一个页面
+    if (route.path === '/' && menus.length > 0) {
+      const firstMenu = menus[0]
+      if (firstMenu.children && firstMenu.children.length > 0) {
+        router.push(firstMenu.children[0].path)
+      } else {
+        router.push(firstMenu.path)
+      }
+    }
   } catch (e) {
     console.error('加载菜单失败', e)
   }

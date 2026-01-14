@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -94,7 +95,49 @@ public class MenuServiceImpl implements MenuService {
         List<MenuDO> menuList = menus.stream()
                 .filter(m -> "MENU".equals(m.getType()))
                 .collect(Collectors.toList());
-        return buildTree(menuList, 0L);
+
+        // 获取用户有权限的菜单ID集合
+        List<Long> userMenuIds = menuList.stream()
+                .map(MenuDO::getId)
+                .collect(Collectors.toList());
+
+        // 查询所有类型为MENU的菜单（用于构建完整的树）
+        LambdaQueryWrapper<MenuDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(MenuDO::getType, "MENU")
+               .eq(MenuDO::getStatus, 1)
+               .orderByAsc(MenuDO::getSort);
+        List<MenuDO> allMenus = menuMapper.selectList(wrapper);
+
+        // 确定需要包含在树中的菜单：用户有权限的菜单 + 所有父级菜单
+        Set<Long> menuIdsToInclude = new java.util.HashSet<>();
+        for (MenuDO menu : allMenus) {
+            if (userMenuIds.contains(menu.getId())) {
+                // 用户有权限的菜单，包含它及其所有父级
+                addWithParents(menu, menuIdsToInclude, allMenus);
+            }
+        }
+
+        // 构建最终的菜单列表（只包含需要的菜单）
+        List<MenuDO> filteredMenus = allMenus.stream()
+                .filter(m -> menuIdsToInclude.contains(m.getId()))
+                .collect(Collectors.toList());
+
+        return buildTree(filteredMenus, 0L);
+    }
+
+    /**
+     * 递归添加菜单及其所有父级ID
+     */
+    private void addWithParents(MenuDO menu, Set<Long> menuIds, List<MenuDO> allMenus) {
+        menuIds.add(menu.getId());
+        if (menu.getParentId() != null && menu.getParentId() != 0L) {
+            for (MenuDO parent : allMenus) {
+                if (parent.getId().equals(menu.getParentId())) {
+                    addWithParents(parent, menuIds, allMenus);
+                    break;
+                }
+            }
+        }
     }
 
     private List<MenuDTO> buildTree(List<MenuDO> all, Long parentId) {

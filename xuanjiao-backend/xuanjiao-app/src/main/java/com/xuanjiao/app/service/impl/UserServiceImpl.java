@@ -13,7 +13,10 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,23 +44,72 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDTO> listByBranchDept(Long currentUserId) {
-        // 获取当前用户信息
-        UserDO currentUser = userMapper.selectById(currentUserId);
-        if (currentUser == null || currentUser.getRoleId() == null) {
+        // 获取当前用户所属的二级机构，返回该机构及其子部门的用户
+        Long secondaryDeptId = getSecondaryDeptId(currentUserId);
+        if (secondaryDeptId == null) {
             return list();
         }
 
-        // 获取当前用户的角色
-        RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
-        if (currentRole == null || !"BRANCH_MGMT".equals(currentRole.getRoleType())) {
-            // 不是分消保管理岗，返回所有用户
-            return list();
-        }
+        Set<Long> deptIds = getAllSubDeptIds(secondaryDeptId);
+        deptIds.add(secondaryDeptId);
 
-        // 分消保管理岗只能看到分部门（id=102）及其子部门的用户
         List<UserDO> allUsers = userMapper.selectList(null);
         return allUsers.stream()
-                .filter(user -> isUnderBranchDept(user.getDeptId()))
+                .filter(user -> user.getDeptId() != null && deptIds.contains(user.getDeptId()))
+                .map(this::convert)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UserDTO> listWithFilter(Long userId, List<Long> roleIds, Long deptId, Boolean includeSubDept) {
+        // 获取当前用户信息和角色
+        UserDTO currentUser = getCurrentUser(userId);
+        if (currentUser == null) {
+            return list();
+        }
+
+        RoleDO currentRole = null;
+        if (currentUser.getRoleId() != null) {
+            currentRole = roleMapper.selectById(currentUser.getRoleId());
+        }
+
+        // 确定可查询的部门范围
+        Set<Long> allowedDeptIds = getAllowedDeptIds(currentUser, currentRole);
+
+        // 计算最终的筛选部门集合（使用final变量供lambda使用）
+        final Set<Long> filterDeptIds;
+        if (deptId != null) {
+            if (Boolean.TRUE.equals(includeSubDept)) {
+                Set<Long> subDeptIds = getAllSubDeptIds(deptId);
+                subDeptIds.add(deptId);
+                filterDeptIds = allowedDeptIds.stream()
+                        .filter(subDeptIds::contains)
+                        .collect(Collectors.toSet());
+            } else {
+                filterDeptIds = allowedDeptIds.stream()
+                        .filter(id -> id.equals(deptId))
+                        .collect(Collectors.toSet());
+            }
+        } else {
+            filterDeptIds = allowedDeptIds;
+        }
+
+        // 获取所有用户并筛选
+        List<UserDO> allUsers = userMapper.selectList(null);
+        return allUsers.stream()
+                .filter(user -> {
+                    // 部门筛选
+                    if (user.getDeptId() == null || !filterDeptIds.contains(user.getDeptId())) {
+                        return false;
+                    }
+                    // 角色筛选
+                    if (roleIds != null && !roleIds.isEmpty()) {
+                        if (user.getRoleId() == null || !roleIds.contains(user.getRoleId())) {
+                            return false;
+                        }
+                    }
+                    return true;
+                })
                 .map(this::convert)
                 .collect(Collectors.toList());
     }
@@ -99,21 +151,114 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 检查部门是否属于分部门（id=102）及其子部门
+     * 获取用户所属的二级机构（level=2的部门ID）
+     * @param userId 用户ID
+     * @return 二级机构ID，如果找不到返回null
      */
+    public Long getSecondaryDeptId(Long userId) {
+        UserDO user = userMapper.selectById(userId);
+        if (user == null || user.getDeptId() == null) {
+            return null;
+        }
+
+        DeptDO dept = deptMapper.selectById(user.getDeptId());
+        if (dept == null) {
+            return null;
+        }
+
+        // 如果当前部门就是二级机构（level=2），直接返回
+        if (dept.getLevel() == 2) {
+            return dept.getId();
+        }
+
+        // 否则向上查找，直到找到二级机构
+        DeptDO currentDept = dept;
+        while (currentDept != null && currentDept.getLevel() > 2) {
+            currentDept = deptMapper.selectById(currentDept.getParentId());
+            if (currentDept != null && currentDept.getLevel() == 2) {
+                return currentDept.getId();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 获取用户允许查询的部门ID集合
+     * @param currentUser 当前用户
+     * @param currentRole 当前用户角色
+     * @return 可查询的部门ID集合
+     */
+    public Set<Long> getAllowedDeptIds(UserDTO currentUser, RoleDO currentRole) {
+        // 系统管理员和总消保管理岗可以查询所有部门
+        if (currentRole != null) {
+            if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) ||
+                "GENERAL_MGMT".equals(currentRole.getRoleType())) {
+                List<DeptDO> allDepts = deptMapper.selectList(null);
+                return allDepts.stream()
+                        .map(DeptDO::getId)
+                        .collect(Collectors.toSet());
+            }
+        }
+
+        // 分消保管理岗只能查询其二级机构及子部门
+        if (currentRole != null && "BRANCH_MGMT".equals(currentRole.getRoleType())) {
+            Long secondaryDeptId = getSecondaryDeptId(currentUser.getId());
+            if (secondaryDeptId != null) {
+                Set<Long> deptIds = getAllSubDeptIds(secondaryDeptId);
+                deptIds.add(secondaryDeptId);
+                return deptIds;
+            }
+        }
+
+        // 其他情况返回空集合（无权限）
+        return new HashSet<>();
+    }
+
+    /**
+     * 获取指定部门的所有子部门ID（递归）
+     * @param deptId 部门ID
+     * @return 所有子部门ID集合
+     */
+    private Set<Long> getAllSubDeptIds(Long deptId) {
+        Set<Long> result = new HashSet<>();
+        List<DeptDO> children = deptMapper.selectByParentId(deptId);
+        for (DeptDO child : children) {
+            result.add(child.getId());
+            result.addAll(getAllSubDeptIds(child.getId()));
+        }
+        return result;
+    }
+
+    /**
+     * 检查部门是否属于分部门（level=2的分部门）及其子部门
+     * @deprecated 使用 getAllowedDeptIds 方法替代
+     */
+    @Deprecated
     private boolean isUnderBranchDept(Long deptId) {
         if (deptId == null) {
             return false;
         }
-        // 分部门ID是102，直接匹配
-        if (deptId.equals(102L)) {
-            return true;
+
+        DeptDO dept = deptMapper.selectById(deptId);
+        if (dept == null) {
+            return false;
         }
-        // 检查是否是分消保部（id=202）
-        if (deptId.equals(202L)) {
-            return true;
+
+        // level=2 的部门中，除了总部门(101)，其他都是分部门
+        if (dept.getLevel() == 2 && dept.getParentId() != null && dept.getParentId().equals(100L)) {
+            return !dept.getId().equals(101L);
         }
-        // 这里可以扩展：如果有更多3级部门，需要查询数据库判断是否属于分部门的子部门
+
+        // 对于level=3及以下的部门，检查其父级链
+        DeptDO currentDept = dept;
+        while (currentDept != null && currentDept.getLevel() > 2) {
+            currentDept = deptMapper.selectById(currentDept.getParentId());
+            if (currentDept != null && currentDept.getLevel() == 2 && !currentDept.getId().equals(101L)) {
+                return true;
+            }
+        }
+
         return false;
     }
 

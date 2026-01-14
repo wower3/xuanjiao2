@@ -164,10 +164,10 @@ CREATE TABLE usage_log (
 -- ========== 初始化数据 ==========
 
 -- 初始化角色
-INSERT INTO sys_role (code, name, description) VALUES
-('ADMIN', '管理员', '系统管理员'),
-('APPROVER', '审批员', '审批人员'),
-('USER', '普通用户', '普通用户');
+INSERT INTO sys_role (name, description) VALUES
+('管理员', '系统管理员'),
+('审批员', '审批人员'),
+('普通用户', '普通用户');
 
 -- 初始化部门
 INSERT INTO sys_dept (name, parent_id) VALUES

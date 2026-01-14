@@ -16,11 +16,11 @@ INSERT INTO sys_dept (id, name, parent_id, sort, status) VALUES
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- 插入角色
-INSERT INTO sys_role (id, code, name, description, status) VALUES
-(1, 'admin', '系统管理员', '拥有所有权限', 1),
-(2, 'manager', '部门经理', '部门管理权限', 1),
-(3, 'approver', '审批人', '审批权限', 1),
-(4, 'user', '普通用户', '基础权限', 1)
+INSERT INTO sys_role (id, name, description, status) VALUES
+(1, '系统管理员', '拥有所有权限', 1),
+(2, '部门经理', '部门管理权限', 1),
+(3, '审批人', '审批权限', 1),
+(4, '普通用户', '基础权限', 1)
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- 插入用户（密码都是123456的MD5）

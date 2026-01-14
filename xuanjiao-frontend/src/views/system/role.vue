@@ -8,17 +8,11 @@
         </div>
       </template>
       <el-table :data="list" v-loading="loading">
-        <el-table-column prop="code" label="角色编码" width="150" />
         <el-table-column prop="name" label="角色名称" width="150" />
         <el-table-column prop="description" label="描述" />
-        <el-table-column prop="roleType" label="角色类型" width="150">
+        <el-table-column prop="roleType" label="角色类型" width="200">
           <template #default="{ row }">
-            <el-tag v-if="!row.roleType || row.roleType === 'CUSTOM'" type="info">自定义</el-tag>
-            <el-tag v-else-if="row.roleType === 'SYSTEM'" type="danger">系统管理员</el-tag>
-            <el-tag v-else-if="row.roleType === 'GENERAL_MGMT'" type="warning">总消保管理岗</el-tag>
-            <el-tag v-else-if="row.roleType === 'BRANCH_MGMT'" type="warning">分消保管理岗</el-tag>
-            <el-tag v-else-if="row.roleType === 'GENERAL_USER'" type="success">总消保用户</el-tag>
-            <el-tag v-else-if="row.roleType === 'BRANCH_USER'" type="success">分消保用户</el-tag>
+            <el-tag>{{ row.roleType }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
@@ -41,21 +35,21 @@
     <!-- 新增/编辑对话框 -->
     <el-dialog v-model="showDialog" :title="isEdit ? '编辑角色' : '新增角色'" width="600px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
-        <el-form-item label="角色编码" prop="code" v-if="!isEdit">
-          <el-input v-model="form.code" placeholder="请输入角色编码" />
-        </el-form-item>
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入角色名称" />
         </el-form-item>
-        <el-form-item label="角色类型">
-          <el-select v-model="form.roleType" placeholder="请选择角色类型">
-            <el-option label="自定义" value="CUSTOM" />
-            <el-option label="系统管理员" value="SYSTEM" />
-            <el-option label="总消保管理岗" value="GENERAL_MGMT" />
-            <el-option label="分消保管理岗" value="BRANCH_MGMT" />
-            <el-option label="总消保用户" value="GENERAL_USER" />
-            <el-option label="分消保用户" value="BRANCH_USER" />
-          </el-select>
+        <el-form-item label="角色类型" prop="roleType">
+          <el-input
+            v-model="form.roleType"
+            placeholder="请输入角色类型（大写字母、数字、下划线）"
+            :disabled="isEdit"
+          >
+            <template #append>
+              <el-tooltip content="角色类型只能包含大写字母、数字和下划线，如：FINANCE_ADMIN" placement="top">
+                <el-icon><QuestionFilled /></el-icon>
+              </el-tooltip>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" placeholder="请输入描述" />
@@ -98,6 +92,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { getRoleList, getRoleById, createRole, updateRole, deleteRole, assignRoleMenus, getRoleMenus } from '@/api/role'
 import { getMenuTree } from '@/api/menu'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 
 const loading = ref(false)
 const list = ref([])
@@ -110,18 +105,28 @@ const formRef = ref()
 const menuTreeRef = ref()
 const menuTree = ref([])
 const currentRoleId = ref<number | null>(null)
+
+// roleType 格式校验：大写字母、数字、下划线
+const roleTypePattern = /^[A-Z0-9_]+$/
+
 const form = reactive({
   id: null as number | null,
-  code: '',
   name: '',
-  roleType: 'CUSTOM',
+  roleType: '',
   description: '',
   status: 1
 })
 
 const rules = {
-  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
+  roleType: [
+    { required: true, message: '请输入角色类型', trigger: 'blur' },
+    {
+      pattern: roleTypePattern,
+      message: '角色类型只能包含大写字母、数字和下划线',
+      trigger: 'blur'
+    }
+  ]
 }
 
 async function loadData() {
@@ -142,9 +147,8 @@ async function loadMenuTree() {
 function handleAdd() {
   isEdit.value = false
   form.id = null
-  form.code = ''
   form.name = ''
-  form.roleType = 'CUSTOM'
+  form.roleType = ''
   form.description = ''
   form.status = 1
   showDialog.value = true

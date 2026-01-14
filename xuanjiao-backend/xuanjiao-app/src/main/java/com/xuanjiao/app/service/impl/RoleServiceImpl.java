@@ -10,6 +10,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +41,9 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public void create(RoleDTO dto) {
+        // 校验 roleType 格式和唯一性
+        validateRoleType(dto.getRoleType(), null);
+
         RoleDO role = new RoleDO();
         BeanUtils.copyProperties(dto, role);
         role.setStatus(1);
@@ -52,6 +56,8 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public void update(RoleDTO dto) {
+        // 校验 roleType 格式和唯一性（排除当前角色自身）
+        validateRoleType(dto.getRoleType(), dto.getId());
         RoleDO role = new RoleDO();
         BeanUtils.copyProperties(dto, role);
         roleMapper.updateById(role);
@@ -81,5 +87,33 @@ public class RoleServiceImpl implements RoleService {
         RoleDTO dto = new RoleDTO();
         BeanUtils.copyProperties(entity, dto);
         return dto;
+    }
+
+    /**
+     * 校验 roleType 格式和唯一性
+     * @param roleType 角色类型
+     * @param excludeId 排除的角色ID（更新时使用，null表示不排除）
+     */
+    private void validateRoleType(String roleType, Long excludeId) {
+        if (roleType == null || roleType.trim().isEmpty()) {
+            throw new RuntimeException("角色类型不能为空");
+        }
+
+        // 校验格式：只允许大写字母、数字和下划线
+        Pattern pattern = Pattern.compile("^[A-Z0-9_]+$");
+        if (!pattern.matcher(roleType).matches()) {
+            throw new RuntimeException("角色类型只能包含大写字母、数字和下划线");
+        }
+
+        // 校验唯一性
+        LambdaQueryWrapper<RoleDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(RoleDO::getRoleType, roleType);
+        if (excludeId != null) {
+            wrapper.ne(RoleDO::getId, excludeId);
+        }
+        Long count = roleMapper.selectCount(wrapper);
+        if (count > 0) {
+            throw new RuntimeException("角色类型已存在：" + roleType);
+        }
     }
 }

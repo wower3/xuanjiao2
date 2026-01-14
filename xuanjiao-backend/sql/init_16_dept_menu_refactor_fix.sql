@@ -112,12 +112,12 @@ ON DUPLICATE KEY UPDATE name = VALUES(name);
 -- ----------------------------
 -- 6. 插入新角色类型（如果不存在）
 -- ----------------------------
-INSERT IGNORE INTO sys_role (code, name, description, role_type, status) VALUES
-('SYSTEM_ADMIN', '系统管理员', '拥有系统所有权限', 'SYSTEM', 1),
-('GENERAL_MGMT', '总消保管理岗', '可管理总部门及分部门的用户，可配置所有角色的权限', 'GENERAL_MGMT', 1),
-('BRANCH_MGMT', '分消保管理岗', '可管理分部门的用户，可配置分消保用户的权限', 'BRANCH_MGMT', 1),
-('GENERAL_USER', '总消保用户', '总消保部普通用户', 'GENERAL_USER', 1),
-('BRANCH_USER', '分消保用户', '分消保部普通用户', 'BRANCH_USER', 1);
+INSERT IGNORE INTO sys_role (name, description, role_type, status) VALUES
+('系统管理员', '拥有系统所有权限', 'SYSTEM_ADMIN', 1),
+('总消保管理岗', '可管理总部门及分部门的用户，可配置所有角色的权限', 'GENERAL_MGMT', 1),
+('分消保管理岗', '可管理分部门的用户，可配置分消保用户的权限', 'BRANCH_MGMT', 1),
+('总消保用户', '总消保部普通用户', 'GENERAL_USER', 1),
+('分消保用户', '分消保部普通用户', 'BRANCH_USER', 1);
 
 -- ----------------------------
 -- 7. 系统管理员默认拥有所有菜单权限

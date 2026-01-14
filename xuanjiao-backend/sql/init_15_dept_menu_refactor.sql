@@ -101,12 +101,12 @@ INSERT INTO sys_menu (id, parent_id, name, type, sort) VALUES
 -- ----------------------------
 -- 6. 插入新角色类型
 -- ----------------------------
-INSERT INTO sys_role (code, name, description, role_type, dept_scope) VALUES
-('SYSTEM_ADMIN', '系统管理员', '拥有系统所有权限', 'SYSTEM', NULL),
-('GENERAL_MGMT', '总消保管理岗', '可管理总部门及分部门的用户，可配置所有角色的权限', 'GENERAL_MGMT', NULL),
-('BRANCH_MGMT', '分消保管理岗', '可管理分部门的用户，可配置分消保用户的权限', 'BRANCH_MGMT', NULL),
-('GENERAL_USER', '总消保用户', '总消保部普通用户', 'GENERAL_USER', NULL),
-('BRANCH_USER', '分消保用户', '分消保部普通用户', 'BRANCH_USER', NULL);
+INSERT INTO sys_role (name, description, role_type, dept_scope) VALUES
+('系统管理员', '拥有系统所有权限', 'SYSTEM_ADMIN', NULL),
+('总消保管理岗', '可管理总部门及分部门的用户，可配置所有角色的权限', 'GENERAL_MGMT', NULL),
+('分消保管理岗', '可管理分部门的用户，可配置分消保用户的权限', 'BRANCH_MGMT', NULL),
+('总消保用户', '总消保部普通用户', 'GENERAL_USER', NULL),
+('分消保用户', '分消保部普通用户', 'BRANCH_USER', NULL);
 
 -- ----------------------------
 -- 7. 系统管理员默认拥有所有菜单权限

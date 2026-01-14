@@ -12,7 +12,6 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
-      redirect: '/asset',
       meta: { requiresAuth: true },
       children: [
         {
@@ -90,7 +89,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth !== false && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
-    next('/')
+    // 登录后重定向到首页，不需要在这里处理，由 MainLayout 处理
+    next()
   } else {
     next()
   }

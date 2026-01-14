@@ -1,15 +1,20 @@
 package com.xuanjiao.adapter.web;
 
 import com.xuanjiao.app.service.UserService;
+import com.xuanjiao.app.service.impl.UserServiceImpl;
 import com.xuanjiao.client.dto.Result;
 import com.xuanjiao.client.dto.UserDTO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.mapper.RoleMapper;
+import com.xuanjiao.infrastructure.mapper.UserMapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Api(tags = "用户管理")
 @RestController
@@ -20,7 +25,13 @@ public class UserController {
     private UserService userService;
 
     @Resource
+    private UserServiceImpl userServiceImpl;
+
+    @Resource
     private RoleMapper roleMapper;
+
+    @Resource
+    private UserMapper userMapper;
 
     @ApiOperation("获取当前用户")
     @GetMapping("/current")
@@ -31,23 +42,83 @@ public class UserController {
     @ApiOperation("用户列表")
     @GetMapping("/list")
     public Result<List<UserDTO>> list(@RequestAttribute(value = "userId", required = false) Long userId) {
-        // 获取当前用户角色，如果是分消保管理岗，只显示分部门的用户
+        // 获取当前用户角色，如果是分消保管理岗，只显示其二级机构的用户
         if (userId != null) {
             UserDTO currentUser = userService.getCurrentUser(userId);
-            if (currentUser != null && "BRANCH_MGMT".equals(currentUser.getRoleType())) {
-                return Result.success(userService.listByBranchDept(userId));
+            if (currentUser != null) {
+                RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
+                if (currentRole != null && "BRANCH_MGMT".equals(currentRole.getRoleType())) {
+                    return Result.success(userService.listByBranchDept(userId));
+                }
             }
         }
         return Result.success(userService.list());
     }
 
+    @ApiOperation("用户列表（带筛选条件）")
+    @GetMapping("/listWithFilter")
+    public Result<List<UserDTO>> listWithFilter(
+            @RequestAttribute(value = "userId", required = false) Long userId,
+            @RequestParam(value = "roleIds", required = false) String roleIdsStr,
+            @RequestParam(value = "deptId", required = false) Long deptId,
+            @RequestParam(value = "includeSubDept", required = false, defaultValue = "true") Boolean includeSubDept) {
+        // 将逗号分隔的字符串转换为 List<Long>
+        List<Long> roleIds = null;
+        if (roleIdsStr != null && !roleIdsStr.trim().isEmpty()) {
+            roleIds = new java.util.ArrayList<>();
+            for (String id : roleIdsStr.split(",")) {
+                try {
+                    roleIds.add(Long.parseLong(id.trim()));
+                } catch (NumberFormatException e) {
+                    // 忽略无效的ID
+                }
+            }
+        }
+        return Result.success(userService.listWithFilter(userId, roleIds, deptId, includeSubDept));
+    }
+
+    @ApiOperation("获取当前用户的默认筛选部门")
+    @GetMapping("/defaultFilterDept")
+    public Result<DefaultFilterDeptDTO> getDefaultFilterDept(@RequestAttribute("userId") Long userId) {
+        UserDTO currentUser = userService.getCurrentUser(userId);
+        if (currentUser == null) {
+            return Result.error("用户不存在");
+        }
+
+        RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
+        if (currentRole == null) {
+            return Result.error("用户角色不存在");
+        }
+
+        DefaultFilterDeptDTO result = new DefaultFilterDeptDTO();
+        result.setHasFilter(false);
+        result.setAllowedDeptIds(null); // 默认为null表示不限制
+        result.setRootDeptId(null);
+
+        // 分消保管理岗需要默认筛选其二级机构，且部门选择受限
+        if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
+            Long secondaryDeptId = userServiceImpl.getSecondaryDeptId(userId);
+            if (secondaryDeptId != null) {
+                Set<Long> allowedDeptIds = userServiceImpl.getAllowedDeptIds(currentUser, currentRole);
+                result.setHasFilter(true);
+                result.setDeptId(secondaryDeptId);
+                result.setIncludeSubDept(true);
+                result.setCanAssignAllRoles(false); // 分消保管理岗不能分配所有角色
+                result.setAllowedDeptIds(allowedDeptIds); // 设置可选的部门ID列表
+                result.setRootDeptId(secondaryDeptId); // 设置根部门ID（用于前端构建部门树）
+            }
+        }
+
+        return Result.success(result);
+    }
+
     @ApiOperation("新增用户")
     @PostMapping
     public Result<Void> create(@RequestAttribute("userId") Long currentUserId, @RequestBody UserDTO userDTO) {
+        // 部门权限检查：只能创建允许查询的部门的用户
+        checkCreateUpdatePermission(currentUserId, userDTO.getDeptId());
         // 角色分配权限检查
         checkRoleAssignmentPermission(currentUserId, userDTO.getRoleId());
-        // 部门权限检查：分消保管理岗只能创建分部门的用户
-        checkPermission(currentUserId, userDTO.getDeptId(), "create");
         userService.create(userDTO);
         return Result.success();
     }
@@ -59,10 +130,10 @@ public class UserController {
         if (targetUser == null) {
             return Result.error("用户不存在");
         }
+        // 部门权限检查：只能更新允许查询的部门的用户
+        checkCreateUpdatePermission(currentUserId, targetUser.getDeptId());
         // 角色分配权限检查
         checkRoleAssignmentPermission(currentUserId, userDTO.getRoleId());
-        // 部门权限检查：分消保管理岗只能更新分部门的用户
-        checkPermission(currentUserId, targetUser.getDeptId(), "update");
         userService.update(userDTO);
         return Result.success();
     }
@@ -74,15 +145,51 @@ public class UserController {
         if (targetUser == null) {
             return Result.error("用户不存在");
         }
-        checkPermission(currentUserId, targetUser.getDeptId(), "delete");
+        // 部门权限检查：只能删除允许查询的部门的用户
+        checkCreateUpdatePermission(currentUserId, targetUser.getDeptId());
         userService.delete(id);
         return Result.success();
     }
 
     /**
-     * 角色分配权限检查
+     * 检查创建/更新权限
+     * 系统管理员和总消保管理岗可以操作所有用户
+     * 分消保管理岗只能操作其允许查询的部门的用户
+     */
+    private void checkCreateUpdatePermission(Long currentUserId, Long targetDeptId) {
+        UserDTO currentUser = userService.getCurrentUser(currentUserId);
+        if (currentUser == null || currentUser.getRoleId() == null) {
+            throw new RuntimeException("无权操作");
+        }
+
+        RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
+        if (currentRole == null) {
+            throw new RuntimeException("无权操作");
+        }
+
+        // 系统管理员和总消保管理岗可以操作所有用户
+        if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) ||
+            "GENERAL_MGMT".equals(currentRole.getRoleType())) {
+            return;
+        }
+
+        // 分消保管理岗只能操作其允许查询的部门的用户
+        if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
+            Set<Long> allowedDeptIds = userServiceImpl.getAllowedDeptIds(currentUser, currentRole);
+            if (targetDeptId == null || !allowedDeptIds.contains(targetDeptId)) {
+                throw new RuntimeException("分消保管理岗只能管理其所属二级机构的用户");
+            }
+            return;
+        }
+
+        // 其他角色无权操作
+        throw new RuntimeException("无权操作");
+    }
+
+    /**
+     * 检查角色分配权限
      * 系统管理员和总消保管理岗可以分配所有角色
-     * 分消保管理岗只能分配分消保用户角色（id=7）
+     * 分消保管理岗只能分配除系统管理员(1)和总消保管理岗(4)外的其他角色
      */
     private void checkRoleAssignmentPermission(Long currentUserId, Long targetRoleId) {
         UserDTO currentUser = userService.getCurrentUser(currentUserId);
@@ -96,14 +203,17 @@ public class UserController {
         }
 
         // 系统管理员和总消保管理岗可以分配所有角色
-        if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) || "GENERAL_MGMT".equals(currentRole.getRoleType())) {
+        if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) ||
+            "GENERAL_MGMT".equals(currentRole.getRoleType())) {
             return;
         }
 
-        // 分消保管理岗只能分配分消保用户角色（id=7, role_type=BRANCH_USER）
+        // 分消保管理岗不能分配系统管理员(1)和总消保管理岗(4)
         if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
-            if (targetRoleId == null || !targetRoleId.equals(7L)) {
-                throw new RuntimeException("分消保管理岗只能分配分消保用户角色");
+            if (targetRoleId != null) {
+                if (targetRoleId.equals(1L) || targetRoleId.equals(4L)) {
+                    throw new RuntimeException("分消保管理岗不能分配系统管理员和总消保管理岗角色");
+                }
             }
             return;
         }
@@ -113,53 +223,62 @@ public class UserController {
     }
 
     /**
-     * 部门权限检查
-     * 系统管理员和总消保管理岗可以操作所有用户
-     * 分消保管理岗只能操作分部门（id=102）及其子部门的用户
+     * 默认筛选部门返回对象
      */
-    private void checkPermission(Long currentUserId, Long targetDeptId, String operation) {
-        UserDTO currentUser = userService.getCurrentUser(currentUserId);
-        if (currentUser == null || currentUser.getRoleId() == null) {
-            throw new RuntimeException("无权操作");
+    public static class DefaultFilterDeptDTO {
+        private Boolean hasFilter;
+        private Long deptId;
+        private Boolean includeSubDept;
+        private Boolean canAssignAllRoles;
+        private Set<Long> allowedDeptIds;
+        private Long rootDeptId; // 分消保管理岗的根部门ID（二级机构）
+
+        public Boolean getHasFilter() {
+            return hasFilter;
         }
 
-        RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
-        if (currentRole == null) {
-            throw new RuntimeException("无权操作");
+        public void setHasFilter(Boolean hasFilter) {
+            this.hasFilter = hasFilter;
         }
 
-        // 系统管理员和总消保管理岗可以操作所有用户
-        if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) || "GENERAL_MGMT".equals(currentRole.getRoleType())) {
-            return;
+        public Long getDeptId() {
+            return deptId;
         }
 
-        // 分消保管理岗只能操作分部门的用户
-        if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
-            if (!isUnderBranchDept(targetDeptId)) {
-                throw new RuntimeException("分消保管理岗只能管理分部门的用户");
-            }
-            return;
+        public void setDeptId(Long deptId) {
+            this.deptId = deptId;
         }
 
-        // 其他角色无权操作
-        throw new RuntimeException("无权操作");
-    }
+        public Boolean getIncludeSubDept() {
+            return includeSubDept;
+        }
 
-    /**
-     * 检查部门是否属于分部门（id=102）及其子部门
-     */
-    private boolean isUnderBranchDept(Long deptId) {
-        if (deptId == null) {
-            return false;
+        public void setIncludeSubDept(Boolean includeSubDept) {
+            this.includeSubDept = includeSubDept;
         }
-        // 分部门ID是102，直接匹配
-        if (deptId.equals(102L)) {
-            return true;
+
+        public Boolean getCanAssignAllRoles() {
+            return canAssignAllRoles;
         }
-        // 检查是否是分消保部（id=202）
-        if (deptId.equals(202L)) {
-            return true;
+
+        public void setCanAssignAllRoles(Boolean canAssignAllRoles) {
+            this.canAssignAllRoles = canAssignAllRoles;
         }
-        return false;
+
+        public Set<Long> getAllowedDeptIds() {
+            return allowedDeptIds;
+        }
+
+        public void setAllowedDeptIds(Set<Long> allowedDeptIds) {
+            this.allowedDeptIds = allowedDeptIds;
+        }
+
+        public Long getRootDeptId() {
+            return rootDeptId;
+        }
+
+        public void setRootDeptId(Long rootDeptId) {
+            this.rootDeptId = rootDeptId;
+        }
     }
 }
