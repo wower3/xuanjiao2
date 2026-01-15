@@ -148,22 +148,182 @@
     </el-dialog>
 
     <!-- 提交审批对话框 -->
-    <el-dialog v-model="showSubmitDialog" title="提交审批" width="500px">
+    <el-dialog v-model="showSubmitDialog" title="提交审批" width="600px">
       <el-form label-width="100px">
         <el-form-item label="审批流程">
-          <el-select v-model="submitWorkflowId" placeholder="请选择审批流程">
-            <el-option
-              v-for="wf in workflowList"
-              :key="wf.id"
-              :label="wf.name"
-              :value="wf.id"
-            />
-          </el-select>
+          <div v-if="boundWorkflow">
+            <el-tag type="success">{{ boundWorkflow.name }}</el-tag>
+            <div style="color: #909399; font-size: 12px; margin-top: 5px">
+              根据您的角色自动匹配的审批流程
+            </div>
+          </div>
+          <div v-else>
+            <span style="color: #F56C6C">您的角色未绑定审批流程，无法提交审批</span>
+          </div>
+        </el-form-item>
+
+        <!-- 第一层审批人选择 -->
+        <el-form-item label="第一层审批人" v-if="firstStageApproverConfigs.length > 0 || (hasLoadedInitialApprovers && approverKeyword)">
+          <div style="width: 100%">
+            <!-- 主流程审批人选择卡片 -->
+            <div style="border: 1px solid #409EFF; border-radius: 6px; padding: 16px; background-color: #FAFAFA">
+              <!-- 标题栏 -->
+              <div style="display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #DCDFE6">
+                <el-icon style="color: #409EFF; margin-right: 8px;"><Document /></el-icon>
+                <span style="font-weight: bold; color: #409EFF; font-size: 14px">主流程审批人</span>
+                <el-tag v-if="firstStageApproveType === 'OR'" type="warning" size="small" style="margin-left: auto">或签</el-tag>
+                <el-tag v-else type="success" size="small" style="margin-left: auto">会签</el-tag>
+              </div>
+
+              <!-- 提示信息 -->
+              <div style="margin-bottom: 12px; padding: 10px; background-color: #ECF5FF; border-radius: 4px; border-left: 3px solid #409EFF; font-size: 13px; color: #303133">
+                <template v-if="firstStageApproveType === 'OR'">
+                  <el-icon style="color: #409EFF; margin-right: 5px"><InfoFilled /></el-icon>
+                  或签：请从以下配置中选择 1 个审批人{{ subWorkflows.length > 0 ? '，并完成所有子流程的审批人选择' : '' }}
+                </template>
+                <template v-else>
+                  <el-icon style="color: #409EFF; margin-right: 5px"><InfoFilled /></el-icon>
+                  会签：请按照配置顺序为每个配置项选择一个审批人{{ subWorkflows.length > 0 ? '，并完成所有子流程的审批人选择' : '' }}
+                </template>
+              </div>
+
+              <!-- 审批人配置选择 -->
+              <template v-if="firstStageApproverConfigs.length > 0">
+                <div v-for="(config, index) in firstStageApproverConfigs" :key="config.configId" style="margin-bottom: 16px">
+                  <div style="font-weight: 500; margin-bottom: 8px; color: #303133; font-size: 13px; display: flex; align-items: center">
+                    <span style="background-color: #409EFF; color: white; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 8px">{{ index + 1 }}</span>
+                    {{ config.approverTypeName }}：{{ config.approverName }}
+                  </div>
+                  <el-select
+                    v-model="selectedFirstStageApprovers[config.configId]"
+                    filterable
+                    placeholder="请选择审批人"
+                    style="width: 100%;"
+                    clearable
+                    @change="handleFirstStageApproverChange"
+                    :disabled="!config.availableUsers || config.availableUsers.length === 0"
+                  >
+                    <el-option
+                      v-for="user in (config.availableUsers || [])"
+                      :key="user.id"
+                      :label="`${user.realName || user.username}${user.username && user.realName ? ` (${user.username})` : ''}`"
+                      :value="user.id"
+                    >
+                      <div style="display: flex; align-items: center; justify-content: space-between">
+                        <span>{{ user.realName || user.username }}</span>
+                        <span style="color: #909399; font-size: 12px">
+                          {{ user.deptName }}
+                          <span v-if="user.roleName" style="margin-left: 5px">{{ user.roleName }}</span>
+                        </span>
+                      </div>
+                    </el-option>
+                  </el-select>
+                </div>
+              </template>
+
+              <!-- 无配置提示 -->
+              <div v-else style="color: #F56C6C; font-size: 13px; text-align: center; padding: 20px;">
+                <el-icon style="vertical-align: middle; margin-right: 5px"><WarningFilled /></el-icon>
+                该流程第一层未配置审批人，请在流程设计器中配置。
+              </div>
+
+              <!-- 已选择提示 -->
+              <div style="margin-top: 12px; padding: 10px; background-color: #F0F9FF; border-radius: 4px; text-align: center; font-size: 13px;">
+                <span style="color: #409EFF; font-weight: 500">已选择</span>
+                <span style="color: #303133; margin: 0 8px">{{ Object.values(selectedFirstStageApprovers).filter(v => v !== null && v !== undefined).length }} / {{ firstStageApproveType === 'OR' ? 1 : firstStageApproverCount }}</span>
+                <span style="color: #606266">位审批人</span>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
+
+        <!-- 子流程审批人选择 -->
+        <template v-for="subWorkflow in subWorkflows" :key="subWorkflow.id">
+          <el-form-item>
+            <div style="width: 100%; border: 1px solid #E6A23C; border-radius: 6px; padding: 16px; background-color: #FFFBF0">
+              <div v-if="subWorkflow.loading" v-loading="true" style="min-height: 50px"></div>
+              <template v-else>
+                <!-- 子流程标题栏 -->
+                <div style="display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #DCDFE6">
+                  <el-icon style="color: #E6A23C; margin-right: 8px;"><Folder /></el-icon>
+                  <span style="font-weight: bold; color: #E6A23C; font-size: 14px">子流程：{{ subWorkflow.name || '未命名' }} (ID: {{ subWorkflow.id }})</span>
+                  <el-tag v-if="subWorkflow.approveType === 'OR'" type="warning" size="small" style="margin-left: auto">或签</el-tag>
+                  <el-tag v-else type="success" size="small" style="margin-left: auto">会签</el-tag>
+                </div>
+
+                <!-- 无配置提示 -->
+                <div v-if="!subWorkflow.approverConfigs || subWorkflow.approverConfigs.length === 0" style="color: #F56C6C; font-size: 13px">
+                  <el-icon><WarningFilled /></el-icon>
+                  该子流程未配置阶段或审批人，请在流程设计器中配置。
+                </div>
+                <!-- 审批人配置选择 -->
+                <template v-else>
+                  <div style="margin-bottom: 10px; color: #606266; font-size: 13px">
+                    <template v-if="subWorkflow.approveType === 'OR'">
+                      或签：请从以下配置中选择 1 个审批人
+                    </template>
+                    <template v-else>
+                      会签：请按照配置顺序为每个配置项选择一个审批人，共需要选择 {{ subWorkflow.approverCount }} 个审批人。
+                    </template>
+                  </div>
+                  <div v-for="(config, index) in subWorkflow.approverConfigs" :key="config.configId" style="margin-bottom: 15px">
+                    <div style="display: flex; align-items: center; margin-bottom: 5px">
+                      <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #E6A23C; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
+                      <span style="font-weight: 500; color: #303133">{{ config.approverTypeName }}</span>
+                      <span style="color: #909399; margin-left: 8px">{{ config.approverName }}</span>
+                    </div>
+                    <el-select
+                      v-model="subWorkflow.selectedApprovers[config.configId]"
+                      placeholder="请选择审批人"
+                      style="width: 100%"
+                      clearable
+                      filterable
+                      @change="handleSubWorkflowApproverChange(subWorkflow)"
+                    >
+                      <el-option
+                        v-for="user in config.availableUsers"
+                        :key="user.id"
+                        :label="`${user.realName || user.username}${user.username && user.realName ? ` (${user.username})` : ''}`"
+                        :value="user.id"
+                      >
+                        <div style="display: flex; align-items: center; justify-content: space-between">
+                          <span>{{ user.realName || user.username }}</span>
+                          <span style="color: #909399; font-size: 12px">
+                            {{ user.deptName }}
+                            <span v-if="user.roleName" style="margin-left: 5px">{{ user.roleName }}</span>
+                          </span>
+                        </div>
+                      </el-option>
+                    </el-select>
+                  </div>
+                  <!-- 已选择提示 -->
+                  <div style="margin-top: 8px; color: #67C23A; font-size: 12px">
+                    已选择 {{ Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined).length }} / {{ subWorkflow.approveType === 'OR' ? 1 : subWorkflow.approverCount }} 位审批人
+                  </div>
+                </template>
+              </template>
+            </div>
+          </el-form-item>
+        </template>
+
+        <!-- 无需选择审批人的提示 -->
+        <el-form-item v-if="boundWorkflow && hasLoadedInitialApprovers && firstStageApproverConfigs.length === 0 && !approverKeyword && subWorkflows.length === 0">
+          <div style="color: #E6A23C; font-size: 13px">
+            <el-icon><WarningFilled /></el-icon>
+            该流程第一层为子流程阶段，将由子流程自动选择审批人，无需手动选择
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showSubmitDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">提交</el-button>
+        <el-button
+          type="primary"
+          @click="handleSubmit"
+          :loading="submitting"
+          :disabled="!boundWorkflow"
+        >
+          提交
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -172,6 +332,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
+import { Search, WarningFilled, Document, Folder } from '@element-plus/icons-vue'
 import {
   createMaterialApplication,
   updateMaterialApplication,
@@ -180,7 +341,7 @@ import {
 } from '@/api/materialApplication'
 import { getTagList, createTag } from '@/api/tag'
 import { uploadAsset, deleteAsset } from '@/api/asset'
-import { getWorkflowList } from '@/api/workflow'
+import { getWorkflowList, getWorkflowByRole, getFirstStageApprovers, selectFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
 import { useUserStore } from '@/stores/user'
 import { getCurrentUser } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -201,8 +362,20 @@ const showSubmitDialog = ref(false)
 
 const workflowList = ref<any[]>([])
 const tagList = ref<any[]>([])
-const submitWorkflowId = ref<number | null>(null)
+const boundWorkflow = ref<any>(null) // 角色绑定的审批流程
 const copyrightType = ref('none')
+
+// 第一层审批人相关
+const firstStageApproverConfigs = ref<any[]>([]) // 第一层审批人配置列表
+const selectedFirstStageApprovers = ref<Record<number, number>>({})  // configId -> userId (会签时多个，或签时1个)
+const firstStageApproveType = ref('') // 第一层的审批类型（OR=或签，其他=会签）
+const firstStageApproverCount = ref(0) // 第一层配置数量
+const approverKeyword = ref('')
+const loadingApprovers = ref(false)
+const hasLoadedInitialApprovers = ref(false) // 标记是否已加载过初始审批人列表
+
+// 子流程相关
+const subWorkflows = ref<any[]>([]) // 第一层包含的子流程列表 { id, name, approverConfigs: [], approverCount: 0, selectedApprovers: {}, loading: false }
 
 // 判断是编辑模式还是新建模式
 const isEditMode = computed(() => !!route.query.id)
@@ -258,12 +431,135 @@ const fileFormRef = ref()
 
 async function loadWorkflows() {
   try {
-    const res = await getWorkflowList()
-    workflowList.value = (res.data || []).filter((w: any) =>
-      w.status === 1 && (!w.type || w.type === 'MATERIAL_ENTRY')
-    )
-  } catch (e) {
+    // 检查当前用户角色是否绑定了审批流程
+    if (currentUser.value?.roleId) {
+      const res = await getWorkflowByRole({
+        roleId: currentUser.value.roleId,
+        workflowType: 'ASSET_UPLOAD'
+      })
+      if (res.data) {
+        boundWorkflow.value = res.data
+      }
+    }
+  } catch (e: any) {
     console.error('加载审批流程失败', e)
+    if (e.response?.data?.message) {
+      ElMessage.error(e.response.data.message)
+    }
+  }
+}
+
+async function loadFirstStageApprovers() {
+  if (!boundWorkflow.value || !currentUser.value?.id) return
+
+  loadingApprovers.value = true
+  try {
+    const res = await getFirstStageApprovers({
+      workflowId: boundWorkflow.value.id,
+      applicantId: currentUser.value.id,
+      keyword: approverKeyword.value
+    })
+    // 处理新的响应结构：{ workflowId, workflowName, stageId, stageName, approveType, approverConfigs, approverCount }
+    firstStageApproverConfigs.value = res.data?.approverConfigs || []
+    firstStageApproveType.value = res.data?.approveType || ''
+    firstStageApproverCount.value = res.data?.approverCount || 0
+
+    // 标记已加载过初始列表（无关键词时的加载）
+    if (!approverKeyword.value) {
+      hasLoadedInitialApprovers.value = true
+      // 加载子流程信息
+      await loadSubWorkflows()
+    }
+  } catch (e: any) {
+    console.error('加载第一层审批人配置失败', e)
+    ElMessage.error(e.message || '加载第一层审批人配置失败')
+  } finally {
+    loadingApprovers.value = false
+  }
+}
+
+async function loadSubWorkflows() {
+  if (!boundWorkflow.value?.stages || boundWorkflow.value.stages.length === 0) return
+
+  const firstStage = boundWorkflow.value.stages[0]
+  if (!firstStage.approvers) return
+
+  // 查找第一层中包含的子流程
+  const subWorkflowApprovers = firstStage.approvers.filter((a: any) => a.subWorkflowId)
+
+  if (subWorkflowApprovers.length === 0) return
+
+  // 为每个子流程初始化数据并加载审批人配置
+  subWorkflows.value = []
+  for (const approver of subWorkflowApprovers) {
+    const subWorkflow: any = {
+      id: approver.subWorkflowId,
+      name: approver.subWorkflowName,
+      approverConfigs: [],
+      approverCount: 0,
+      selectedApprovers: {} as Record<number, number>,
+      loading: false
+    }
+    await loadSubWorkflowApprovers(subWorkflow)
+    subWorkflows.value.push(subWorkflow)
+  }
+}
+
+async function loadSubWorkflowApprovers(subWorkflow: any) {
+  if (!currentUser.value?.id) return
+
+  subWorkflow.loading = true
+  try {
+    const res = await getSubWorkflowFirstStageApprovers({
+      subWorkflowId: subWorkflow.id,
+      applicantId: currentUser.value.id,
+      keyword: '' // 暂不支持子流程审批人搜索
+    })
+    // 处理新的响应结构：{ workflowId, workflowName, approveType, approverConfigs, approverCount }
+    subWorkflow.approveType = res.data?.approveType || ''
+    subWorkflow.approverConfigs = res.data?.approverConfigs || []
+    subWorkflow.approverCount = res.data?.approverCount || 0
+    // 确保已选择的审批人映射被初始化
+    if (!subWorkflow.selectedApprovers) {
+      subWorkflow.selectedApprovers = {}
+    }
+  } catch (e: any) {
+    console.error(`加载子流程"${subWorkflow.name}"审批人配置失败`, e)
+    ElMessage.error(e.message || `加载子流程"${subWorkflow.name}"审批人配置失败`)
+  } finally {
+    subWorkflow.loading = false
+  }
+}
+
+// 处理子流程审批人选择变化（或签时只允许选1个）
+function handleSubWorkflowApproverChange(subWorkflow: any) {
+  if (subWorkflow.approveType === 'OR') {
+    const selectedKeys = Object.keys(subWorkflow.selectedApprovers).filter(
+      key => subWorkflow.selectedApprovers[key] !== null && subWorkflow.selectedApprovers[key] !== undefined
+    )
+    // 如果选择了多个，只保留最后一个
+    if (selectedKeys.length > 1) {
+      const lastKey = selectedKeys[selectedKeys.length - 1]
+      const lastValue = subWorkflow.selectedApprovers[lastKey]
+      subWorkflow.selectedApprovers = {}
+      subWorkflow.selectedApprovers[lastKey] = lastValue
+    }
+  }
+}
+
+// 处理第一层审批人选择变化（或签时只允许选1个）
+function handleFirstStageApproverChange() {
+  if (firstStageApproveType.value === 'OR') {
+    const selectedKeys = Object.keys(selectedFirstStageApprovers.value).filter(
+      key => selectedFirstStageApprovers.value[key] !== null && selectedFirstStageApprovers.value[key] !== undefined
+    )
+    // 如果选择了多个，只保留最后一个
+    if (selectedKeys.length > 1) {
+      const lastKey = selectedKeys[selectedKeys.length - 1]
+      const lastValue = selectedFirstStageApprovers.value[lastKey]
+      selectedFirstStageApprovers.value = {}
+      selectedFirstStageApprovers.value[lastKey] = lastValue
+    }
   }
 }
 
@@ -433,13 +729,67 @@ function handleSubmitDialog() {
     return
   }
 
-  showSubmitDialog.value = true
+  // 先尝试加载绑定的流程，然后加载第一层审批人
+  loadWorkflows().then(() => {
+    showSubmitDialog.value = true
+    // 重置状态
+    approverKeyword.value = ''
+    firstStageApproverConfigs.value = []
+    selectedFirstStageApprovers.value = {}
+    firstStageApproveType.value = ''
+    firstStageApproverCount.value = 0
+    subWorkflows.value = []
+    hasLoadedInitialApprovers.value = false
+    loadFirstStageApprovers()
+  })
 }
 
 async function handleSubmit() {
-  if (!submitWorkflowId.value) {
-    ElMessage.warning('请选择审批流程')
+  if (!boundWorkflow.value) {
+    ElMessage.error('您的角色未绑定审批流程，无法提交审批')
     return
+  }
+
+  // 检查是否需要选择第一层审批人
+  if (firstStageApproveType.value === 'OR') {
+    // 或签：需要选择1个审批人 + 所有子流程
+    if (firstStageApproverCount.value > 0) {
+      const selectedCount = Object.values(selectedFirstStageApprovers.value).filter(v => v !== null && v !== undefined).length
+      if (selectedCount === 0) {
+        ElMessage.warning('请选择第一层审批人（或签需要选择1位）')
+        return
+      }
+    }
+  } else {
+    // 会签：需要选择所有配置的审批人 + 所有子流程
+    if (firstStageApproverCount.value > 0) {
+      const selectedCount = Object.values(selectedFirstStageApprovers.value).filter(v => v !== null && v !== undefined).length
+      if (selectedCount < firstStageApproverCount.value) {
+        ElMessage.warning(`请为所有配置项选择审批人（已选择 ${selectedCount}/${firstStageApproverCount.value}）`)
+        return
+      }
+    }
+  }
+
+  // 检查是否需要选择子流程审批人（根据子流程自己的或签/会签类型）
+  for (const subWorkflow of subWorkflows.value) {
+    if (subWorkflow.approverCount > 0) {
+      const selectedCount = Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined).length
+
+      if (subWorkflow.approveType === 'OR') {
+        // 子流程或签：至少选1个
+        if (selectedCount === 0) {
+          ElMessage.warning(`请为子流程"${subWorkflow.name}"选择至少 1 位审批人（或签）`)
+          return
+        }
+      } else {
+        // 子流程会签：所有配置都要选
+        if (selectedCount < subWorkflow.approverCount) {
+          ElMessage.warning(`请为子流程"${subWorkflow.name}"选择所有 ${subWorkflow.approverCount} 位审批人（当前已选 ${selectedCount} 位）`)
+          return
+        }
+      }
+    }
   }
 
   submitting.value = true
@@ -454,7 +804,41 @@ async function handleSubmit() {
       applicationId.value = res.data.id
     }
 
-    await submitMaterialApplication(applicationId.value!, submitWorkflowId.value!)
+    // 提交审批（创建审批实例）
+    const submitRes = await submitMaterialApplication(applicationId.value!, boundWorkflow.value.id)
+    const instanceId = submitRes.data
+
+    // 如果有第一层审批人需要选择，先选择审批人
+    if ((firstStageApproverCount.value > 0 || subWorkflows.value.length > 0) && instanceId) {
+      // 构建子流程审批人选择映射（从 configId -> userId 转换为数组）
+      const subWorkflowApproverIds: Record<number, number[]> = {}
+      for (const subWorkflow of subWorkflows.value) {
+        const selectedIds = Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined) as number[]
+        if (selectedIds.length > 0) {
+          subWorkflowApproverIds[subWorkflow.id] = selectedIds
+        }
+      }
+
+      // 构建主流程审批人ID列表（按配置顺序）
+      const mainApproverIds: number[] = []
+      // 按配置顺序获取选中的用户ID
+      for (const config of firstStageApproverConfigs.value) {
+        const selectedUserId = selectedFirstStageApprovers.value[config.configId]
+        if (selectedUserId) {
+          mainApproverIds.push(selectedUserId)
+        }
+      }
+
+      // 如果有子流程或主流程审批人，使用新API
+      if (Object.keys(subWorkflowApproverIds).length > 0 || mainApproverIds.length > 0) {
+        await selectFirstStageApproversWithSubWorkflows({
+          instanceId,
+          approverIds: mainApproverIds,
+          subWorkflowApproverIds
+        })
+      }
+    }
+
     ElMessage.success('提交成功')
     showSubmitDialog.value = false
     goToList()

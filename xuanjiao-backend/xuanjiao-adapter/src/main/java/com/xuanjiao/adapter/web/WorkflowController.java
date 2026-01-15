@@ -49,4 +49,31 @@ public class WorkflowController {
         workflowService.updateStatus(id, status);
         return Result.success();
     }
+
+    @ApiOperation("删除流程")
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        workflowService.delete(id);
+        return Result.success();
+    }
+
+    @ApiOperation("绑定角色")
+    @PutMapping("/{id}/bind-role")
+    public Result<Void> bindRole(@PathVariable Long id, @RequestParam Long roleId, @RequestParam String workflowType) {
+        workflowService.bindRole(id, roleId, workflowType);
+        return Result.success();
+    }
+
+    @ApiOperation("解除角色绑定")
+    @PutMapping("/{id}/unbind-role")
+    public Result<Void> unbindRole(@PathVariable Long id) {
+        workflowService.unbindRole(id);
+        return Result.success();
+    }
+
+    @ApiOperation("复制流程")
+    @PostMapping("/{id}/copy")
+    public Result<WorkflowDTO> copy(@PathVariable Long id) {
+        return Result.success(workflowService.copy(id));
+    }
 }

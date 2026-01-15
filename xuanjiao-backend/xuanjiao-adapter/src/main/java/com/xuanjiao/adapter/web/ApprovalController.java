@@ -45,4 +45,10 @@ public class ApprovalController {
         approvalService.approve(id, userId, comment, passed);
         return Result.success();
     }
+
+    @ApiOperation("获取审批任务详情")
+    @GetMapping("/tasks/{id}/detail")
+    public Result<Map<String, Object>> getTaskDetail(@PathVariable Long id) {
+        return Result.success(approvalService.getTaskDetail(id));
+    }
 }

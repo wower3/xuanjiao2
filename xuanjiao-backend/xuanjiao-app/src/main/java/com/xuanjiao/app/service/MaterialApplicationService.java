@@ -17,8 +17,9 @@ public interface MaterialApplicationService {
 
     /**
      * 提交申请单进入审批流程
+     * @return 审批实例ID
      */
-    void submit(Long id, Long workflowId, Long userId);
+    Long submit(Long id, Long workflowId, Long userId);
 
     /**
      * 删除申请单（仅草稿状态）

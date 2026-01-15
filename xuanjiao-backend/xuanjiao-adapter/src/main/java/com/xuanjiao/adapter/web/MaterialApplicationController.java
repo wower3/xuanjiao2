@@ -37,12 +37,12 @@ public class MaterialApplicationController {
 
     @ApiOperation("提交申请单")
     @PostMapping("/{id}/submit")
-    public Result<Void> submit(
+    public Result<Long> submit(
             @PathVariable Long id,
             @RequestParam Long workflowId,
             @RequestAttribute("userId") Long userId) {
-        materialApplicationService.submit(id, workflowId, userId);
-        return Result.success();
+        Long instanceId = materialApplicationService.submit(id, workflowId, userId);
+        return Result.success(instanceId);
     }
 
     @ApiOperation("删除申请单")

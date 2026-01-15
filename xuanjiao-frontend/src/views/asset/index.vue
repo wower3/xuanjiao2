@@ -81,8 +81,8 @@
       </div>
     </el-dialog>
 
-    <el-dialog v-model="showApply" title="申请使用素材" width="500px">
-      <el-form :model="applyForm" label-width="80px">
+    <el-dialog v-model="showApply" title="申请使用素材" width="600px">
+      <el-form :model="applyForm" label-width="100px">
         <el-form-item label="素材名称">
           <el-input :value="currentAsset?.name" disabled />
         </el-form-item>
@@ -98,19 +98,80 @@
           </el-select>
         </el-form-item>
         <el-form-item label="审批流程">
-          <el-select v-model="applyForm.workflowId" placeholder="不选择则直接通过" clearable>
-            <el-option
-              v-for="wf in usageWorkflowList"
-              :key="wf.id"
-              :label="wf.name"
-              :value="wf.id"
-            />
-          </el-select>
+          <div v-if="boundWorkflow">
+            <el-tag type="success">{{ boundWorkflow.name }}</el-tag>
+            <div style="color: #909399; font-size: 12px; margin-top: 5px">
+              根据您的角色自动匹配的审批流程
+            </div>
+          </div>
+          <div v-else>
+            <span style="color: #F56C6C">您的角色未绑定素材使用审批流程，无法提交申请</span>
+          </div>
+        </el-form-item>
+
+        <!-- 第一层审批人选择 -->
+        <el-form-item label="第一层审批人" v-if="firstStageApprovers.length > 0 || (hasLoadedInitialApprovers && approverKeyword)">
+          <div style="width: 100%">
+            <!-- 搜索框 -->
+            <el-input
+              v-model="approverKeyword"
+              placeholder="搜索审批人（用户名或姓名）"
+              clearable
+              @clear="loadFirstStageApprovers"
+              @keyup.enter="loadFirstStageApprovers"
+              style="margin-bottom: 10px"
+            >
+              <template #append>
+                <el-button :icon="Search" @click="loadFirstStageApprovers" />
+              </template>
+            </el-input>
+
+            <!-- 审批人列表 -->
+            <div v-loading="loadingApprovers" style="max-height: 250px; overflow-y: auto; border: 1px solid #DCDFE6; border-radius: 4px; padding: 8px">
+              <el-checkbox-group v-model="selectedApproverIds">
+                <div v-for="approver in firstStageApprovers" :key="approver.id" style="padding: 8px; border-bottom: 1px solid #EBEEF5">
+                  <el-checkbox :label="approver.id">
+                    <div style="display: flex; align-items: center; justify-content: space-between">
+                      <div>
+                        <span style="font-weight: 500">{{ approver.realName || approver.username }}</span>
+                        <span v-if="approver.realName && approver.username" style="color: #909399; margin-left: 5px">({{ approver.username }})</span>
+                      </div>
+                      <div style="font-size: 12px; color: #909399">
+                        {{ approver.deptName }}
+                        <span v-if="approver.roleName" style="margin-left: 5px">{{ approver.roleName }}</span>
+                      </div>
+                    </div>
+                  </el-checkbox>
+                </div>
+              </el-checkbox-group>
+              <!-- 搜索无结果 -->
+              <div v-if="firstStageApprovers.length === 0 && !loadingApprovers && approverKeyword" style="text-align: center; padding: 20px; color: #909399">
+                未找到匹配的审批人
+              </div>
+              <!-- 初始加载无结果 -->
+              <div v-else-if="firstStageApprovers.length === 0 && !loadingApprovers && !approverKeyword" style="text-align: center; padding: 20px; color: #909399">
+                暂无可选审批人
+              </div>
+            </div>
+
+            <!-- 已选择提示 -->
+            <div v-if="selectedApproverIds.length > 0" style="margin-top: 8px; color: #67C23A; font-size: 12px">
+              已选择 {{ selectedApproverIds.length }} 位审批人
+            </div>
+          </div>
+        </el-form-item>
+
+        <!-- 无需选择审批人的提示 -->
+        <el-form-item v-else-if="boundWorkflow && hasLoadedInitialApprovers && firstStageApprovers.length === 0 && !approverKeyword">
+          <div style="color: #E6A23C; font-size: 13px">
+            <el-icon><WarningFilled /></el-icon>
+            该流程第一层为子流程阶段，将由子流程自动选择审批人，无需手动选择
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showApply = false">取消</el-button>
-        <el-button type="primary" @click="handleApply" :loading="applying">提交申请</el-button>
+        <el-button type="primary" @click="handleApply" :loading="applying" :disabled="!boundWorkflow">提交申请</el-button>
       </template>
     </el-dialog>
   </div>
@@ -119,10 +180,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { getAssetList, deleteAsset } from '@/api/asset'
-import { getWorkflowList } from '@/api/workflow'
+import { getWorkflowByRole, getFirstStageApprovers, selectFirstStageApprovers } from '@/api/workflow'
 import { applyUsage, downloadAsset } from '@/api/usageApply'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { View, List, VideoCamera, Document } from '@element-plus/icons-vue'
+import { View, List, VideoCamera, Document, Search, WarningFilled } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 
 const loading = ref(false)
 const showApply = ref(false)
@@ -134,10 +196,17 @@ const showPreview = ref(false)
 const previewAsset = ref<any>(null)
 const previewUrl = ref('')
 const previewMode = ref<'image' | 'list'>('image')
-const workflowList = ref<any[]>([])
-const usageWorkflowList = ref<any[]>([])
+const boundWorkflow = ref<any>(null) // 角色绑定的审批流程
 const currentAsset = ref<any>(null)
-const applyForm = reactive({ purpose: '', scope: '', workflowId: null as number | null })
+const applyForm = reactive({ purpose: '', scope: '' })
+const userStore = useUserStore()
+
+// 第一层审批人相关
+const firstStageApprovers = ref<any[]>([])
+const selectedApproverIds = ref<number[]>([])
+const approverKeyword = ref('')
+const loadingApprovers = ref(false)
+const hasLoadedInitialApprovers = ref(false) // 标记是否已加载过初始审批人列表
 
 async function loadData() {
   loading.value = true
@@ -152,13 +221,41 @@ async function loadData() {
 
 async function loadWorkflows() {
   try {
-    const res = await getWorkflowList()
-    const workflows = (res.data || []).filter((w: any) => w.status === 1)
-    workflowList.value = workflows
-    // 使用审批流程
-    usageWorkflowList.value = workflows.filter((w: any) => w.type === 'ASSET_USAGE')
-  } catch (e) {
+    // 检查当前用户角色是否绑定了素材使用审批流程
+    if (userStore.userInfo?.roleId) {
+      const res = await getWorkflowByRole({
+        roleId: userStore.userInfo.roleId,
+        workflowType: 'ASSET_USAGE'
+      })
+      if (res.data) {
+        boundWorkflow.value = res.data
+      }
+    }
+  } catch (e: any) {
     console.error('加载审批流程失败', e)
+  }
+}
+
+async function loadFirstStageApprovers() {
+  if (!boundWorkflow.value || !userStore.userInfo?.id) return
+
+  loadingApprovers.value = true
+  try {
+    const res = await getFirstStageApprovers({
+      workflowId: boundWorkflow.value.id,
+      applicantId: userStore.userInfo.id,
+      keyword: approverKeyword.value
+    })
+    firstStageApprovers.value = res.data || []
+    // 标记已加载过初始列表（无关键词时的加载）
+    if (!approverKeyword.value) {
+      hasLoadedInitialApprovers.value = true
+    }
+  } catch (e: any) {
+    console.error('加载第一层审批人失败', e)
+    ElMessage.error(e.message || '加载第一层审批人失败')
+  } finally {
+    loadingApprovers.value = false
   }
 }
 
@@ -191,11 +288,17 @@ async function handleDownload(row: any) {
   }
 }
 
-function showApplyDialog(row: any) {
+async function showApplyDialog(row: any) {
   currentAsset.value = row
   applyForm.purpose = ''
   applyForm.scope = ''
-  applyForm.workflowId = null
+  // 先尝试加载绑定的流程，然后加载第一层审批人
+  await loadWorkflows()
+  // 重置状态
+  approverKeyword.value = ''
+  selectedApproverIds.value = []
+  hasLoadedInitialApprovers.value = false
+  loadFirstStageApprovers()
   showApply.value = true
 }
 
@@ -208,14 +311,31 @@ async function handleApply() {
     ElMessage.warning('请选择使用范围')
     return
   }
+  // 检查是否有绑定的审批流程
+  if (!boundWorkflow.value) {
+    ElMessage.warning('您的角色未绑定素材使用审批流程，无法提交申请')
+    return
+  }
+  // 检查是否需要选择第一层审批人
+  if (firstStageApprovers.value.length > 0 && selectedApproverIds.value.length === 0) {
+    ElMessage.warning('请选择第一层审批人')
+    return
+  }
   applying.value = true
   try {
-    await applyUsage({
+    const applyRes = await applyUsage({
       assetId: currentAsset.value.id,
       purpose: applyForm.purpose,
       scope: applyForm.scope,
-      workflowId: applyForm.workflowId
+      workflowId: boundWorkflow.value.id
     })
+    // 如果有第一层审批人需要选择，先选择审批人
+    if (firstStageApprovers.value.length > 0 && applyRes.data?.instanceId) {
+      await selectFirstStageApprovers({
+        instanceId: applyRes.data.instanceId,
+        approverIds: selectedApproverIds.value
+      })
+    }
     ElMessage.success('申请已提交，请等待审批')
     showApply.value = false
   } catch (e: any) {
@@ -234,7 +354,7 @@ async function handleDelete(row: any) {
 
 onMounted(() => {
   loadData()
-  loadWorkflows()
+  // 不在这里加载审批流程，只在用户点击"申请使用"时才加载
 })
 </script>
 

@@ -39,6 +39,15 @@ npm run preview  # Preview production build
 - Swagger/Knife4j Documentation: http://localhost:8080/api/doc.html
 - Default Login: admin / 123456
 
+### Database Migration
+Run SQL migrations in order:
+```bash
+cd xuanjiao-backend/sql
+mysql -u root -p123456 < init_17_workflow_refactor.sql
+mysql -u root -p123456 < init_18_add_sub_workflow_approver_ids.sql
+mysql -u root -p123456 < init_19_add_sub_workflow_approver_ids_to_instance.sql
+```
+
 ## Architecture
 
 ### COLA Framework Structure (Backend)
@@ -92,18 +101,35 @@ xuanjiao-frontend/src/
 
 ## Approval Workflow Model
 
-The system uses a **"Layer-sequential + Intra-layer parallel"** architecture:
+The system uses a **"Layer-sequential + Intra-layer parallel"** architecture with **hierarchical sub-workflows**:
 - **Between layers (串行)**: Stages execute sequentially; Stage N must complete before Stage N+1
 - **Within layers (并行)**: All approvers in a stage receive tasks simultaneously
 - **Layer rules**: Counter-sign (会签 - all must approve) or Or-sign (或签 - any one approves)
-- **Auto-skip**: Empty stages are automatically skipped
+- **Sub-workflows**: Independent approval processes triggered at the approver level, running in parallel without blocking the main flow
+
+### Sub-Workflow Architecture
+
+Sub-workflows are configured at the **approver level** (not stage level):
+- **Configuration**: Each `stage_approver` can have a `sub_workflow_id` linking to another workflow
+- **Trigger**: Manually triggered by the first approver when completing their task
+- **Execution**: Independent instances that run parallel to main flow (non-blocking)
+- **Completion**: Both main flow AND all sub-workflows must complete for final approval
+- **First Approver**: In OR-sign, first to approve; in AND-sign, marked at task creation
+- **Approver Selection**: Upper-level approver selects sub-workflow's first-stage approvers
 
 ### Database Schema (Approval Tables)
-- `workflow` - Workflow definitions
-- `workflow_stage` - Stages within a workflow
-- `stage_approver` - Approvers assigned to stages
-- `approval_instance` - Runtime instances for each asset submission
-- `approval_task` - Individual tasks for each approver
+- `workflow` - Workflow definitions (includes `bound_role_id`, `workflow_type`)
+- `workflow_stage` - Stages within a workflow (includes `sub_workflow_id`)
+- `stage_approver` - Approvers assigned to stages (includes `sub_workflow_id`, `check_secondary_dept`)
+- `approval_instance` - Runtime instances (includes parent/child relationships, `sub_workflow_approver_ids`)
+- `approval_task` - Individual tasks (includes `is_first_approver`, `next_stage_approver_ids`, `sub_workflow_approver_ids`)
+- `approval_progress` - Approval progress tracking with sub-workflow support
+
+### Instance Status Flow
+```
+PENDING → MAIN_COMPLETED (waiting for sub-workflows) → APPROVED
+         ↳ REJECTED (any rejection)
+```
 
 ## Key Vue Components (Workflow Designer)
 
@@ -111,6 +137,33 @@ The system uses a **"Layer-sequential + Intra-layer parallel"** architecture:
 - `StageContainer.vue` - Individual stage card with approver tags
 - `ApproverSelector.vue` - Modal for selecting users/departments/roles
 - `ConfigPanel.vue` - Right drawer for stage settings (name, type, approvers)
+
+## Key Vue Components (Approval Flow)
+
+- `material-entry.vue` - Asset submission with main/sub-workflow approver selection
+- `approval/index.vue` - Task list, approval actions, progress display, approver selection
+
+## Key Services (Backend)
+
+### ApproverSelectionService (`ApproverSelectionServiceImpl`)
+Handles all approver selection logic:
+- `getFirstStageApprovers()` - Get first stage approvers for a workflow
+- `getNextStageApprovers()` - Get next stage approvers (with search)
+- `getSubWorkflowFirstStageApprovers()` - Get sub-workflow first stage approvers
+- `selectFirstStageApproversWithSubWorkflows()` - Select first stage with sub-workflows
+- `selectNextStageApproversWithSubWorkflows()` - Select next stage with sub-workflows
+- `getApprovalProgress()` - Get approval progress including sub-workflows
+- `getTaskDetail()` - Get task details with approver selection info
+
+### WorkflowEngineService (`WorkflowEngineServiceImpl`)
+Core workflow orchestration:
+- `createInstance()` - Create approval instance
+- `completeTask()` - Complete task (approve/reject)
+- `selectFirstStageApprovers()` - Initialize first stage approvers
+- `checkAndMoveToNextStage()` - Check stage completion and advance
+- `startSubProcessesForStage()` - Trigger sub-workflows for a stage
+- `areAllSubWorkflowsComplete()` - Check if all sub-workflows finished
+- `checkParentCompletion()` - Check parent completion after sub-workflow ends
 
 ## Configuration Files
 
@@ -129,11 +182,23 @@ The system uses a **"Layer-sequential + Intra-layer parallel"** architecture:
 
 ## Business Rules
 
+### Asset Management
 - Assets require approval before use (unless workflow configured otherwise)
 - Only designated approvers can process approval tasks
 - Used assets cannot be deleted (only marked unavailable via logical deletion)
 - Duplicate files (same MD5) are not stored twice
 - Three user roles: Regular users, Approvers, Administrators
+
+### Workflow & Sub-Workflow Rules
+- **Role-based binding**: Workflows can be bound to specific roles via `bound_role_id`
+- **Workflow types**: ASSET_UPLOAD (素材录入), ASSET_USAGE (素材使用)
+- **First approver selection**: Only first approver selects next-stage and sub-workflow approvers
+- **OR-sign**: First to approve becomes first approver; other tasks auto-cancel
+- **AND-sign**: Task marked `is_first_approver=1` at creation selects approvers
+- **Sub-workflow triggering**: Happens when stage completes, uses pre-selected approvers
+- **Completion condition**: Main flow + ALL sub-workflows must be APPROVED or REJECTED
+- **Parent-child instances**: Sub-workflows have `parent_instance_id` and `parent_task_id`
+- **Error resilience**: Missing/invalid sub-workflows log warnings and are skipped (don't block flow)
 
 ## Development Notes
 
@@ -142,3 +207,6 @@ The system uses a **"Layer-sequential + Intra-layer parallel"** architecture:
 - JWT tokens are stored in localStorage and sent via `Authorization: Bearer <token>` header
 - File uploads are handled by MultipartFile and stored locally with MD5-based filenames
 - The workflow designer saves JSON structure directly to database, parsed when creating approval instances
+- All workflow operations use `@Transactional(rollbackFor = Exception.class)` for data consistency
+- Sub-workflow approver IDs are stored as JSON in `sub_workflow_approver_ids` fields
+- See `WORKFLOW_REFACTOR_SUMMARY.md` for comprehensive workflow system documentation

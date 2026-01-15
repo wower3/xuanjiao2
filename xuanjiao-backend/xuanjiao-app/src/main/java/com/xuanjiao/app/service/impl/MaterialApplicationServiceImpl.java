@@ -111,7 +111,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
     @Override
     @Transactional
-    public void submit(Long id, Long workflowId, Long userId) {
+    public Long submit(Long id, Long workflowId, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
             throw new RuntimeException("申请单不存在");
@@ -141,7 +141,8 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         materialApplicationRepository.update(application);
 
         // 启动审批流程
-        workflowEngineService.startProcess(workflowId, "MATERIAL_ENTRY", id, userId);
+        Long instanceId = workflowEngineService.startProcess(workflowId, "MATERIAL_ENTRY", id, userId);
+        return instanceId;
     }
 
     @Override
