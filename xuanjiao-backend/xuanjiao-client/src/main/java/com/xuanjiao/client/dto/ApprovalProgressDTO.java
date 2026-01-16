@@ -25,7 +25,7 @@ public class ApprovalProgressDTO {
         private Long id;
         private String name;
         private String status; // APPROVED-已通过，PENDING-待审批
-        private LocalDateTime approveTime;
+        private String approveTime; // 审批时间（字符串格式）
         private String comment;
     }
 }

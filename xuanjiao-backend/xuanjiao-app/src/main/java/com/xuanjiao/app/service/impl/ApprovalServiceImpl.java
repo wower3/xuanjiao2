@@ -48,6 +48,8 @@ public class ApprovalServiceImpl implements ApprovalService {
     private RoleMapper roleMapper;
     @Resource
     private DeptMapper deptMapper;
+    @Resource
+    private MaterialApplicationMapper materialApplicationMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -64,14 +66,93 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> getMyApplied(Long userId, int pageNum, int pageSize) {
+    public PageResult<Map<String, Object>> getMyApplied(Long userId, int pageNum, int pageSize,
+                                                         String businessType, boolean forAllUsers,
+                                                         Long applicantId, Long deptId, String roleType,
+                                                         String status) {
         LambdaQueryWrapper<ApprovalInstanceDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalInstanceDO::getApplicantId, userId)
-               .orderByDesc(ApprovalInstanceDO::getCreateTime);
+
+        // 业务类型筛选（如果指定）
+        if (businessType != null && !businessType.isEmpty()) {
+            wrapper.eq(ApprovalInstanceDO::getBusinessType, businessType);
+        }
+
+        // 审批状态筛选（如果指定）
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(ApprovalInstanceDO::getStatus, status);
+        }
+
+        // 只查询主流程，排除子流程
+        wrapper.isNull(ApprovalInstanceDO::getParentInstanceId);
+
+        if (forAllUsers) {
+            // 查询所有用户的工单，支持筛选
+
+            // 筛选条件：发起人
+            if (applicantId != null) {
+                wrapper.eq(ApprovalInstanceDO::getApplicantId, applicantId);
+            }
+
+            // 筛选条件：发起人所属部门或角色类型
+            Set<Long> applicantIds = new HashSet<>();
+            if (deptId != null) {
+                // 查询该部门下的所有用户
+                LambdaQueryWrapper<UserDO> userWrapper = new LambdaQueryWrapper<>();
+                userWrapper.eq(UserDO::getDeptId, deptId).eq(UserDO::getStatus, 1);
+                List<UserDO> usersInDept = userMapper.selectList(userWrapper);
+                for (UserDO user : usersInDept) {
+                    applicantIds.add(user.getId());
+                }
+            }
+
+            // 筛选条件：发起人角色类型
+            if (roleType != null && !roleType.isEmpty()) {
+                // 根据角色类型查询角色
+                LambdaQueryWrapper<RoleDO> roleWrapper = new LambdaQueryWrapper<>();
+                roleWrapper.eq(RoleDO::getRoleType, roleType).eq(RoleDO::getStatus, 1);
+                List<RoleDO> roles = roleMapper.selectList(roleWrapper);
+
+                if (!roles.isEmpty()) {
+                    List<Long> roleIds = roles.stream().map(RoleDO::getId).collect(Collectors.toList());
+                    // 查询拥有这些角色的用户
+                    LambdaQueryWrapper<UserDO> userWrapper = new LambdaQueryWrapper<>();
+                    userWrapper.in(UserDO::getRoleId, roleIds).eq(UserDO::getStatus, 1);
+                    List<UserDO> usersWithRole = userMapper.selectList(userWrapper);
+                    for (UserDO user : usersWithRole) {
+                        applicantIds.add(user.getId());
+                    }
+                }
+            }
+
+            // 应用发起人筛选（如果有部门或角色筛选，且没有指定具体的发起人）
+            if (!applicantIds.isEmpty() && applicantId == null) {
+                wrapper.in(ApprovalInstanceDO::getApplicantId, applicantIds);
+            }
+        } else {
+            // 仅查询当前用户的工单
+            wrapper.eq(ApprovalInstanceDO::getApplicantId, userId);
+        }
+
+        wrapper.orderByDesc(ApprovalInstanceDO::getCreateTime);
         Page<ApprovalInstanceDO> page = instanceMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<Map<String, Object>> list = page.getRecords().stream()
             .map(this::buildInstanceInfo).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
+    }
+
+    @Override
+    public Map<String, Object> getInstanceDetail(Long instanceId) {
+        ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw new RuntimeException("审批实例不存在");
+        }
+        Map<String, Object> result = buildInstanceInfo(instance);
+        // 添加日志检查返回数据
+        if (result.containsKey("approvalProgress")) {
+            Object progress = result.get("approvalProgress");
+            logger.info("getInstanceDetail返回: instanceId={}, approvalProgress={}", instanceId, progress);
+        }
+        return result;
     }
 
     @Override
@@ -166,7 +247,24 @@ public class ApprovalServiceImpl implements ApprovalService {
             }
 
             // 获取业务名称（素材名称或使用申请）
-            if ("ASSET".equals(instance.getBusinessType())) {
+            if ("MATERIAL_ENTRY".equals(instance.getBusinessType())) {
+                // 素材录入申请：获取申请单信息
+                MaterialApplicationDO application = materialApplicationMapper.selectById(instance.getBusinessId());
+                if (application != null) {
+                    map.put("applicationId", application.getId());
+                    map.put("applicationTitle", application.getTitle());
+                    map.put("businessName", application.getTitle());
+
+                    // 获取关联的素材数量和类型
+                    LambdaQueryWrapper<AssetDO> assetWrapper = new LambdaQueryWrapper<>();
+                    assetWrapper.eq(AssetDO::getApplicationId, application.getId());
+                    List<AssetDO> assets = assetMapper.selectList(assetWrapper);
+                    if (assets != null && !assets.isEmpty()) {
+                        map.put("assetType", assets.get(0).getType());
+                        map.put("assetCount", assets.size());
+                    }
+                }
+            } else if ("ASSET".equals(instance.getBusinessType())) {
                 AssetDO asset = assetMapper.selectById(instance.getBusinessId());
                 if (asset != null) {
                     map.put("businessName", asset.getName());
@@ -198,17 +296,57 @@ public class ApprovalServiceImpl implements ApprovalService {
         map.put("businessId", instance.getBusinessId());
         map.put("createTime", instance.getCreateTime());
 
-        // 获取流程名称
+        // 获取流程信息
         WorkflowDO workflow = workflowMapper.selectById(instance.getWorkflowId());
         if (workflow != null) {
             map.put("workflowName", workflow.getName());
+            map.put("workflowId", workflow.getId());
         }
 
-        // 获取业务名称
-        if ("ASSET".equals(instance.getBusinessType())) {
+        // 获取业务名称和详情
+        if ("MATERIAL_ENTRY".equals(instance.getBusinessType())) {
+            // 获取申请单信息
+            MaterialApplicationDO application = materialApplicationMapper.selectById(instance.getBusinessId());
+            if (application != null) {
+                // 申请单ID和标题
+                map.put("applicationId", application.getId());
+                map.put("applicationTitle", application.getTitle());
+                map.put("businessName", application.getTitle()); // 兼容旧字段
+
+                // 获取关联的素材文件列表（一个申请单可能有多个素材）
+                LambdaQueryWrapper<AssetDO> assetWrapper = new LambdaQueryWrapper<>();
+                assetWrapper.eq(AssetDO::getApplicationId, application.getId());
+                List<AssetDO> assets = assetMapper.selectList(assetWrapper);
+                if (assets != null && !assets.isEmpty()) {
+                    // 取第一个素材作为主要信息
+                    AssetDO firstAsset = assets.get(0);
+                    map.put("assetType", firstAsset.getType());
+                    map.put("assetStatus", firstAsset.getStatus());
+                    map.put("assetCount", assets.size()); // 素材数量
+
+                    // 构建素材列表（包含ID和名称）
+                    List<Map<String, Object>> assetList = new ArrayList<>();
+                    for (AssetDO asset : assets) {
+                        Map<String, Object> assetInfo = new HashMap<>();
+                        assetInfo.put("id", asset.getId());
+                        assetInfo.put("name", asset.getName());
+                        assetInfo.put("type", asset.getType());
+                        assetInfo.put("status", asset.getStatus());
+                        assetList.add(assetInfo);
+                    }
+                    map.put("assetList", assetList);
+                }
+            }
+        } else if ("ASSET".equals(instance.getBusinessType())) {
             AssetDO asset = assetMapper.selectById(instance.getBusinessId());
             if (asset != null) {
                 map.put("businessName", asset.getName());
+                // 业务详情
+                map.put("assetType", asset.getType());
+                map.put("assetStatus", asset.getStatus());
+                map.put("filePath", asset.getFilePath());
+                map.put("thumbnailPath", asset.getThumbnailPath());
+                map.put("fileSize", asset.getFileSize());
             }
         } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
             UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
@@ -216,9 +354,51 @@ public class ApprovalServiceImpl implements ApprovalService {
                 AssetDO asset = assetMapper.selectById(usageApply.getAssetId());
                 if (asset != null) {
                     map.put("businessName", "使用申请：" + asset.getName());
+                    // 业务详情
+                    map.put("assetType", asset.getType());
+                    map.put("assetId", asset.getId());
                 }
             }
         }
+
+        // 获取申请人信息
+        UserDO applicant = userMapper.selectById(instance.getApplicantId());
+        if (applicant != null) {
+            map.put("applicantId", applicant.getId());
+            map.put("applicantName", applicant.getRealName());
+        }
+
+        // 获取当前阶段信息
+        if (instance.getCurrentStageId() != null) {
+            WorkflowStageDO currentStage = workflowStageMapper.selectById(instance.getCurrentStageId());
+            if (currentStage != null) {
+                map.put("currentStageId", currentStage.getId());
+                map.put("currentStageName", currentStage.getName());
+                map.put("approveType", currentStage.getApproveType());
+            }
+        }
+
+        // 获取当前阶段的待审批任务
+        LambdaQueryWrapper<ApprovalTaskDO> pendingTaskWrapper = new LambdaQueryWrapper<>();
+        pendingTaskWrapper.eq(ApprovalTaskDO::getInstanceId, instance.getId())
+                .eq(ApprovalTaskDO::getStatus, "PENDING");
+        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(pendingTaskWrapper);
+        List<Map<String, Object>> pendingApprovers = new ArrayList<>();
+        for (ApprovalTaskDO task : pendingTasks) {
+            UserDO approver = userMapper.selectById(task.getApproverId());
+            if (approver != null) {
+                Map<String, Object> approverInfo = new HashMap<>();
+                approverInfo.put("id", approver.getId());
+                approverInfo.put("name", approver.getRealName() != null ? approver.getRealName() : approver.getUsername());
+                pendingApprovers.add(approverInfo);
+            }
+        }
+        map.put("pendingApprovers", pendingApprovers);
+
+        // 获取审批进度
+        List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(instance.getId());
+        map.put("approvalProgress", progress);
+
         return map;
     }
 

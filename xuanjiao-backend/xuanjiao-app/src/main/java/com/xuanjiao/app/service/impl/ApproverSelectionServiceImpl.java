@@ -21,9 +21,12 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 审批人选择服务实现
  */
+@Slf4j
 @Service
 public class ApproverSelectionServiceImpl implements ApproverSelectionService {
 
@@ -266,19 +269,57 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
 
     @Override
     public List<ApprovalProgressDTO> getApprovalProgress(Long instanceId) {
-        // 获取主实例进度
-        List<ApprovalProgressDO> mainProgress = approvalProgressMapper.selectByInstanceId(instanceId);
+        // 获取主实例信息，以便获取工作流ID
+        ApprovalInstanceDO instance = approvalInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            return new ArrayList<>();
+        }
 
-        // 获取所有子流程进度
+        // 获取主实例进度（主流程的进度）
+        LambdaQueryWrapper<ApprovalProgressDO> mainWrapper = new LambdaQueryWrapper<>();
+        mainWrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
+                   .isNull(ApprovalProgressDO::getParentInstanceId); // 只获取主流程进度，不包含子流程
+        List<ApprovalProgressDO> mainProgress = approvalProgressMapper.selectList(mainWrapper);
+
+        // 获取工作流的所有阶段（主流程）
+        LambdaQueryWrapper<WorkflowStageDO> stageWrapper = new LambdaQueryWrapper<>();
+        stageWrapper.eq(WorkflowStageDO::getWorkflowId, instance.getWorkflowId())
+                    .orderByAsc(WorkflowStageDO::getStageOrder);
+        List<WorkflowStageDO> allStages = workflowStageMapper.selectList(stageWrapper);
+
+        // 创建已有进度的stageId集合，便于查找
+        Set<Long> existingStageIds = mainProgress.stream()
+            .map(ApprovalProgressDO::getStageId)
+            .collect(Collectors.toSet());
+
+        // 为还没有到达的阶段创建"未开始"状态的进度记录
         List<ApprovalProgressDO> allProgress = new ArrayList<>(mainProgress);
-
-        // 递归获取所有子流程的进度
-        for (ApprovalProgressDO progress : mainProgress) {
-            if (progress.getIsSubWorkflow() != null && progress.getIsSubWorkflow() == 1) {
-                List<ApprovalProgressDO> subProgress = approvalProgressMapper.selectByParentInstanceId(instanceId);
-                allProgress.addAll(subProgress);
+        for (WorkflowStageDO stage : allStages) {
+            if (!existingStageIds.contains(stage.getId())) {
+                // 这个阶段还没有进度记录，创建一个"未开始"的记录
+                ApprovalProgressDO notStartedProgress = new ApprovalProgressDO();
+                notStartedProgress.setId(null); // 新记录没有ID
+                notStartedProgress.setInstanceId(instanceId);
+                notStartedProgress.setStageId(stage.getId());
+                notStartedProgress.setStageName(stage.getName());
+                notStartedProgress.setStageOrder(stage.getStageOrder());
+                notStartedProgress.setStatus("NOT_STARTED"); // 未开始状态
+                notStartedProgress.setIsSubWorkflow(0);
+                notStartedProgress.setParentInstanceId(null);
+                notStartedProgress.setParentTaskId(null);
+                notStartedProgress.setApprovers(null); // 未到达的阶段没有人员信息
+                notStartedProgress.setApproveTime(null);
+                allProgress.add(notStartedProgress);
             }
         }
+
+        // 获取所有子流程进度（parentInstanceId指向主实例的记录）
+        LambdaQueryWrapper<ApprovalProgressDO> subWrapper = new LambdaQueryWrapper<>();
+        subWrapper.eq(ApprovalProgressDO::getParentInstanceId, instanceId);
+        List<ApprovalProgressDO> subProgress = approvalProgressMapper.selectList(subWrapper);
+
+        // 合并主流程和子流程进度
+        allProgress.addAll(subProgress);
 
         return allProgress.stream()
             .map(this::convertToProgressDTO)
@@ -645,13 +686,15 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         // 解析审批人列表
         if (progressDO.getApprovers() != null && !progressDO.getApprovers().isEmpty()) {
             try {
+                log.info("解析审批人列表: progressId={}, approversJson={}", progressDO.getId(), progressDO.getApprovers());
                 List<ApprovalProgressDTO.ApproverInfo> approvers = objectMapper.readValue(
                     progressDO.getApprovers(),
                     new TypeReference<List<ApprovalProgressDTO.ApproverInfo>>() {}
                 );
+                log.info("解析成功: approvers={}", approvers);
                 dto.setApprovers(approvers);
             } catch (Exception e) {
-                // 忽略解析错误
+                log.error("解析审批人列表失败: progressId={}, error={}", progressDO.getId(), e.getMessage(), e);
             }
         }
 

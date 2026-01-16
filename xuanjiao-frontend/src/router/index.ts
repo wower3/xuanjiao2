@@ -55,6 +55,11 @@ const router = createRouter({
           component: () => import('@/views/task/workflow-in-progress.vue')
         },
         {
+          path: 'task/material-approval',
+          name: 'MaterialApproval',
+          component: () => import('@/views/task/material-approval.vue')
+        },
+        {
           path: 'log',
           name: 'Log',
           component: () => import('@/views/log/index.vue')

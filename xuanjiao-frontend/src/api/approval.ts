@@ -12,6 +12,10 @@ export function getTaskDetail(id: number) {
   return request.get(`/approval/tasks/${id}/detail`)
 }
 
+export function getInstanceDetail(instanceId: number) {
+  return request.get(`/approval/instances/${instanceId}/detail`)
+}
+
 export function approve(id: number, comment: string, passed: boolean) {
   return request.post(`/approval/tasks/${id}/approve`, null, {
     params: { comment, passed }

@@ -127,6 +127,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 instanceMapper.updateById(instance);
                 logger.info("实例状态已更新为REJECTED: instanceId={}", instance.getId());
 
+                // 取消所有待办任务（包括主流程和所有子流程）
+                // 获取根实例ID：主流程的rootInstanceId为null，使用当前实例ID；子流程使用rootInstanceId
+                Long rootInstanceId = instance.getRootInstanceId() != null ? instance.getRootInstanceId() : instance.getId();
+                cancelAllPendingTasksForInstance(rootInstanceId);
+
                 // 更新进度记录
                 updateProgressRecord(task.getInstanceId(), task.getStageId(), "REJECTED", userId, comment);
 
@@ -135,6 +140,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             }
             return;
         }
+
+        // 审批通过：先更新当前审批人的状态（会签时，每个人完成后都要更新）
+        updateApproverStatusInProgress(task.getInstanceId(), task.getStageId(), userId, "APPROVED", comment);
 
         // 检查当前阶段是否完成
         logger.info("检查阶段是否完成: instanceId={}, stageId={}", task.getInstanceId(), task.getStageId());
@@ -547,19 +555,38 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     /**
-     * 为子流程创建进度记录
+     * 为子流程创建进度记录（带唯一性检查）
      */
     private void createProgressRecordForSubWorkflow(Long instanceId, WorkflowStageDO stage, Long parentInstanceId, Long parentTaskId, String status) {
-        ApprovalProgressDO progress = new ApprovalProgressDO();
-        progress.setInstanceId(instanceId);
-        progress.setStageId(stage.getId());
-        progress.setStageName(stage.getName());
-        progress.setStageOrder(stage.getStageOrder());
-        progress.setStatus(status);
-        progress.setIsSubWorkflow(1); // 标记为子流程
-        progress.setParentInstanceId(parentInstanceId);
-        progress.setParentTaskId(parentTaskId); // 使用 parentTaskId
-        progressMapper.insert(progress);
+        // 检查是否已存在该实例该阶段的进度记录
+        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
+               .eq(ApprovalProgressDO::getStageId, stage.getId());
+        ApprovalProgressDO existing = progressMapper.selectOne(wrapper);
+
+        if (existing != null) {
+            // 已存在记录，更新状态
+            existing.setStatus(status);
+            existing.setIsSubWorkflow(1); // 确保标记为子流程
+            existing.setParentInstanceId(parentInstanceId);
+            existing.setParentTaskId(parentTaskId);
+            if (status.equals("APPROVED") || status.equals("REJECTED")) {
+                existing.setApproveTime(LocalDateTime.now());
+            }
+            progressMapper.updateById(existing);
+        } else {
+            // 不存在记录，创建新记录
+            ApprovalProgressDO progress = new ApprovalProgressDO();
+            progress.setInstanceId(instanceId);
+            progress.setStageId(stage.getId());
+            progress.setStageName(stage.getName());
+            progress.setStageOrder(stage.getStageOrder());
+            progress.setStatus(status);
+            progress.setIsSubWorkflow(1); // 标记为子流程
+            progress.setParentInstanceId(parentInstanceId);
+            progress.setParentTaskId(parentTaskId);
+            progressMapper.insert(progress);
+        }
     }
 
     /**
@@ -570,16 +597,35 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     private void createProgressRecord(Long instanceId, WorkflowStageDO stage, Long parentInstanceId, Long parentStageId, String status) {
-        ApprovalProgressDO progress = new ApprovalProgressDO();
-        progress.setInstanceId(instanceId);
-        progress.setStageId(stage.getId());
-        progress.setStageName(stage.getName());
-        progress.setStageOrder(stage.getStageOrder());
-        progress.setStatus(status);
-        progress.setIsSubWorkflow(parentInstanceId != null ? 1 : 0); // 如果有父实例，则是子流程
-        progress.setParentInstanceId(parentInstanceId);
-        progress.setParentTaskId(parentStageId); // 使用 parentTaskId 存储父任务ID（如果是子流程的话）
-        progressMapper.insert(progress);
+        // 检查是否已存在该实例该阶段的进度记录
+        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
+               .eq(ApprovalProgressDO::getStageId, stage.getId());
+        ApprovalProgressDO existing = progressMapper.selectOne(wrapper);
+
+        if (existing != null) {
+            // 已存在记录，更新状态
+            existing.setStatus(status);
+            existing.setIsSubWorkflow(parentInstanceId != null ? 1 : 0);
+            existing.setParentInstanceId(parentInstanceId);
+            existing.setParentTaskId(parentStageId);
+            if (status.equals("APPROVED") || status.equals("REJECTED")) {
+                existing.setApproveTime(LocalDateTime.now());
+            }
+            progressMapper.updateById(existing);
+        } else {
+            // 不存在记录，创建新记录
+            ApprovalProgressDO progress = new ApprovalProgressDO();
+            progress.setInstanceId(instanceId);
+            progress.setStageId(stage.getId());
+            progress.setStageName(stage.getName());
+            progress.setStageOrder(stage.getStageOrder());
+            progress.setStatus(status);
+            progress.setIsSubWorkflow(parentInstanceId != null ? 1 : 0);
+            progress.setParentInstanceId(parentInstanceId);
+            progress.setParentTaskId(parentStageId);
+            progressMapper.insert(progress);
+        }
     }
 
     /**
@@ -737,6 +783,40 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         }
     }
 
+    /**
+     * 取消指定实例的所有待办任务（包括主流程和所有子流程）
+     * @param rootInstanceId 根实例ID（主流程实例ID）
+     */
+    private void cancelAllPendingTasksForInstance(Long rootInstanceId) {
+        // 查询主流程实例的所有待办任务
+        LambdaQueryWrapper<ApprovalTaskDO> mainWrapper = new LambdaQueryWrapper<>();
+        mainWrapper.eq(ApprovalTaskDO::getInstanceId, rootInstanceId)
+                   .eq(ApprovalTaskDO::getStatus, "PENDING");
+        List<ApprovalTaskDO> mainPendingTasks = taskMapper.selectList(mainWrapper);
+        for (ApprovalTaskDO task : mainPendingTasks) {
+            task.setStatus("CANCELLED");
+            taskMapper.updateById(task);
+        }
+        logger.info("已取消主流程待办任务: rootInstanceId={}, count={}", rootInstanceId, mainPendingTasks.size());
+
+        // 查询所有子流程实例的待办任务
+        LambdaQueryWrapper<ApprovalInstanceDO> subInstanceWrapper = new LambdaQueryWrapper<>();
+        subInstanceWrapper.eq(ApprovalInstanceDO::getRootInstanceId, rootInstanceId);
+        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(subInstanceWrapper);
+
+        for (ApprovalInstanceDO subInstance : subInstances) {
+            LambdaQueryWrapper<ApprovalTaskDO> subTaskWrapper = new LambdaQueryWrapper<>();
+            subTaskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
+                         .eq(ApprovalTaskDO::getStatus, "PENDING");
+            List<ApprovalTaskDO> subPendingTasks = taskMapper.selectList(subTaskWrapper);
+            for (ApprovalTaskDO task : subPendingTasks) {
+                task.setStatus("CANCELLED");
+                taskMapper.updateById(task);
+            }
+            logger.info("已取消子流程待办任务: subInstanceId={}, count={}", subInstance.getId(), subPendingTasks.size());
+        }
+    }
+
     private WorkflowStageDO getFirstStage(Long workflowId) {
         LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkflowStageDO::getWorkflowId, workflowId)
@@ -746,7 +826,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     /**
-     * 更新进度记录状态
+     * 更新进度记录状态（只更新整体状态，不更新单个审批人状态）
      */
     private void updateProgressRecord(Long instanceId, Long stageId, String status, Long approverId, String comment) {
         LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
@@ -760,6 +840,63 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 progress.setApproveTime(LocalDateTime.now());
             }
             progressMapper.updateById(progress);
+            logger.info("已更新进度记录状态: instanceId={}, stageId={}, status={}", instanceId, stageId, status);
+        }
+    }
+
+    /**
+     * 更新进度记录中单个审批人的状态
+     */
+    private void updateApproverStatusInProgress(Long instanceId, Long stageId, Long approverId, String status, String comment) {
+        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
+               .eq(ApprovalProgressDO::getStageId, stageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(wrapper);
+
+        if (progress == null) {
+            logger.warn("进度记录不存在，无法更新审批人状态: instanceId={}, stageId={}", instanceId, stageId);
+            return;
+        }
+
+        if (progress.getApprovers() == null || progress.getApprovers().isEmpty()) {
+            logger.warn("进度记录中没有审批人信息: instanceId={}, stageId={}", instanceId, stageId);
+            return;
+        }
+
+        try {
+            logger.info("开始更新审批人状态: instanceId={}, stageId={}, approverId={}, status={}, 原始approvers={}",
+                instanceId, stageId, approverId, status, progress.getApprovers());
+
+            List<Map<String, Object>> approvers = objectMapper.readValue(
+                progress.getApprovers(),
+                new TypeReference<List<Map<String, Object>>>() {}
+            );
+
+            logger.info("解析后的审批人列表: approvers={}", approvers);
+
+            // 更新指定审批人的状态
+            for (Map<String, Object> approver : approvers) {
+                if (approverId.equals(((Number) approver.get("id")).longValue())) {
+                    approver.put("status", status);
+                    approver.put("comment", comment);
+                    if ("APPROVED".equals(status) || "REJECTED".equals(status)) {
+                        approver.put("approveTime", LocalDateTime.now().toString());
+                    }
+                    logger.info("找到匹配的审批人并更新: approverId={}, 新status={}", approverId, status);
+                    break;
+                }
+            }
+
+            logger.info("更新后的审批人列表: approvers={}", approvers);
+
+            // 保存更新后的审批人列表
+            progress.setApprovers(objectMapper.writeValueAsString(approvers));
+            progressMapper.updateById(progress);
+            logger.info("已更新审批人状态: instanceId={}, stageId={}, approverId={}, status={}",
+                instanceId, stageId, approverId, status);
+        } catch (Exception e) {
+            logger.error("更新审批人状态失败: instanceId={}, stageId={}, approverId={}, error={}",
+                instanceId, stageId, approverId, e.getMessage(), e);
         }
     }
 

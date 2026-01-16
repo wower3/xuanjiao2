@@ -31,8 +31,15 @@ public class ApprovalController {
     public Result<PageResult<Map<String, Object>>> getMyApplied(
             @RequestAttribute("userId") Long userId,
             @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(approvalService.getMyApplied(userId, pageNum, pageSize));
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String businessType,
+            @RequestParam(required = false, defaultValue = "false") boolean forAllUsers,
+            @RequestParam(required = false) Long applicantId,
+            @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) String roleType,
+            @RequestParam(required = false) String status) {
+        return Result.success(approvalService.getMyApplied(userId, pageNum, pageSize,
+                businessType, forAllUsers, applicantId, deptId, roleType, status));
     }
 
     @ApiOperation("审批")
@@ -50,5 +57,11 @@ public class ApprovalController {
     @GetMapping("/tasks/{id}/detail")
     public Result<Map<String, Object>> getTaskDetail(@PathVariable Long id) {
         return Result.success(approvalService.getTaskDetail(id));
+    }
+
+    @ApiOperation("获取审批实例详情")
+    @GetMapping("/instances/{id}/detail")
+    public Result<Map<String, Object>> getInstanceDetail(@PathVariable Long id) {
+        return Result.success(approvalService.getInstanceDetail(id));
     }
 }
