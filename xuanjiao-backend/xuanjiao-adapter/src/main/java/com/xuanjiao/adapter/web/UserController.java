@@ -1,7 +1,6 @@
 package com.xuanjiao.adapter.web;
 
 import com.xuanjiao.app.service.UserService;
-import com.xuanjiao.app.service.impl.UserServiceImpl;
 import com.xuanjiao.client.dto.Result;
 import com.xuanjiao.client.dto.UserDTO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
@@ -23,9 +22,6 @@ public class UserController {
 
     @Resource
     private UserService userService;
-
-    @Resource
-    private UserServiceImpl userServiceImpl;
 
     @Resource
     private RoleMapper roleMapper;
@@ -97,9 +93,9 @@ public class UserController {
 
         // 分消保管理岗需要默认筛选其二级机构，且部门选择受限
         if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
-            Long secondaryDeptId = userServiceImpl.getSecondaryDeptId(userId);
+            Long secondaryDeptId = userService.getSecondaryDeptId(userId);
             if (secondaryDeptId != null) {
-                Set<Long> allowedDeptIds = userServiceImpl.getAllowedDeptIds(currentUser, currentRole);
+                Set<Long> allowedDeptIds = userService.getAllowedDeptIds(currentUser, currentRole);
                 result.setHasFilter(true);
                 result.setDeptId(secondaryDeptId);
                 result.setIncludeSubDept(true);
@@ -175,7 +171,7 @@ public class UserController {
 
         // 分消保管理岗只能操作其允许查询的部门的用户
         if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
-            Set<Long> allowedDeptIds = userServiceImpl.getAllowedDeptIds(currentUser, currentRole);
+            Set<Long> allowedDeptIds = userService.getAllowedDeptIds(currentUser, currentRole);
             if (targetDeptId == null || !allowedDeptIds.contains(targetDeptId)) {
                 throw new RuntimeException("分消保管理岗只能管理其所属二级机构的用户");
             }

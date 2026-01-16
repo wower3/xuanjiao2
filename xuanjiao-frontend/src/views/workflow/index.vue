@@ -176,8 +176,6 @@ async function handleCopy(row: any) {
     const res = await copyWorkflow(row.id)
     ElMessage.success('复制成功')
     loadData()
-    // 可选：自动跳转到新流程的编辑页面
-    // router.push(`/workflow/design/${res.data.id}`)
   } catch (e: any) {
     ElMessage.error(e.message || '复制失败')
   }

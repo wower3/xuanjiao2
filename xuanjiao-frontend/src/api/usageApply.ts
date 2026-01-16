@@ -10,11 +10,6 @@ export function getMyApplications(params: any) {
   return request.get('/usage-apply/my-applications', { params })
 }
 
-// 检查是否有权限使用素材
-export function checkCanUse(assetId: number) {
-  return request.get(`/usage-apply/can-use/${assetId}`)
-}
-
 // 下载素材
 export function downloadAsset(assetId: number) {
   return request.get(`/asset/download/${assetId}`, {

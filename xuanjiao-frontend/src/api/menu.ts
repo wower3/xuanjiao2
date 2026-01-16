@@ -23,11 +23,3 @@ export function updateMenu(data: any) {
 export function deleteMenu(id: number) {
   return request.delete(`/menu/${id}`)
 }
-
-export function assignRoleMenus(roleId: number, menuIds: number[]) {
-  return request.post(`/menu/assign?roleId=${roleId}`, menuIds)
-}
-
-export function getRoleMenus(roleId: number) {
-  return request.get(`/menu/role/${roleId}`)
-}

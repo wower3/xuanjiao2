@@ -230,38 +230,6 @@ public class UserServiceImpl implements UserService {
         return result;
     }
 
-    /**
-     * 检查部门是否属于分部门（level=2的分部门）及其子部门
-     * @deprecated 使用 getAllowedDeptIds 方法替代
-     */
-    @Deprecated
-    private boolean isUnderBranchDept(Long deptId) {
-        if (deptId == null) {
-            return false;
-        }
-
-        DeptDO dept = deptMapper.selectById(deptId);
-        if (dept == null) {
-            return false;
-        }
-
-        // level=2 的部门中，除了总部门(101)，其他都是分部门
-        if (dept.getLevel() == 2 && dept.getParentId() != null && dept.getParentId().equals(100L)) {
-            return !dept.getId().equals(101L);
-        }
-
-        // 对于level=3及以下的部门，检查其父级链
-        DeptDO currentDept = dept;
-        while (currentDept != null && currentDept.getLevel() > 2) {
-            currentDept = deptMapper.selectById(currentDept.getParentId());
-            if (currentDept != null && currentDept.getLevel() == 2 && !currentDept.getId().equals(101L)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private UserDTO convert(UserDO entity) {
         if (entity == null) return null;
         UserDTO dto = new UserDTO();

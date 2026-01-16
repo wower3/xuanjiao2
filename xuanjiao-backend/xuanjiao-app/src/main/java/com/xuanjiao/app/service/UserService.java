@@ -1,7 +1,9 @@
 package com.xuanjiao.app.service;
 
 import com.xuanjiao.client.dto.UserDTO;
+import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import java.util.List;
+import java.util.Set;
 
 public interface UserService {
     UserDTO getCurrentUser(Long userId);
@@ -22,4 +24,19 @@ public interface UserService {
     void create(UserDTO userDTO);
     void update(UserDTO userDTO);
     void delete(Long id);
+
+    /**
+     * 获取用户所属的二级机构（level=2的部门ID）
+     * @param userId 用户ID
+     * @return 二级机构ID，如果找不到返回null
+     */
+    Long getSecondaryDeptId(Long userId);
+
+    /**
+     * 获取用户允许查询的部门ID集合
+     * @param currentUser 当前用户
+     * @param currentRole 当前用户角色
+     * @return 可查询的部门ID集合
+     */
+    Set<Long> getAllowedDeptIds(UserDTO currentUser, RoleDO currentRole);
 }
