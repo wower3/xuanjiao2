@@ -533,6 +533,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                             logger.info("子流程获取第一阶段: subWorkflowId={}, subFirstStage={}", subWorkflow.getId(), subFirstStage != null ? subFirstStage.getId() : null);
 
                             if (subFirstStage != null) {
+                                // 设置子流程第一层的审批类型
+                                subWorkflowInfo.put("approveType", subFirstStage.getApproveType());
+
                                 // 获取第一层的审批人配置（排除子流程）
                                 LambdaQueryWrapper<StageApproverDO> subApproverConfigWrapper = new LambdaQueryWrapper<>();
                                 subApproverConfigWrapper.eq(StageApproverDO::getStageId, subFirstStage.getId())
@@ -540,8 +543,8 @@ public class ApprovalServiceImpl implements ApprovalService {
                                         .orderByAsc(StageApproverDO::getId);
                                 List<StageApproverDO> subApproverConfigs = stageApproverMapper.selectList(subApproverConfigWrapper);
 
-                                logger.info("子流程第一层审批人配置: subWorkflowId={}, stageId={}, configCount={}",
-                                    subWorkflow.getId(), subFirstStage.getId(), subApproverConfigs.size());
+                                logger.info("子流程第一层审批人配置: subWorkflowId={}, stageId={}, approveType={}, configCount={}",
+                                    subWorkflow.getId(), subFirstStage.getId(), subFirstStage.getApproveType(), subApproverConfigs.size());
 
                                 // 构建子流程第一层审批人配置列表
                                 List<Map<String, Object>> subApproverConfigsList = new ArrayList<>();
