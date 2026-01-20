@@ -1,0 +1,16 @@
+package com.xuanjiao.infrastructure.user;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import java.util.List;
+
+@Mapper
+public interface UserMapper extends BaseMapper<UserDO> {
+
+    @Select("SELECT u.id FROM sys_user u " +
+            "WHERE u.role_id = #{roleId} AND u.status = 1 AND u.deleted = 0")
+    List<Long> selectUserIdsByRoleId(@Param("roleId") Long roleId);
+}

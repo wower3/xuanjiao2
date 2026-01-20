@@ -51,23 +51,69 @@ mysql -u root -p123456 < init_19_add_sub_workflow_approver_ids_to_instance.sql
 ## Architecture
 
 ### COLA Framework Structure (Backend)
-The backend follows Alibaba's COLA (Clean Object-Oriented and Layered Architecture):
+The backend follows Alibaba's COLA (Clean Object-Oriented and Layered Architecture) with **module-based packaging** within each layer:
 
 ```
 xuanjiao-backend/
 ├── xuanjiao-client/       # Client Layer - DTOs, API request/response definitions
 ├── xuanjiao-domain/       # Domain Layer - Entities, domain services, repository interfaces
+│   ├── auth/              # Authentication module entities
+│   ├── user/              # User module (entity, repository)
+│   ├── dept/              # Department module (entity, repository)
+│   ├── role/              # Role module (entity, repository)
+│   ├── menu/              # Menu module (entity, repository)
+│   ├── asset/             # Asset module (entity, repository)
+│   ├── material/          # Material application module (entity, repository)
+│   ├── usage/             # Usage application module (entity, repository)
+│   ├── workflow/          # Workflow definition module (entity, repository)
+│   ├── approval/          # Approval execution module (entity, repository)
+│   └── log/               # Log module (entity, repository)
 ├── xuanjiao-app/          # Application Layer - Business logic, service implementations
+│   ├── auth/              # Authentication services
+│   ├── user/              # User services
+│   ├── dept/              # Department services
+│   ├── role/              # Role services
+│   ├── menu/              # Menu services
+│   ├── asset/             # Asset services
+│   ├── material/          # Material application services
+│   ├── usage/             # Usage application services
+│   ├── workflow/          # Workflow services (WorkflowService, WorkflowEngineService, ApproverSelectionService)
+│   └── approval/          # Approval services
 ├── xuanjiao-infrastructure/ # Infrastructure Layer - MyBatis mappers, repository implementations
+│   ├── user/              # User mappers and repository impl
+│   ├── dept/              # Department mappers
+│   ├── role/              # Role mappers
+│   ├── menu/              # Menu mappers
+│   ├── asset/             # Asset mappers and repository impl
+│   ├── material/          # Material application mappers and repository impl
+│   ├── usage/             # Usage application mappers and repository impl
+│   ├── workflow/          # Workflow mappers
+│   ├── approval/          # Approval mappers
+│   ├── dataobject/        # DO classes (database-mapped entities)
+│   └── config/            # Infrastructure config (MyBatisPlusConfig)
 ├── xuanjiao-adapter/      # Adapter Layer - REST controllers, external integrations
+│   ├── auth/              # AuthController
+│   ├── user/              # UserController
+│   ├── dept/              # DeptController
+│   ├── role/              # RoleController
+│   ├── menu/              # MenuController
+│   ├── asset/             # AssetController, TagController
+│   ├── material/          # MaterialApplicationController
+│   ├── usage/             # UsageApplyController, UsageLogController
+│   ├── workflow/          # WorkflowController, ApproverSelectionController
+│   └── approval/          # ApprovalController
 └── xuanjiao-start/        # Start Module - Spring Boot application entry point
 ```
 
 **Key architectural principles:**
-- Dependencies flow inward: `adapter` -> `app` -> `domain` (client is shared by all layers)
+- **COLA layers**: Dependencies flow inward: `adapter` -> `app` -> `domain` (client is shared by all layers)
+- **Module-based packaging**: Within each layer, code is organized by business module (auth, user, dept, role, menu, asset, material, usage, workflow, approval, log)
+- **Module isolation**: Modules within the same layer should not directly depend on each other
 - `infrastructure` implements interfaces defined in `domain`
 - Controllers in `adapter` handle HTTP, delegate to services in `app`
 - `app` orchestrates business logic using `domain` entities and `infrastructure` repositories
+
+**Cross-module interaction**: When modules need to interact, use the domain layer (repositories) rather than direct service-to-service calls within the same layer.
 
 ### Frontend Architecture
 ```
@@ -145,7 +191,8 @@ PENDING → MAIN_COMPLETED (waiting for sub-workflows) → APPROVED
 
 ## Key Services (Backend)
 
-### ApproverSelectionService (`ApproverSelectionServiceImpl`)
+### ApproverSelectionService
+Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/workflow/ApproverSelectionService.java`
 Handles all approver selection logic:
 - `getFirstStageApprovers()` - Get first stage approvers for a workflow
 - `getNextStageApprovers()` - Get next stage approvers (with search)
@@ -155,7 +202,8 @@ Handles all approver selection logic:
 - `getApprovalProgress()` - Get approval progress including sub-workflows
 - `getTaskDetail()` - Get task details with approver selection info
 
-### WorkflowEngineService (`WorkflowEngineServiceImpl`)
+### WorkflowEngineService
+Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/workflow/WorkflowEngineService.java`
 Core workflow orchestration:
 - `createInstance()` - Create approval instance
 - `completeTask()` - Complete task (approve/reject)
@@ -210,3 +258,32 @@ Core workflow orchestration:
 - All workflow operations use `@Transactional(rollbackFor = Exception.class)` for data consistency
 - Sub-workflow approver IDs are stored as JSON in `sub_workflow_approver_ids` fields
 - See `WORKFLOW_REFACTOR_SUMMARY.md` for comprehensive workflow system documentation
+
+### Module-Based Package Structure (Post-Refactoring)
+
+As of January 2025, the backend has been refactored to use module-based packaging within each COLA layer. The following business modules are defined:
+
+| Module Code | Module Name | Description |
+|-------------|-------------|-------------|
+| `auth` | Authentication | Login, logout, token management |
+| `user` | User | User CRUD, user permission queries |
+| `dept` | Department | Department tree, department CRUD |
+| `role` | Role | Role CRUD, role permissions |
+| `menu` | Menu | Menu tree, menu configuration |
+| `asset` | Asset | Asset upload, download, management, tags |
+| `material` | Material Application | Asset entry applications (including future delete function) |
+| `usage` | Usage Application | Asset usage applications, usage logs |
+| `workflow` | Workflow Definition | Workflow design, template management, workflow engine, approver selection |
+| `approval` | Approval Execution | Approval instances, task processing |
+| `log` | Log | Operation log recording |
+
+**File location patterns:**
+- Controllers: `xuanjiao-adapter/src/main/java/com/xuanjiao/adapter/web/{module}/`
+- Service interfaces: `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/`
+- Service implementations: `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/impl/`
+- Domain entities: `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/entity/`
+- Repository interfaces: `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/repository/`
+- Mappers: `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
+- Repository implementations: `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
+
+**Important**: When adding new features, follow the module-based structure. Place code in the appropriate module subdirectory within each layer.
