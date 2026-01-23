@@ -1,12 +1,14 @@
 package com.xuanjiao.adapter.web.approval;
 
 import com.xuanjiao.app.approval.ApprovalService;
+import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.dto.PageResult;
 import com.xuanjiao.client.dto.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import java.util.List;
 import java.util.Map;
 
 @Api(tags = "审批管理")
@@ -16,6 +18,9 @@ public class ApprovalController {
 
     @Resource
     private ApprovalService approvalService;
+
+    @Resource
+    private WorkflowEngineService workflowEngineService;
 
     @ApiOperation("待我审批")
     @GetMapping("/tasks")
@@ -53,6 +58,16 @@ public class ApprovalController {
         return Result.success();
     }
 
+    @ApiOperation("退回上一级")
+    @PostMapping("/tasks/{id}/return")
+    public Result<Void> returnTask(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId,
+            @RequestParam(required = false) String comment) {
+        approvalService.returnTask(id, userId, comment);
+        return Result.success();
+    }
+
     @ApiOperation("获取审批任务详情")
     @GetMapping("/tasks/{id}/detail")
     public Result<Map<String, Object>> getTaskDetail(@PathVariable Long id) {
@@ -63,5 +78,25 @@ public class ApprovalController {
     @GetMapping("/instances/{id}/detail")
     public Result<Map<String, Object>> getInstanceDetail(@PathVariable Long id) {
         return Result.success(approvalService.getInstanceDetail(id));
+    }
+
+    @ApiOperation("追回工单（发起人追回正在审批的工单）")
+    @PostMapping("/instances/{id}/withdraw")
+    public Result<Void> withdrawInstance(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId,
+            @RequestParam(required = false) String comment) {
+        workflowEngineService.withdrawInstance(id, userId, comment);
+        return Result.success();
+    }
+
+    @ApiOperation("重新发起子流程")
+    @PostMapping("/tasks/{id}/restart-sub-workflow")
+    public Result<Void> restartSubWorkflow(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId,
+            @RequestBody List<Long> approverIds) {
+        workflowEngineService.restartSubWorkflow(id, userId, approverIds);
+        return Result.success();
     }
 }

@@ -29,4 +29,12 @@ public interface ApprovalService {
     Map<String, Object> getInstanceDetail(Long instanceId);
 
     void approve(Long taskId, Long userId, String comment, boolean passed);
+
+    /**
+     * 退回上一级
+     * @param taskId 任务ID
+     * @param userId 当前用户ID
+     * @param comment 退回原因（可选）
+     */
+    void returnTask(Long taskId, Long userId, String comment);
 }

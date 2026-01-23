@@ -237,6 +237,22 @@ public class ApprovalServiceImpl implements ApprovalService {
         }
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void returnTask(Long taskId, Long userId, String comment) {
+        logger.info("开始退回上一级: taskId={}, userId={}, comment={}", taskId, userId, comment);
+
+        try {
+            // 调用工作流引擎执行退回
+            workflowEngineService.returnTask(taskId, userId, comment);
+
+            logger.info("退回处理完成: taskId={}, userId={}", taskId, userId);
+        } catch (Exception e) {
+            logger.error("退回处理失败: taskId={}, userId={}, error={}", taskId, userId, e.getMessage(), e);
+            throw new RuntimeException("退回处理失败: " + e.getMessage(), e);
+        }
+    }
+
     private Map<String, Object> buildTaskInfo(ApprovalTaskDO task) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", task.getId());
@@ -667,7 +683,9 @@ public class ApprovalServiceImpl implements ApprovalService {
         result.put("canSelectNextApprovers", canSelectNextApprovers);
 
         // 解析已选择的下一层审批人
-        if (task.getNextStageApproverIds() != null && !task.getNextStageApproverIds().isEmpty()) {
+        // 只有当不能选择下一层审批人时，才返回已选择的审批人信息（用于只读显示）
+        // 如果可以选择下一层审批人，清空已选择的审批人信息，允许重新选择
+        if (!canSelectNextApprovers && task.getNextStageApproverIds() != null && !task.getNextStageApproverIds().isEmpty()) {
             try {
                 List<Long> selectedApproverIds = objectMapper.readValue(
                     task.getNextStageApproverIds(),
@@ -688,6 +706,9 @@ public class ApprovalServiceImpl implements ApprovalService {
             } catch (Exception e) {
                 // 忽略解析错误
             }
+        } else {
+            // 如果可以选择下一层审批人，清空已选择的审批人信息
+            result.put("selectedNextApprovers", new ArrayList<>());
         }
 
         // 解析已选择的子流程审批人

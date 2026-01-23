@@ -117,9 +117,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             throw new RuntimeException("申请单不存在");
         }
 
-        // 只有草稿状态可以提交，且只能提交自己的申请单
-        if (!"DRAFT".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿状态可以提交");
+        // 只有草稿或已驳回状态可以提交，且只能提交自己的申请单
+        if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
+            throw new RuntimeException("只有草稿或已驳回状态可以提交");
         }
         if (!application.getApplicantId().equals(userId)) {
             throw new RuntimeException("只能提交自己的申请单");
@@ -133,7 +133,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             throw new RuntimeException("请至少上传一个素材文件");
         }
 
-        // Update asset status from DRAFT to PENDING
+        // Update asset status from DRAFT/REJECTED to PENDING
         assetService.updateStatusByApplicationId(id, "PENDING");
 
         application.setWorkflowId(workflowId);
@@ -284,5 +284,110 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         return dto;
+    }
+
+    @Override
+    @Transactional
+    public Long copyApplication(Long id, Long userId) {
+        // 1. 获取原申请单
+        MaterialApplication original = materialApplicationRepository.findById(id);
+        if (original == null) {
+            throw new RuntimeException("原申请单不存在");
+        }
+
+        // 2. 创建新申请单（草稿状态）
+        MaterialApplication newApplication = new MaterialApplication();
+        newApplication.setTitle(original.getTitle() + " - 副本");
+        newApplication.setApplicantId(userId);
+        newApplication.setMaintainerId(userId);
+        UserDO currentUser = userMapper.selectById(userId);
+        if (currentUser != null) {
+            newApplication.setDeptId(currentUser.getDeptId());
+        }
+        newApplication.setGuaranteeDeclaration(original.getGuaranteeDeclaration());
+        newApplication.setStatus("DRAFT");
+        newApplication.setCreateTime(LocalDateTime.now());
+
+        MaterialApplication saved = materialApplicationRepository.save(newApplication);
+
+        // 3. 复制素材文件
+        LambdaQueryWrapper<AssetDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AssetDO::getApplicationId, id);
+        List<AssetDO> originalAssets = assetMapper.selectList(wrapper);
+
+        for (AssetDO originalAsset : originalAssets) {
+            AssetDO newAsset = new AssetDO();
+            BeanUtils.copyProperties(originalAsset, newAsset);
+            newAsset.setId(null);
+            newAsset.setApplicationId(saved.getId());
+            newAsset.setStatus("DRAFT");
+            newAsset.setCreateTime(LocalDateTime.now());
+
+            // 复制文件到新路径
+            if (originalAsset.getFilePath() != null) {
+                try {
+                    java.nio.file.Path sourcePath = java.nio.file.Paths.get(originalAsset.getFilePath());
+                    if (java.nio.file.Files.exists(sourcePath)) {
+                        // 生成新的文件名（添加时间戳避免冲突）
+                        String timestamp = String.valueOf(System.currentTimeMillis());
+                        String newFileName = timestamp + "_" + sourcePath.getFileName().toString();
+                        java.nio.file.Path targetPath = sourcePath.resolveSibling(newFileName);
+                        java.nio.file.Files.copy(sourcePath, targetPath);
+                        newAsset.setFilePath(targetPath.toString());
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException("复制文件失败: " + originalAsset.getName(), e);
+                }
+            }
+
+            // 复制缩略图
+            if (originalAsset.getThumbnailPath() != null) {
+                try {
+                    java.nio.file.Path sourceThumb = java.nio.file.Paths.get(originalAsset.getThumbnailPath());
+                    if (java.nio.file.Files.exists(sourceThumb)) {
+                        String timestamp = String.valueOf(System.currentTimeMillis());
+                        String newThumbName = timestamp + "_" + sourceThumb.getFileName().toString();
+                        java.nio.file.Path targetThumb = sourceThumb.resolveSibling(newThumbName);
+                        java.nio.file.Files.copy(sourceThumb, targetThumb);
+                        newAsset.setThumbnailPath(targetThumb.toString());
+                    }
+                } catch (Exception e) {
+                    // 缩略图复制失败不影响主流程
+                    newAsset.setThumbnailPath(null);
+                }
+            }
+
+            // 复制版权文件
+            if (originalAsset.getCopyrightFilePath() != null) {
+                try {
+                    java.nio.file.Path sourceCopyright = java.nio.file.Paths.get(originalAsset.getCopyrightFilePath());
+                    if (java.nio.file.Files.exists(sourceCopyright)) {
+                        String timestamp = String.valueOf(System.currentTimeMillis());
+                        String newCopyrightName = timestamp + "_" + sourceCopyright.getFileName().toString();
+                        java.nio.file.Path targetCopyright = sourceCopyright.resolveSibling(newCopyrightName);
+                        java.nio.file.Files.copy(sourceCopyright, targetCopyright);
+                        newAsset.setCopyrightFilePath(targetCopyright.toString());
+                    }
+                } catch (Exception e) {
+                    // 版权文件复制失败不影响主流程
+                    newAsset.setCopyrightFilePath(null);
+                }
+            }
+
+            assetMapper.insert(newAsset);
+
+            // 复制标签关联
+            LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetTagDO> tagWrapper = new LambdaQueryWrapper<>();
+            tagWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId, originalAsset.getId());
+            List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagWrapper);
+            for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : assetTags) {
+                com.xuanjiao.infrastructure.dataobject.AssetTagDO newAssetTag = new com.xuanjiao.infrastructure.dataobject.AssetTagDO();
+                newAssetTag.setAssetId(newAsset.getId());
+                newAssetTag.setTagId(assetTag.getTagId());
+                assetTagMapper.insert(newAssetTag);
+            }
+        }
+
+        return saved.getId();
     }
 }

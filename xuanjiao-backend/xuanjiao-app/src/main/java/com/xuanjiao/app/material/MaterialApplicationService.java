@@ -45,4 +45,12 @@ public interface MaterialApplicationService {
      * 更新申请单状态（用于审批流程完成后调用）
      */
     void updateStatus(Long id, String status);
+
+    /**
+     * 复制申请单（复制原申请单的素材信息到新草稿）
+     * @param id 原申请单ID
+     * @param userId 当前用户ID
+     * @return 新申请单的ID
+     */
+    Long copyApplication(Long id, Long userId);
 }

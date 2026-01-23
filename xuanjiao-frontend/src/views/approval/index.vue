@@ -39,10 +39,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="150">
+        <el-table-column label="任务类型" width="120" v-if="activeTab === 'pending'">
           <template #default="{ row }">
-            <el-button v-if="activeTab === 'pending'" link type="primary" @click="handleOpenDetail(row)">审批</el-button>
+            <el-tag v-if="row.taskType === 'RESTART_SUB_WORKFLOW'" type="warning">重新发起子流程</el-tag>
+            <el-tag v-else type="info">普通审批</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200">
+          <template #default="{ row }">
+            <el-button v-if="activeTab === 'pending' && row.taskType === 'RESTART_SUB_WORKFLOW'" link type="warning" @click="handleOpenRestartDetail(row)">重新发起</el-button>
+            <el-button v-else-if="activeTab === 'pending'" link type="primary" @click="handleOpenDetail(row)">审批</el-button>
             <el-button v-if="activeTab === 'mine'" link type="primary" @click="handleOpenInstanceDetail(row)">详情</el-button>
+            <el-button v-if="activeTab === 'mine' && row.businessType === 'MATERIAL_ENTRY'" link type="success" @click="handleCopyApplication(row)" :loading="copying">复制申请单</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -85,6 +93,7 @@
                 'active': progress.status === 'PENDING',
                 'approved': progress.status === 'APPROVED',
                 'rejected': progress.status === 'REJECTED',
+                'returned': progress.status === 'RETURNED',
                 'not-started': progress.status === 'NOT_STARTED'
               }"
             >
@@ -92,6 +101,7 @@
                 <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
                 <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
                 <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
                 <el-icon v-else><MoreFilled /></el-icon>
               </div>
               <div class="progress-content">
@@ -114,6 +124,7 @@
                   <el-tag v-if="progress.status === 'PENDING'" type="warning" size="small">待审批</el-tag>
                   <el-tag v-else-if="progress.status === 'APPROVED'" type="success" size="small">已通过</el-tag>
                   <el-tag v-else-if="progress.status === 'REJECTED'" type="danger" size="small">已驳回</el-tag>
+                  <el-tag v-else-if="progress.status === 'RETURNED'" type="warning" size="small">已退回</el-tag>
                   <el-tag v-else-if="progress.status === 'NOT_STARTED'" type="info" size="small">未开始</el-tag>
                   <span v-if="progress.approveTime" style="margin-left: 10px; color: #909399; font-size: 12px;">
                     {{ progress.approveTime }}
@@ -301,11 +312,25 @@
             placeholder="请输入审批意见"
           />
         </div>
+
+        <!-- 退回原因（可选） -->
+        <div style="margin-top: 15px;" v-if="showReturnReasonInput">
+          <div style="font-weight: bold; margin-bottom: 10px; color: #E6A23C;">退回原因：</div>
+          <el-input
+            v-model="returnForm.reason"
+            type="textarea"
+            :rows="2"
+            placeholder="请输入退回原因（可选）"
+          />
+        </div>
       </div>
       <template #footer>
         <el-button @click="showApproveDialog = false" :disabled="submitting">取消</el-button>
+        <el-button type="warning" @click="showReturnReasonInput = !showReturnReasonInput" :disabled="submitting" v-if="!showReturnReasonInput">退回</el-button>
         <el-button type="danger" @click="submitApprove(false)" :loading="submitting">驳回</el-button>
         <el-button type="success" @click="submitApprove(true)" :loading="submitting">通过</el-button>
+        <el-button type="warning" @click="submitReturn" :loading="submitting" v-if="showReturnReasonInput">确认退回</el-button>
+        <el-button @click="showReturnReasonInput = false" v-if="showReturnReasonInput">取消退回</el-button>
       </template>
     </el-dialog>
 
@@ -386,6 +411,7 @@
                   'active': progress.status === 'PENDING',
                   'approved': progress.status === 'APPROVED',
                   'rejected': progress.status === 'REJECTED',
+                  'returned': progress.status === 'RETURNED',
                   'not-started': progress.status === 'NOT_STARTED'
                 }"
               >
@@ -393,6 +419,7 @@
                   <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
                   <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
                   <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
                   <el-icon v-else><MoreFilled /></el-icon>
                 </div>
                 <div class="progress-content">
@@ -443,6 +470,7 @@
                   'active': progress.status === 'PENDING',
                   'approved': progress.status === 'APPROVED',
                   'rejected': progress.status === 'REJECTED',
+                  'returned': progress.status === 'RETURNED',
                   'not-started': progress.status === 'NOT_STARTED'
                 }"
               >
@@ -450,6 +478,7 @@
                   <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
                   <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
                   <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
                   <el-icon v-else><MoreFilled /></el-icon>
                 </div>
                 <div class="progress-content">
@@ -504,6 +533,60 @@
       </div>
       <template #footer>
         <el-button @click="showInstanceDetailDialog = false">关闭</el-button>
+        <el-button
+          v-if="canWithdraw"
+          type="danger"
+          @click="handleWithdraw"
+          :loading="withdrawing"
+        >
+          追回工单
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 重新发起子流程对话框 -->
+    <el-dialog v-model="showRestartDialog" title="重新发起子流程" width="600px">
+      <div v-if="restartTask">
+        <el-alert
+          title="提示"
+          type="info"
+          :closable="false"
+          style="margin-bottom: 20px"
+        >
+          该任务需要您重新发起子流程。请选择子流程第一层的审批人。
+        </el-alert>
+
+        <el-form label-width="100px">
+          <el-form-item label="选择审批人">
+            <el-select
+              v-model="restartForm.approverIds"
+              multiple
+              filterable
+              placeholder="请选择审批人"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="user in availableApprovers"
+                :key="user.id"
+                :label="user.realName || user.username"
+                :value="user.id"
+              >
+                <span>{{ user.realName || user.username }}</span>
+                <span style="color: #909399; font-size: 12px; margin-left: 10px;">
+                  {{ user.deptName }} / {{ user.roleName }}
+                </span>
+              </el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <div v-if="restartForm.approverIds.length > 0" style="margin-top: 10px; color: #67C23A; font-size: 12px">
+          已选择 {{ restartForm.approverIds.length }} 位审批人
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showRestartDialog = false" :disabled="submitting">取消</el-button>
+        <el-button type="primary" @click="submitRestart" :loading="submitting">确认发起</el-button>
       </template>
     </el-dialog>
   </div>
@@ -511,11 +594,15 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
-import { getMyTasks, getMyApplied, getTaskDetail, getInstanceDetail, approve } from '@/api/approval'
+import { getMyTasks, getMyApplied, getTaskDetail, getInstanceDetail, approve, returnTask, restartSubWorkflow, withdrawInstance } from '@/api/approval'
 import { selectNextStageApprovers, selectNextStageApproversWithSubWorkflows } from '@/api/workflow'
+import { copyApplication } from '@/api/materialApplication'
 import { useUserStore } from '@/stores/user'
+
+const router = useRouter()
 
 const userStore = useUserStore()
 const currentUserId = ref(userStore.userInfo?.id)
@@ -526,11 +613,23 @@ const list = ref([])
 const statusFilter = ref<string>('')
 const showApproveDialog = ref(false)
 const showInstanceDetailDialog = ref(false)
+const showRestartDialog = ref(false) // 重新发起子流程对话框
 const loadingDetail = ref(false)
 const loadingInstanceDetail = ref(false)
 const submitting = ref(false)
 const currentTask = ref<any>(null)
 const approveForm = reactive({ comment: '' })
+const showReturnReasonInput = ref(false)
+const returnForm = reactive({ reason: '' })
+const withdrawing = ref(false) // 追回工单的状态
+const copying = ref(false) // 复制申请单的状态
+
+// 重新发起子流程相关
+const restartTask = ref<any>(null)
+const restartForm = reactive({
+  approverIds: [] as number[]
+})
+const availableApprovers = ref<any[]>([]) // 可选的审批人列表
 
 // 任务详情
 const taskDetail = ref<any>({
@@ -584,6 +683,11 @@ const mainWorkflowProgress = computed(() => {
 const subWorkflowProgress = computed(() => {
   if (!instanceDetail.value || !instanceDetail.value.approvalProgress) return []
   return instanceDetail.value.approvalProgress.filter((p: any) => p.isSubWorkflow === 1)
+})
+
+// 是否可以追回工单：只有审批中(PENDING)的工单才能追回
+const canWithdraw = computed(() => {
+  return instanceDetail.value && instanceDetail.value.status === 'PENDING'
 })
 
 async function loadData() {
@@ -657,6 +761,40 @@ async function handleOpenDetail(row: any) {
     console.log('loadingDetail set to false')
   }
   console.log('handleOpenDetail end')
+}
+
+// 打开"重新发起子流程"对话框
+async function handleOpenRestartDetail(row: any) {
+  console.log('handleOpenRestartDetail, row:', row)
+  restartTask.value = row
+  showRestartDialog.value = true
+
+  // 重置表单
+  restartForm.approverIds = []
+
+  // TODO: 加载可选的审批人列表
+  // 可以根据需要从后端API获取
+  availableApprovers.value = []
+}
+
+// 提交重新发起子流程
+async function submitRestart() {
+  if (restartForm.approverIds.length === 0) {
+    ElMessage.warning('请选择至少一个审批人')
+    return
+  }
+
+  submitting.value = true
+  try {
+    await restartSubWorkflow(restartTask.value.id, restartForm.approverIds)
+    ElMessage.success('子流程已重新发起')
+    showRestartDialog.value = false
+    loadData()
+  } catch (e: any) {
+    ElMessage.error('重新发起失败: ' + (e.message || '未知错误'))
+  } finally {
+    submitting.value = false
+  }
 }
 
 // 打开"我发起的"详情
@@ -870,8 +1008,80 @@ async function submitApprove(passed: boolean) {
   }
 }
 
+async function submitReturn() {
+  submitting.value = true
+  try {
+    await returnTask(currentTask.value.id, returnForm.reason)
+    ElMessage.success('退回成功')
+    showApproveDialog.value = false
+    showReturnReasonInput.value = false
+    returnForm.reason = ''
+    loadData()
+  } catch (e: any) {
+    ElMessage.error('退回失败: ' + (e.message || '未知错误'))
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 追回工单
+async function handleWithdraw() {
+  await ElMessageBox.confirm(
+    '确定要追回此工单吗？追回后工单将被驳回，您可以重新编辑并提交申请。',
+    '确认追回',
+    {
+      confirmButtonText: '确定追回',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  )
+
+  withdrawing.value = true
+  try {
+    await withdrawInstance(instanceDetail.value.id, '发起人追回工单')
+    ElMessage.success('工单已追回')
+    showInstanceDetailDialog.value = false
+    loadData()
+  } catch (e: any) {
+    ElMessage.error('追回失败: ' + (e.message || '未知错误'))
+  } finally {
+    withdrawing.value = false
+  }
+}
+
+async function handleCopyApplication(row: any) {
+  await ElMessageBox.confirm(
+    `确定要复制申请单"${row.businessName}"吗？复制后将创建一个新的草稿，您可以在草稿箱中继续编辑。`,
+    '确认复制',
+    {
+      confirmButtonText: '确定复制',
+      cancelButtonText: '取消',
+      type: 'info'
+    }
+  )
+
+  copying.value = true
+  try {
+    const newApplicationId = await copyApplication(row.applicationId || row.id)
+    ElMessage.success('复制成功，正在跳转到素材录入页面...')
+    // 跳转到素材录入页面，带上新申请单的ID
+    setTimeout(() => {
+      router.push(`/asset/material-entry?id=${newApplicationId.data}`)
+    }, 500)
+  } catch (e: any) {
+    ElMessage.error('复制失败: ' + (e.message || '未知错误'))
+  } finally {
+    copying.value = false
+  }
+}
+
 function resetForm() {
   approveForm.comment = ''
+  showReturnReasonInput.value = false
+  returnForm.reason = ''
+  restartForm.approverIds = []
+  restartTask.value = null
+  availableApprovers.value = []
   selectedNextApprovers.value = {}
   selectedSubWorkflowApprovers.value = {}
   loadingSubWorkflowApprovers.value = {}
@@ -914,6 +1124,7 @@ function getStatusType(status: string) {
     PENDING: 'warning',
     APPROVED: 'success',
     REJECTED: 'danger',
+    RETURNED: 'warning',
     NOT_STARTED: 'info'
   }
   return map[status] || 'info'
@@ -924,6 +1135,7 @@ function getStatusText(status: string) {
     PENDING: '审批中',
     APPROVED: '已通过',
     REJECTED: '已驳回',
+    RETURNED: '已退回',
     NOT_STARTED: '未开始'
   }
   return map[status] || status
@@ -1009,6 +1221,15 @@ onMounted(loadData)
   background: #ffebee;
 }
 
+.progress-item.returned {
+  border-left-color: #FA8C16;
+  background: #fff7e6;
+}
+
+.sub-workflow-item.returned {
+  background: #fff7e6;
+}
+
 .progress-item.not-started {
   border-left-color: #d9d9d9;
   background: #f5f5f5;
@@ -1034,6 +1255,10 @@ onMounted(loadData)
 
 .progress-item.rejected .progress-icon {
   color: #ff4d4f;
+}
+
+.progress-item.returned .progress-icon {
+  color: #FA8C16;
 }
 
 .progress-content {

@@ -841,6 +841,7 @@ async function handleSubmit() {
 
     ElMessage.success('提交成功')
     showSubmitDialog.value = false
+    hasUnsavedChanges.value = false
     goToList()
   } catch (e: any) {
     ElMessage.error(e.message || '提交失败')
@@ -975,7 +976,7 @@ function goToDraftBox() {
 }
 
 function goToList() {
-  router.push('/asset/material-list')
+  router.push('/asset')
 }
 
 onMounted(async () => {

@@ -29,8 +29,8 @@
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button link type="primary" @click="viewDetail(row)">查看详情</el-button>
-            <el-button v-if="row.status === 'DRAFT'" link type="primary" @click="editApplication(row)">
-              继续编辑
+            <el-button v-if="row.status === 'DRAFT' || row.status === 'REJECTED'" link type="primary" @click="editApplication(row)">
+              {{ row.status === 'DRAFT' ? '继续编辑' : '重新编辑' }}
             </el-button>
           </template>
         </el-table-column>

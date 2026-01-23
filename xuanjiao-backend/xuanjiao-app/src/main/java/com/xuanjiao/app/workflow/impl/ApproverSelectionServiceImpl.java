@@ -694,15 +694,13 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         // 解析审批人列表
         if (progressDO.getApprovers() != null && !progressDO.getApprovers().isEmpty()) {
             try {
-                log.info("解析审批人列表: progressId={}, approversJson={}", progressDO.getId(), progressDO.getApprovers());
                 List<ApprovalProgressDTO.ApproverInfo> approvers = objectMapper.readValue(
                     progressDO.getApprovers(),
                     new TypeReference<List<ApprovalProgressDTO.ApproverInfo>>() {}
                 );
-                log.info("解析成功: approvers={}", approvers);
                 dto.setApprovers(approvers);
             } catch (Exception e) {
-                log.error("解析审批人列表失败: progressId={}, error={}", progressDO.getId(), e.getMessage(), e);
+                // 忽略解析错误
             }
         }
 

@@ -77,4 +77,13 @@ public class MaterialApplicationController {
             @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.success(materialApplicationService.queryMyApplications(userId, pageNum, pageSize));
     }
+
+    @ApiOperation("复制申请单")
+    @PostMapping("/{id}/copy")
+    public Result<Long> copyApplication(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId) {
+        Long newApplicationId = materialApplicationService.copyApplication(id, userId);
+        return Result.success(newApplicationId);
+    }
 }
