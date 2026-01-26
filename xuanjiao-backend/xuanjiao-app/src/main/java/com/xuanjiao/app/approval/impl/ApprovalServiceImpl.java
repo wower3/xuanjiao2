@@ -18,6 +18,7 @@ import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
@@ -48,6 +49,8 @@ public class ApprovalServiceImpl implements ApprovalService {
     private WorkflowEngineService workflowEngineService;
     @Resource
     private UsageApplyMapper usageApplyMapper;
+    @Resource
+    private UsageApplyAssetMapper usageApplyAssetMapper;
     @Resource
     private ApproverSelectionService approverSelectionService;
     @Resource
@@ -296,12 +299,15 @@ public class ApprovalServiceImpl implements ApprovalService {
                     map.put("businessName", asset.getName());
                 }
             } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
-                UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
-                if (usageApply != null) {
-                    AssetDO asset = assetMapper.selectById(usageApply.getAssetId());
-                    if (asset != null) {
-                        map.put("businessName", "使用申请：" + asset.getName());
+                // 通过中间表查询关联的素材
+                List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
+                if (applyAssets != null && !applyAssets.isEmpty()) {
+                    // 取第一个素材名称作为业务名称
+                    String businessName = "使用申请：" + applyAssets.get(0).getAssetName();
+                    if (applyAssets.size() > 1) {
+                        businessName += " 等" + applyAssets.size() + "个素材";
                     }
+                    map.put("businessName", businessName);
                 }
             }
 
@@ -375,15 +381,15 @@ public class ApprovalServiceImpl implements ApprovalService {
                 map.put("fileSize", asset.getFileSize());
             }
         } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
-            UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
-            if (usageApply != null) {
-                AssetDO asset = assetMapper.selectById(usageApply.getAssetId());
-                if (asset != null) {
-                    map.put("businessName", "使用申请：" + asset.getName());
-                    // 业务详情
-                    map.put("assetType", asset.getType());
-                    map.put("assetId", asset.getId());
-                }
+            // 通过中间表查询关联的素材
+            List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
+            if (applyAssets != null && !applyAssets.isEmpty()) {
+                UsageApplyAssetDO firstAsset = applyAssets.get(0);
+                map.put("businessName", "使用申请：" + firstAsset.getAssetName());
+                // 业务详情
+                map.put("assetType", firstAsset.getAssetType());
+                map.put("assetId", firstAsset.getAssetId());
+                map.put("assetCount", applyAssets.size());
             }
         }
 
@@ -638,12 +644,14 @@ public class ApprovalServiceImpl implements ApprovalService {
                     result.put("businessName", asset.getName());
                 }
             } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
-                UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
-                if (usageApply != null) {
-                    AssetDO asset = assetMapper.selectById(usageApply.getAssetId());
-                    if (asset != null) {
-                        result.put("businessName", "使用申请：" + asset.getName());
+                // 通过中间表查询关联的素材
+                List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
+                if (applyAssets != null && !applyAssets.isEmpty()) {
+                    String businessName = "使用申请：" + applyAssets.get(0).getAssetName();
+                    if (applyAssets.size() > 1) {
+                        businessName += " 等" + applyAssets.size() + "个素材";
                     }
+                    result.put("businessName", businessName);
                 }
             }
 

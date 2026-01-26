@@ -1,21 +1,18 @@
-package com.xuanjiao.infrastructure.dataobject;
+package com.xuanjiao.client.dto;
 
-import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("usage_log")
-public class UsageLogDO {
-    @TableId(type = IdType.AUTO)
+public class UsageLogDTO {
     private Long id;
     private Long assetId;
     private Long userId;
+    private String userName;
     private String action;
     private String ip;
     private String deptName;
     private String usageDescription;
     private String usagePublishChannel;
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

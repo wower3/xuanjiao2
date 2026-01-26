@@ -23,6 +23,7 @@ public class AssetDTO {
     private String description;
     private String publishChannel;
     private List<TagDTO> tags;
+
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

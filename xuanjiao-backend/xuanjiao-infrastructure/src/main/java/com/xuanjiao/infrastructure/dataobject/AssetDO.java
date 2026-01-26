@@ -23,6 +23,7 @@ public class AssetDO {
     private String copyrightText;
     private String description;
     private String publishChannel;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
     @TableField(fill = FieldFill.INSERT_UPDATE)

@@ -61,6 +61,7 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDownload(row)">下载</el-button>
             <el-button link type="primary" @click="showApplyDialog(row)">申请使用</el-button>
+            <el-button v-if="previewMode === 'image' && row.status === 'APPROVED'" link type="success" @click="showUsageDetails(row)">使用详情</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -73,122 +74,93 @@
       />
     </el-card>
 
-    <el-dialog v-model="showPreview" title="素材预览" width="800px">
-      <div class="preview-content">
-        <img v-if="previewAsset?.type === 'IMAGE'" :src="previewUrl" style="max-width:100%" />
-        <video v-else-if="previewAsset?.type === 'VIDEO'" :src="previewUrl" controls style="max-width:100%" />
-        <iframe v-else :src="previewUrl" style="width:100%;height:500px" />
+    <el-dialog v-model="showPreview" title="素材预览" width="900px">
+      <div v-if="previewAsset">
+        <div class="preview-content">
+          <img v-if="previewAsset.type === 'IMAGE'" :src="previewUrl" style="max-width:100%" />
+          <video v-else-if="previewAsset.type === 'VIDEO'" :src="previewUrl" controls style="max-width:100%" />
+          <iframe v-else :src="previewUrl" style="width:100%;height:500px" />
+        </div>
+
+        <div class="usage-logs-section">
+          <div class="section-header">
+            <span>使用记录 ({{ usageLogsTotal }})</span>
+          </div>
+          <el-table :data="usageLogs" size="small" v-loading="loadingLogs">
+            <el-table-column prop="userName" label="使用人" width="100" />
+            <el-table-column prop="deptName" label="部门" width="120" />
+            <el-table-column prop="usageDescription" label="使用说明" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="usagePublishChannel" label="发布渠道" width="120" show-overflow-tooltip />
+            <el-table-column prop="createTime" label="使用时间" width="180" />
+          </el-table>
+          <el-pagination
+            v-if="usageLogsTotal > 0"
+            v-model:current-page="logsQuery.pageNum"
+            v-model:page-size="logsQuery.pageSize"
+            :total="usageLogsTotal"
+            @change="loadUsageLogs"
+            small
+            style="margin-top: 10px"
+          />
+          <el-empty v-if="!loadingLogs && usageLogsTotal === 0" description="暂无使用记录" :image-size="60" />
+        </div>
       </div>
     </el-dialog>
 
-    <el-dialog v-model="showApply" title="申请使用素材" width="600px">
-      <el-form :model="applyForm" label-width="100px">
-        <el-form-item label="素材名称">
-          <el-input :value="currentAsset?.name" disabled />
-        </el-form-item>
-        <el-form-item label="使用用途">
-          <el-input v-model="applyForm.purpose" type="textarea" :rows="3" placeholder="请说明使用用途" />
-        </el-form-item>
-        <el-form-item label="使用范围">
-          <el-select v-model="applyForm.scope" placeholder="请选择使用范围">
-            <el-option label="仅个人使用" value="PERSONAL" />
-            <el-option label="部门内部使用" value="DEPARTMENT" />
-            <el-option label="公司内部使用" value="COMPANY" />
-            <el-option label="对外发布" value="PUBLIC" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="审批流程">
-          <div v-if="boundWorkflow">
-            <el-tag type="success">{{ boundWorkflow.name }}</el-tag>
-            <div style="color: #909399; font-size: 12px; margin-top: 5px">
-              根据您的角色自动匹配的审批流程
-            </div>
+    <!-- 使用详情弹窗 -->
+    <el-dialog v-model="showUsageDetailsDialog" :title="`使用详情 - ${usageDetailsAsset?.name || ''}`" width="800px">
+      <div v-if="usageDetailsAsset">
+        <!-- 使用次数统计 -->
+        <div class="usage-stats">
+          <div class="stat-item">
+            <span class="stat-label">素材名称</span>
+            <span class="stat-value">{{ usageDetailsAsset.name }}</span>
           </div>
-          <div v-else>
-            <span style="color: #F56C6C">您的角色未绑定素材使用审批流程，无法提交申请</span>
+          <div class="stat-item">
+            <span class="stat-label">使用次数</span>
+            <span class="stat-value stat-highlight">{{ usageDetailsTotal }} 次</span>
           </div>
-        </el-form-item>
+        </div>
 
-        <!-- 第一层审批人选择 -->
-        <el-form-item label="第一层审批人" v-if="firstStageApprovers.length > 0 || (hasLoadedInitialApprovers && approverKeyword)">
-          <div style="width: 100%">
-            <!-- 搜索框 -->
-            <el-input
-              v-model="approverKeyword"
-              placeholder="搜索审批人（用户名或姓名）"
-              clearable
-              @clear="loadFirstStageApprovers"
-              @keyup.enter="loadFirstStageApprovers"
-              style="margin-bottom: 10px"
-            >
-              <template #append>
-                <el-button :icon="Search" @click="loadFirstStageApprovers" />
-              </template>
-            </el-input>
+        <el-divider />
 
-            <!-- 审批人列表 -->
-            <div v-loading="loadingApprovers" style="max-height: 250px; overflow-y: auto; border: 1px solid #DCDFE6; border-radius: 4px; padding: 8px">
-              <el-checkbox-group v-model="selectedApproverIds">
-                <div v-for="approver in firstStageApprovers" :key="approver.id" style="padding: 8px; border-bottom: 1px solid #EBEEF5">
-                  <el-checkbox :label="approver.id">
-                    <div style="display: flex; align-items: center; justify-content: space-between">
-                      <div>
-                        <span style="font-weight: 500">{{ approver.realName || approver.username }}</span>
-                        <span v-if="approver.realName && approver.username" style="color: #909399; margin-left: 5px">({{ approver.username }})</span>
-                      </div>
-                      <div style="font-size: 12px; color: #909399">
-                        {{ approver.deptName }}
-                        <span v-if="approver.roleName" style="margin-left: 5px">{{ approver.roleName }}</span>
-                      </div>
-                    </div>
-                  </el-checkbox>
-                </div>
-              </el-checkbox-group>
-              <!-- 搜索无结果 -->
-              <div v-if="firstStageApprovers.length === 0 && !loadingApprovers && approverKeyword" style="text-align: center; padding: 20px; color: #909399">
-                未找到匹配的审批人
-              </div>
-              <!-- 初始加载无结果 -->
-              <div v-else-if="firstStageApprovers.length === 0 && !loadingApprovers && !approverKeyword" style="text-align: center; padding: 20px; color: #909399">
-                暂无可选审批人
-              </div>
-            </div>
-
-            <!-- 已选择提示 -->
-            <div v-if="selectedApproverIds.length > 0" style="margin-top: 8px; color: #67C23A; font-size: 12px">
-              已选择 {{ selectedApproverIds.length }} 位审批人
-            </div>
-          </div>
-        </el-form-item>
-
-        <!-- 无需选择审批人的提示 -->
-        <el-form-item v-else-if="boundWorkflow && hasLoadedInitialApprovers && firstStageApprovers.length === 0 && !approverKeyword">
-          <div style="color: #E6A23C; font-size: 13px">
-            <el-icon><WarningFilled /></el-icon>
-            该流程第一层为子流程阶段，将由子流程自动选择审批人，无需手动选择
-          </div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showApply = false">取消</el-button>
-        <el-button type="primary" @click="handleApply" :loading="applying" :disabled="!boundWorkflow">提交申请</el-button>
-      </template>
+        <!-- 使用记录明细 -->
+        <div class="usage-details-section">
+          <div class="section-header">使用记录明细</div>
+          <el-table :data="usageDetailsList" size="small" v-loading="loadingUsageDetails" max-height="400">
+            <el-table-column prop="userName" label="使用人" width="100" />
+            <el-table-column prop="deptName" label="所在机构" width="120" show-overflow-tooltip />
+            <el-table-column prop="usageDescription" label="申请说明" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="usagePublishChannel" label="使用渠道" width="120" show-overflow-tooltip />
+            <el-table-column prop="createTime" label="使用时间" width="180" />
+          </el-table>
+          <el-pagination
+            v-if="usageDetailsTotal > 0"
+            v-model:current-page="usageDetailsQuery.pageNum"
+            v-model:page-size="usageDetailsQuery.pageSize"
+            :total="usageDetailsTotal"
+            @change="loadUsageDetails"
+            small
+            style="margin-top: 10px"
+          />
+          <el-empty v-if="!loadingUsageDetails && usageDetailsTotal === 0" description="暂无使用记录" :image-size="60" />
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getAssetList, deleteAsset } from '@/api/asset'
-import { getWorkflowByRole, getFirstStageApprovers, selectFirstStageApprovers } from '@/api/workflow'
-import { applyUsage, downloadAsset } from '@/api/usageApply'
+import { downloadAsset, checkCanUseAsset } from '@/api/usageApply'
+import { getAssetUsageLogs } from '@/api/usageLog'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { View, List, VideoCamera, Document, Search, WarningFilled } from '@element-plus/icons-vue'
-import { useUserStore } from '@/stores/user'
+import { View, List, VideoCamera, Document } from '@element-plus/icons-vue'
 
+const router = useRouter()
 const loading = ref(false)
-const showApply = ref(false)
-const applying = ref(false)
 const list = ref([])
 const total = ref(0)
 const query = reactive({ name: '', type: '', pageNum: 1, pageSize: 10 })
@@ -196,17 +168,20 @@ const showPreview = ref(false)
 const previewAsset = ref<any>(null)
 const previewUrl = ref('')
 const previewMode = ref<'image' | 'list'>('image')
-const boundWorkflow = ref<any>(null) // 角色绑定的审批流程
-const currentAsset = ref<any>(null)
-const applyForm = reactive({ purpose: '', scope: '' })
-const userStore = useUserStore()
 
-// 第一层审批人相关
-const firstStageApprovers = ref<any[]>([])
-const selectedApproverIds = ref<number[]>([])
-const approverKeyword = ref('')
-const loadingApprovers = ref(false)
-const hasLoadedInitialApprovers = ref(false) // 标记是否已加载过初始审批人列表
+// 使用记录相关（预览弹窗用）
+const usageLogs = ref<any[]>([])
+const usageLogsTotal = ref(0)
+const loadingLogs = ref(false)
+const logsQuery = reactive({ pageNum: 1, pageSize: 5 })
+
+// 使用详情弹窗相关
+const showUsageDetailsDialog = ref(false)
+const usageDetailsAsset = ref<any>(null)
+const usageDetailsList = ref<any[]>([])
+const usageDetailsTotal = ref(0)
+const loadingUsageDetails = ref(false)
+const usageDetailsQuery = reactive({ pageNum: 1, pageSize: 10 })
 
 async function loadData() {
   loading.value = true
@@ -219,43 +194,38 @@ async function loadData() {
   }
 }
 
-async function loadWorkflows() {
+async function loadUsageLogs() {
+  if (!previewAsset.value) return
+  loadingLogs.value = true
   try {
-    // 检查当前用户角色是否绑定了素材使用审批流程
-    if (userStore.userInfo?.roleId) {
-      const res = await getWorkflowByRole({
-        roleId: userStore.userInfo.roleId,
-        workflowType: 'ASSET_USAGE'
-      })
-      if (res.data) {
-        boundWorkflow.value = res.data
-      }
-    }
-  } catch (e: any) {
-    console.error('加载审批流程失败', e)
+    const res = await getAssetUsageLogs(previewAsset.value.id, {
+      pageNum: logsQuery.pageNum,
+      pageSize: logsQuery.pageSize
+    })
+    usageLogs.value = res.data.list || []
+    usageLogsTotal.value = res.data.total || 0
+  } catch (e) {
+    console.error('加载使用记录失败:', e)
+  } finally {
+    loadingLogs.value = false
   }
 }
 
-async function loadFirstStageApprovers() {
-  if (!boundWorkflow.value || !userStore.userInfo?.id) return
-
-  loadingApprovers.value = true
+async function loadUsageDetails() {
+  if (!usageDetailsAsset.value) return
+  loadingUsageDetails.value = true
   try {
-    const res = await getFirstStageApprovers({
-      workflowId: boundWorkflow.value.id,
-      applicantId: userStore.userInfo.id,
-      keyword: approverKeyword.value
+    const res = await getAssetUsageLogs(usageDetailsAsset.value.id, {
+      pageNum: usageDetailsQuery.pageNum,
+      pageSize: usageDetailsQuery.pageSize
     })
-    firstStageApprovers.value = res.data || []
-    // 标记已加载过初始列表（无关键词时的加载）
-    if (!approverKeyword.value) {
-      hasLoadedInitialApprovers.value = true
-    }
-  } catch (e: any) {
-    console.error('加载第一层审批人失败', e)
-    ElMessage.error(e.message || '加载第一层审批人失败')
+    usageDetailsList.value = res.data.list || []
+    usageDetailsTotal.value = res.data.total || 0
+  } catch (e) {
+    console.error('加载使用详情失败:', e)
+    ElMessage.error('加载使用详情失败')
   } finally {
-    loadingApprovers.value = false
+    loadingUsageDetails.value = false
   }
 }
 
@@ -263,14 +233,37 @@ function handleRowClick(row: any) {
   preview(row)
 }
 
-function preview(row: any) {
+async function preview(row: any) {
   previewAsset.value = row
   previewUrl.value = `/api/asset/preview/${row.id}`
   showPreview.value = true
+  // 重置使用记录分页并加载
+  logsQuery.pageNum = 1
+  await loadUsageLogs()
 }
 
 async function handleDownload(row: any) {
   try {
+    // 先检查是否有下载权限
+    const checkRes = await checkCanUseAsset(row.id)
+    if (!checkRes.data) {
+      ElMessageBox.confirm(
+        '您还没有该素材的使用权限，是否前往申请使用？',
+        '需要权限',
+        {
+          confirmButtonText: '前往申请',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).then(() => {
+        showApplyDialog(row)
+      }).catch(() => {
+        // 用户取消
+      })
+      return
+    }
+
+    // 有权限则下载
     const blob = await downloadAsset(row.id)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -288,61 +281,16 @@ async function handleDownload(row: any) {
   }
 }
 
-async function showApplyDialog(row: any) {
-  currentAsset.value = row
-  applyForm.purpose = ''
-  applyForm.scope = ''
-  // 先尝试加载绑定的流程，然后加载第一层审批人
-  await loadWorkflows()
-  // 重置状态
-  approverKeyword.value = ''
-  selectedApproverIds.value = []
-  hasLoadedInitialApprovers.value = false
-  loadFirstStageApprovers()
-  showApply.value = true
+function showApplyDialog(row: any) {
+  // 跳转到素材使用申请页面，带上素材ID
+  router.push(`/asset/usage-apply?assetId=${row.id}`)
 }
 
-async function handleApply() {
-  if (!applyForm.purpose) {
-    ElMessage.warning('请填写使用用途')
-    return
-  }
-  if (!applyForm.scope) {
-    ElMessage.warning('请选择使用范围')
-    return
-  }
-  // 检查是否有绑定的审批流程
-  if (!boundWorkflow.value) {
-    ElMessage.warning('您的角色未绑定素材使用审批流程，无法提交申请')
-    return
-  }
-  // 检查是否需要选择第一层审批人
-  if (firstStageApprovers.value.length > 0 && selectedApproverIds.value.length === 0) {
-    ElMessage.warning('请选择第一层审批人')
-    return
-  }
-  applying.value = true
-  try {
-    const applyRes = await applyUsage({
-      assetId: currentAsset.value.id,
-      purpose: applyForm.purpose,
-      scope: applyForm.scope,
-      workflowId: boundWorkflow.value.id
-    })
-    // 如果有第一层审批人需要选择，先选择审批人
-    if (firstStageApprovers.value.length > 0 && applyRes.data?.instanceId) {
-      await selectFirstStageApprovers({
-        instanceId: applyRes.data.instanceId,
-        approverIds: selectedApproverIds.value
-      })
-    }
-    ElMessage.success('申请已提交，请等待审批')
-    showApply.value = false
-  } catch (e: any) {
-    ElMessage.error(e.message || '申请失败')
-  } finally {
-    applying.value = false
-  }
+async function showUsageDetails(row: any) {
+  usageDetailsAsset.value = row
+  usageDetailsQuery.pageNum = 1
+  showUsageDetailsDialog.value = true
+  await loadUsageDetails()
 }
 
 async function handleDelete(row: any) {
@@ -354,7 +302,6 @@ async function handleDelete(row: any) {
 
 onMounted(() => {
   loadData()
-  // 不在这里加载审批流程，只在用户点击"申请使用"时才加载
 })
 </script>
 
@@ -363,4 +310,56 @@ onMounted(() => {
 .header-actions { display: flex; gap: 10px; }
 .clickable-rows :deep(.el-table__body tr) { cursor: pointer; }
 .clickable-rows :deep(.el-table__body tr:hover) { background-color: var(--el-fill-color-light); }
+
+.preview-content {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.usage-logs-section {
+  border-top: 1px solid var(--el-border-color);
+  padding-top: 20px;
+}
+
+.section-header {
+  font-weight: bold;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 使用详情弹窗样式 */
+.usage-stats {
+  display: flex;
+  gap: 40px;
+  padding: 15px 0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.stat-highlight {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--el-color-primary);
+}
+
+.usage-details-section {
+  margin-top: 15px;
+}
 </style>

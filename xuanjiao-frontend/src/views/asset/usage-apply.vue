@@ -1,154 +1,128 @@
 <template>
-  <div class="material-entry-page">
+  <div class="usage-apply-page">
     <el-card>
       <template #header>
-        <span>{{ isEditMode ? '编辑申请单' : '新建申请单' }}</span>
+        <div class="header">
+          <span>{{ isEdit ? '编辑使用申请' : '素材使用申请' }}</span>
+          <div class="actions">
+            <el-button @click="goToList">我的申请</el-button>
+            <el-button @click="goToDrafts">草稿箱</el-button>
+            <el-button @click="goBack">返回</el-button>
+          </div>
+        </div>
       </template>
 
       <el-form :model="form" :rules="rules" ref="formRef" label-width="120px">
-        <el-form-item label="事项标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入事项标题" />
-        </el-form-item>
-        <el-form-item label="维护人" prop="maintainerId">
-          <el-input :value="currentUser?.realName" disabled />
-        </el-form-item>
-        <el-form-item label="归属部门">
-          <el-input :value="currentUser?.deptName" disabled />
-        </el-form-item>
-        <el-form-item label="保证声明">
-          <el-checkbox v-model="form.guaranteeDeclaration">我保证所上传的素材符合版权要求</el-checkbox>
+        <el-form-item label="申请标题" prop="title">
+          <el-input v-model="form.title" placeholder="请输入申请标题" />
         </el-form-item>
       </el-form>
-
-      <!-- 素材文件列表 -->
-      <div class="file-section">
-        <div class="file-header">
-          <span>素材文件 ({{ fileList.length }})</span>
-          <el-button type="primary" size="small" @click="showAddFile = true">
-            添加文件
-          </el-button>
-        </div>
-        <el-table :data="fileList" size="small">
-          <el-table-column prop="name" label="文件名称" />
-          <el-table-column prop="type" label="类型" width="80" />
-          <el-table-column label="标签" width="150">
-            <template #default="{ row }">
-              <el-tag
-                v-for="tag in row.tags"
-                :key="tag.id"
-                size="small"
-                style="margin-right: 5px"
-              >
-                {{ tag.name }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="description" label="说明" show-overflow-tooltip />
-          <el-table-column prop="publishChannel" label="发布渠道" width="120" />
-          <el-table-column label="操作" width="100">
-            <template #default="{ row }">
-              <el-button link type="danger" @click="removeFile(row)">移除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-
-      <div class="action-buttons">
-        <el-button @click="goBack">取消</el-button>
-        <el-button type="primary" @click="handleSaveDraft" :loading="saving">保存草稿</el-button>
-        <el-button type="success" @click="handleSubmitDialog" :loading="submitting">提交审批</el-button>
-      </div>
     </el-card>
 
-    <!-- 添加文件对话框 -->
-    <el-dialog v-model="showAddFile" title="添加素材文件" width="600px">
-      <el-form :model="fileForm" :rules="fileRules" ref="fileFormRef" label-width="120px">
-        <el-form-item label="文件名称" prop="name">
-          <el-input v-model="fileForm.name" placeholder="请输入文件名称" />
-        </el-form-item>
-        <el-form-item label="文件类型" prop="type">
-          <el-select v-model="fileForm.type">
-            <el-option label="视频" value="VIDEO" />
-            <el-option label="图片" value="IMAGE" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="选择文件" prop="file">
-          <el-upload
-            ref="fileUploadRef"
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFileChange"
-          >
-            <el-button type="primary">选择文件</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="素材标签">
-          <el-select v-model="fileForm.tagIds" multiple placeholder="请选择标签">
-            <el-option
-              v-for="tag in tagList"
-              :key="tag.id"
-              :label="tag.name"
-              :value="tag.id"
-            />
-          </el-select>
-          <el-button link type="primary" @click="showCreateTag = true" style="margin-left: 10px">
-            新建标签
-          </el-button>
-        </el-form-item>
-        <el-form-item label="版权声明">
-          <el-radio-group v-model="copyrightType">
-            <el-radio label="none">无</el-radio>
-            <el-radio label="text">文本</el-radio>
-            <el-radio label="file">文件</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="copyrightType === 'text'" label="版权文本">
-          <el-input v-model="fileForm.copyrightText" type="textarea" :rows="3" />
-        </el-form-item>
-        <el-form-item v-if="copyrightType === 'file'" label="版权文件">
-          <el-upload
-            ref="copyrightUploadRef"
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleCopyrightFileChange"
-          >
-            <el-button type="primary">选择版权文件</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="申请说明">
-          <el-input v-model="fileForm.description" type="textarea" :rows="3" />
-        </el-form-item>
-        <el-form-item label="发布渠道">
-          <el-input v-model="fileForm.publishChannel" placeholder="请输入发布渠道" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAddFile = false">取消</el-button>
-        <el-button type="primary" @click="handleAddFile" :loading="addingFile">添加</el-button>
+    <!-- 素材列表 -->
+    <el-card style="margin-top: 20px;">
+      <template #header>
+        <div class="header">
+          <span>选择素材 ({{ selectedAssets.length }})</span>
+          <el-button type="primary" @click="showAssetSelector = true">添加素材</el-button>
+        </div>
       </template>
+
+      <el-table :data="selectedAssets" v-loading="loadingAssets">
+        <el-table-column label="预览" width="80">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.type === 'IMAGE'"
+              :src="getPreviewUrl(row.id)"
+              style="width: 60px; height: 40px"
+              fit="cover"
+              :preview-src-list="[getPreviewUrl(row.id)]"
+              :preview-teleported="true"
+            />
+            <el-icon v-else-if="row.type === 'VIDEO'" :size="30"><VideoCamera /></el-icon>
+            <el-icon v-else :size="30"><Document /></el-icon>
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="素材名称" min-width="200" />
+        <el-table-column prop="type" label="类型" width="80" />
+        <el-table-column label="使用配置" width="200">
+          <template #default="{ row }">
+            <div v-if="isAssetConfigured(row)" class="config-summary">
+              <div v-if="row.usagePublishChannel" class="config-item">
+                渠道: {{ row.usagePublishChannel }}
+              </div>
+              <div v-if="row.usageIsSecondaryCreation === 1" class="config-item">
+                <el-tag size="small" type="warning">二次创作</el-tag>
+              </div>
+            </div>
+            <div v-else class="config-item unconfigured">
+              未配置
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row, $index }">
+            <el-button link type="primary" @click="openConfigDialog(row)">配置</el-button>
+            <el-button link type="danger" @click="removeAsset($index)">移除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-empty v-if="selectedAssets.length === 0" description="请点击「添加素材」选择要使用的素材" />
+    </el-card>
+
+    <div class="footer-actions">
+      <el-button @click="handleSaveDraft" :loading="saving">保存草稿</el-button>
+      <el-button type="primary" @click="handleSubmitDialog" :disabled="selectedAssets.length === 0">提交审批</el-button>
+    </div>
+
+    <!-- 素材选择器对话框 -->
+    <el-dialog v-model="showAssetSelector" title="选择素材" width="1000px">
+      <asset-selector
+        :selected-ids="selectedAssetIds"
+        @select="handleAssetSelect"
+        @cancel="showAssetSelector = false"
+      />
     </el-dialog>
 
-    <!-- 新建标签对话框 -->
-    <el-dialog v-model="showCreateTag" title="新建标签" width="400px">
-      <el-form :model="tagForm" label-width="80px">
-        <el-form-item label="标签名称">
-          <el-input v-model="tagForm.name" placeholder="请输入标签名称" />
+    <!-- 素材使用配置对话框 -->
+    <el-dialog v-model="showConfigDialog" title="配置素材使用信息" width="600px">
+      <el-form :model="configForm" :rules="configRules" ref="configFormRef" label-width="120px">
+        <el-form-item label="素材名称">
+          <el-input :value="currentAsset?.name" disabled />
         </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="tagForm.category" placeholder="请选择分类">
-            <el-option label="图片" value="IMAGE" />
-            <el-option label="视频" value="VIDEO" />
-          </el-select>
+        <el-form-item label="申请说明" prop="usageDescription">
+          <el-input v-model="configForm.usageDescription" type="textarea" :rows="3" placeholder="请说明使用用途" />
+        </el-form-item>
+        <el-form-item label="发布渠道" prop="usagePublishChannel">
+          <el-input v-model="configForm.usagePublishChannel" placeholder="请输入发布渠道" />
+        </el-form-item>
+        <el-form-item label="二次创作">
+          <el-checkbox v-model="configForm.usageIsSecondaryCreation">是否进行二次创作</el-checkbox>
+        </el-form-item>
+        <el-form-item label="附件">
+          <el-upload
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="handleUploadSuccess"
+            :file-list="configFileList"
+            :limit="1"
+          >
+            <el-button>上传附件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">支持上传单个附件文件</div>
+            </template>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateTag = false">取消</el-button>
-        <el-button type="primary" @click="handleCreateTag">创建</el-button>
+        <el-button @click="showConfigDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveConfig">保存配置</el-button>
       </template>
     </el-dialog>
 
     <!-- 提交审批对话框 -->
-    <el-dialog v-model="showSubmitDialog" title="提交审批" width="600px">
+    <el-dialog v-model="showSubmitDialog" title="提交审批" width="800px">
       <el-form label-width="100px">
         <el-form-item label="审批流程">
           <div v-if="boundWorkflow">
@@ -169,7 +143,7 @@
             <div style="border: 1px solid #409EFF; border-radius: 6px; padding: 16px; background-color: #FAFAFA">
               <!-- 标题栏 -->
               <div style="display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #DCDFE6">
-                <el-icon style="color: #409EFF; margin-right: 8px;"><Document /></el-icon>
+                <el-icon style="color: #409EFF; margin-right: 8px"><Document /></el-icon>
                 <span style="font-weight: bold; color: #409EFF; font-size: 14px">主流程审批人</span>
                 <el-tag v-if="firstStageApproveType === 'OR'" type="warning" size="small" style="margin-left: auto">或签</el-tag>
                 <el-tag v-else type="success" size="small" style="margin-left: auto">会签</el-tag>
@@ -332,113 +306,109 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
-import { Search, WarningFilled, Document, Folder } from '@element-plus/icons-vue'
-import {
-  createMaterialApplication,
-  updateMaterialApplication,
-  submitMaterialApplication,
-  getMaterialApplicationById
-} from '@/api/materialApplication'
-import { getTagList, createTag } from '@/api/tag'
-import { uploadAsset, deleteAsset } from '@/api/asset'
-import { getWorkflowList, getFirstStageApprovers, selectFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
-import { useUserStore } from '@/stores/user'
-import { getCurrentUser } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { VideoCamera, Document, InfoFilled, WarningFilled, Folder } from '@element-plus/icons-vue'
+import AssetSelector from '@/components/AssetSelector.vue'
+import {
+  createUsageDraft,
+  updateUsageDraft,
+  submitUsageApply,
+  getUsageApplyById
+} from '@/api/usageApply'
+import { getWorkflowList, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
+import { getCurrentUser } from '@/api/user'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-const currentUser = ref<any>(null)
+const formRef = ref()
+const configFormRef = ref()
+const loading = ref(false)
+const loadingAssets = ref(false)
 const saving = ref(false)
 const submitting = ref(false)
-const addingFile = ref(false)
-const fileList = reactive<any[]>([])
-
-const showAddFile = ref(false)
-const showCreateTag = ref(false)
+const isEdit = ref(false)
+const currentId = ref<number | null>(null)
+const showAssetSelector = ref(false)
+const showConfigDialog = ref(false)
 const showSubmitDialog = ref(false)
+const selectedAssets = ref<any[]>([])
+const currentAsset = ref<any>(null)
 
-const workflowList = ref<any[]>([])
-const tagList = ref<any[]>([])
-const boundWorkflow = ref<any>(null) // 角色绑定的审批流程
-const copyrightType = ref('none')
+// 审批相关
+const currentUser = ref<any>(null)
+const boundWorkflow = ref<any>(null)
+const loadingApprovers = ref(false)
+const approverKeyword = ref('')
+const hasLoadedInitialApprovers = ref(false)
 
 // 第一层审批人相关
-const firstStageApproverConfigs = ref<any[]>([]) // 第一层审批人配置列表
-const selectedFirstStageApprovers = ref<Record<number, number>>({})  // configId -> userId (会签时多个，或签时1个)
-const firstStageApproveType = ref('') // 第一层的审批类型（OR=或签，其他=会签）
-const firstStageApproverCount = ref(0) // 第一层配置数量
-const approverKeyword = ref('')
-const loadingApprovers = ref(false)
-const hasLoadedInitialApprovers = ref(false) // 标记是否已加载过初始审批人列表
+const firstStageApproverConfigs = ref<any[]>([])
+const selectedFirstStageApprovers = ref<Record<number, number>>({})
+const firstStageApproveType = ref('')
+const firstStageApproverCount = ref(0)
 
 // 子流程相关
-const subWorkflows = ref<any[]>([]) // 第一层包含的子流程列表 { id, name, approverConfigs: [], approverCount: 0, selectedApprovers: {}, loading: false }
+const subWorkflows = ref<any[]>([])
 
-// 判断是编辑模式还是新建模式
-const isEditMode = computed(() => !!route.query.id)
-const applicationId = ref<number | null>(route.query.id ? Number(route.query.id) : null)
-const applicationStatus = ref<string>('DRAFT')
+const uploadUrl = computed(() => '/api/file/upload')
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${userStore.token}`
+}))
+
+const form = reactive({
+  title: ''
+})
+
+const configForm = reactive({
+  usageDescription: '',
+  usagePublishChannel: '',
+  usageIsSecondaryCreation: false,
+  usageAttachmentPath: ''
+})
+
+const configFileList = ref<any[]>([])
+
+const rules = {
+  title: [{ required: true, message: '请输入申请标题', trigger: 'blur' }]
+}
+
+const configRules = {
+  usageDescription: [{ required: true, message: '请输入申请说明', trigger: 'blur' }],
+  usagePublishChannel: [{ required: true, message: '请输入发布渠道', trigger: 'blur' }]
+}
+
+const selectedAssetIds = computed(() => selectedAssets.value.map(a => a.id))
 
 // 标记是否有未保存的更改
 const hasUnsavedChanges = ref(false)
 
-// 保存初始状态用于比较
-const initialForm = ref({
-  title: '',
-  guaranteeDeclaration: false
-})
-const initialFileCount = ref(0)
+// 监听表单变化
+watch([() => form.title, () => selectedAssets.value], () => {
+  hasUnsavedChanges.value = true
+}, { deep: true })
 
-const form = reactive({
-  title: '',
-  maintainerId: null as number | null,
-  deptId: null as number | null,
-  guaranteeDeclaration: false
-})
-
-const fileForm = reactive({
-  name: '',
-  type: 'IMAGE',
-  tagIds: [] as number[],
-  copyrightText: '',
-  copyrightFilePath: '',
-  description: '',
-  publishChannel: ''
-})
-
-const tagForm = reactive({
-  name: '',
-  category: ''
-})
-
-const uploadFile = ref<File | null>(null)
-const copyrightFile = ref<File | null>(null)
-
-const rules = {
-  title: [{ required: true, message: '请输入事项标题', trigger: 'blur' }]
+async function loadCurrentUser() {
+  try {
+    const res = await getCurrentUser()
+    currentUser.value = res.data
+    userStore.setUserInfo(res.data)
+  } catch (e) {
+    currentUser.value = userStore.userInfo
+  }
 }
-
-const fileRules = {
-  name: [{ required: true, message: '请输入文件名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择文件类型', trigger: 'change' }]
-}
-
-const formRef = ref()
-const fileFormRef = ref()
 
 async function loadWorkflows() {
   try {
-    // 检查当前用户角色是否绑定了审批流程
     if (currentUser.value?.roleId) {
       const res = await getWorkflowList()
       if (res.data) {
-        // 在客户端过滤：找到绑定到当前角色、类型为ASSET_UPLOAD、状态为启用(1)的流程
+        // 在客户端过滤：找到绑定到当前角色、类型为ASSET_USAGE、状态为启用(1)的流程
         const matched = res.data.find((w: any) =>
           w.boundRoleId === currentUser.value.roleId &&
-          w.workflowType === 'ASSET_UPLOAD' &&
+          w.workflowType === 'ASSET_USAGE' &&
           w.status === 1
         )
         if (matched) {
@@ -464,15 +434,12 @@ async function loadFirstStageApprovers() {
       applicantId: currentUser.value.id,
       keyword: approverKeyword.value
     })
-    // 处理新的响应结构：{ workflowId, workflowName, stageId, stageName, approveType, approverConfigs, approverCount }
     firstStageApproverConfigs.value = res.data?.approverConfigs || []
     firstStageApproveType.value = res.data?.approveType || ''
     firstStageApproverCount.value = res.data?.approverCount || 0
 
-    // 标记已加载过初始列表（无关键词时的加载）
     if (!approverKeyword.value) {
       hasLoadedInitialApprovers.value = true
-      // 加载子流程信息
       await loadSubWorkflows()
     }
   } catch (e: any) {
@@ -489,12 +456,10 @@ async function loadSubWorkflows() {
   const firstStage = boundWorkflow.value.stages[0]
   if (!firstStage.approvers) return
 
-  // 查找第一层中包含的子流程
   const subWorkflowApprovers = firstStage.approvers.filter((a: any) => a.subWorkflowId)
 
   if (subWorkflowApprovers.length === 0) return
 
-  // 为每个子流程初始化数据并加载审批人配置
   subWorkflows.value = []
   for (const approver of subWorkflowApprovers) {
     const subWorkflow: any = {
@@ -518,13 +483,11 @@ async function loadSubWorkflowApprovers(subWorkflow: any) {
     const res = await getSubWorkflowFirstStageApprovers({
       subWorkflowId: subWorkflow.id,
       applicantId: currentUser.value.id,
-      keyword: '' // 暂不支持子流程审批人搜索
+      keyword: ''
     })
-    // 处理新的响应结构：{ workflowId, workflowName, approveType, approverConfigs, approverCount }
     subWorkflow.approveType = res.data?.approveType || ''
     subWorkflow.approverConfigs = res.data?.approverConfigs || []
     subWorkflow.approverCount = res.data?.approverCount || 0
-    // 确保已选择的审批人映射被初始化
     if (!subWorkflow.selectedApprovers) {
       subWorkflow.selectedApprovers = {}
     }
@@ -536,29 +499,11 @@ async function loadSubWorkflowApprovers(subWorkflow: any) {
   }
 }
 
-// 处理子流程审批人选择变化（或签时只允许选1个）
-function handleSubWorkflowApproverChange(subWorkflow: any) {
-  if (subWorkflow.approveType === 'OR') {
-    const selectedKeys = Object.keys(subWorkflow.selectedApprovers).filter(
-      key => subWorkflow.selectedApprovers[key] !== null && subWorkflow.selectedApprovers[key] !== undefined
-    )
-    // 如果选择了多个，只保留最后一个
-    if (selectedKeys.length > 1) {
-      const lastKey = selectedKeys[selectedKeys.length - 1]
-      const lastValue = subWorkflow.selectedApprovers[lastKey]
-      subWorkflow.selectedApprovers = {}
-      subWorkflow.selectedApprovers[lastKey] = lastValue
-    }
-  }
-}
-
-// 处理第一层审批人选择变化（或签时只允许选1个）
 function handleFirstStageApproverChange() {
   if (firstStageApproveType.value === 'OR') {
     const selectedKeys = Object.keys(selectedFirstStageApprovers.value).filter(
       key => selectedFirstStageApprovers.value[key] !== null && selectedFirstStageApprovers.value[key] !== undefined
     )
-    // 如果选择了多个，只保留最后一个
     if (selectedKeys.length > 1) {
       const lastKey = selectedKeys[selectedKeys.length - 1]
       const lastValue = selectedFirstStageApprovers.value[lastKey]
@@ -568,154 +513,186 @@ function handleFirstStageApproverChange() {
   }
 }
 
-async function loadTags() {
-  try {
-    const res = await getTagList()
-    tagList.value = res.data || []
-  } catch (e) {
-    console.error('加载标签失败', e)
-  }
-}
-
-async function loadApplication() {
-  if (!applicationId.value) return
-
-  try {
-    const res = await getMaterialApplicationById(applicationId.value)
-    const app = res.data
-    form.title = app.title
-    form.maintainerId = app.maintainerId
-    form.deptId = app.deptId
-    form.guaranteeDeclaration = app.guaranteeDeclaration === 1
-    applicationStatus.value = app.status || 'DRAFT'
-    // reactive 数组需要清空后重新填充
-    fileList.splice(0, fileList.length)
-    fileList.push(...(app.assets || []))
-    // 记录初始状态
-    initialForm.value = {
-      title: app.title,
-      guaranteeDeclaration: app.guaranteeDeclaration === 1
-    }
-    initialFileCount.value = (app.assets || []).length
-    hasUnsavedChanges.value = false
-  } catch (e: any) {
-    ElMessage.error(e.message || '加载申请单失败')
-  }
-}
-
-// 检查是否有未保存的更改
-function checkUnsavedChanges(): boolean {
-  if (isEditMode.value) {
-    // 编辑模式：与初始状态比较
-    return form.title !== initialForm.value.title ||
-           form.guaranteeDeclaration !== initialForm.value.guaranteeDeclaration ||
-           fileList.length !== initialFileCount.value
-  } else {
-    // 新建模式：只要有输入就认为有更改
-    return form.title !== '' || form.guaranteeDeclaration || fileList.length > 0
-  }
-}
-
-// 监听表单和文件列表变化
-watch([() => form.title, () => form.guaranteeDeclaration, () => fileList.length], () => {
-  hasUnsavedChanges.value = checkUnsavedChanges()
-})
-
-// 路由守卫：离开前检查未保存的更改
-onBeforeRouteLeave((to, from, next) => {
-  if (hasUnsavedChanges.value) {
-    ElMessageBox.confirm(
-      '您有未保存的内容，是否保存为草稿？',
-      '提示',
-      {
-        distinguishCancelAndClose: true,
-        confirmButtonText: '保存',
-        cancelButtonText: '不保存',
-        type: 'warning'
-      }
+function handleSubWorkflowApproverChange(subWorkflow: any) {
+  if (subWorkflow.approveType === 'OR') {
+    const selectedKeys = Object.keys(subWorkflow.selectedApprovers).filter(
+      key => subWorkflow.selectedApprovers[key] !== null && subWorkflow.selectedApprovers[key] !== undefined
     )
-      .then(() => {
-        // 用户选择保存
-        saveDraftAndNavigate(to)
-      })
-      .catch((action) => {
-        if (action === 'cancel') {
-          // 用户选择不保存，直接离开
-          next()
-        } else {
-          // 用户点击关闭按钮，取消导航
-          next(false)
-        }
-      })
-  } else {
-    next()
+    if (selectedKeys.length > 1) {
+      const lastKey = selectedKeys[selectedKeys.length - 1]
+      const lastValue = subWorkflow.selectedApprovers[lastKey]
+      subWorkflow.selectedApprovers = {}
+      subWorkflow.selectedApprovers[lastKey] = lastValue
+    }
   }
-})
+}
 
-// 保存草稿后导航
-async function saveDraftAndNavigate(to: any) {
-  await formRef.value?.validate()
+async function loadData() {
+  const id = route.query.id as number
+  const assetId = route.query.assetId as number
 
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
+  if (id) {
+    isEdit.value = true
+    currentId.value = id
+    loading.value = true
+    try {
+      const res = await getUsageApplyById(id)
+      const data = res.data
+      form.title = data.title
+      selectedAssets.value = data.assets || []
+      hasUnsavedChanges.value = false
+    } catch (e) {
+      ElMessage.error('加载失败')
+    } finally {
+      loading.value = false
+    }
+  } else if (assetId) {
+    await loadSingleAsset(assetId)
+  }
+}
+
+async function loadSingleAsset(assetId: number) {
+  loadingAssets.value = true
+  try {
+    const res = await fetch(`/api/asset/${assetId}`, {
+      headers: {
+        Authorization: `Bearer ${userStore.token}`
+      }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.code === 200 && data.data) {
+        const asset = data.data
+        if (asset.status === 'APPROVED') {
+          selectedAssets.value.push({
+            ...asset,
+            usageDescription: null,
+            usagePublishChannel: null,
+            usageIsSecondaryCreation: 0,
+            usageAttachmentPath: null
+          })
+          openConfigDialog(selectedAssets.value[0])
+        } else {
+          ElMessage.warning('只能使用已通过的素材')
+        }
+      }
+    }
+  } catch (e) {
+    console.error('加载素材失败:', e)
+    ElMessage.error('加载素材失败')
+  } finally {
+    loadingAssets.value = false
+  }
+}
+
+function handleAssetSelect(assets: any[]) {
+  for (const asset of assets) {
+    if (!selectedAssetIds.value.includes(asset.id)) {
+      selectedAssets.value.push({
+        ...asset,
+        usageDescription: null,
+        usagePublishChannel: null,
+        usageIsSecondaryCreation: 0,
+        usageAttachmentPath: null
+      })
+    }
+  }
+  showAssetSelector.value = false
+  hasUnsavedChanges.value = true
+}
+
+function removeAsset(index: number) {
+  selectedAssets.value.splice(index, 1)
+  hasUnsavedChanges.value = true
+}
+
+function getPreviewUrl(id: number) {
+  return `/api/asset/preview/${id}`
+}
+
+function isAssetConfigured(asset: any): boolean {
+  return !!(asset.usageDescription || asset.usagePublishChannel || asset.usageIsSecondaryCreation === 1 || asset.usageAttachmentPath)
+}
+
+function openConfigDialog(asset: any) {
+  currentAsset.value = asset
+  configForm.usageDescription = asset.usageDescription || ''
+  configForm.usagePublishChannel = asset.usagePublishChannel || ''
+  configForm.usageIsSecondaryCreation = asset.usageIsSecondaryCreation === 1
+  configForm.usageAttachmentPath = asset.usageAttachmentPath || ''
+
+  if (asset.usageAttachmentPath) {
+    configFileList.value = [{
+      name: asset.usageAttachmentPath.split('/').pop(),
+      url: asset.usageAttachmentPath
+    }]
+  } else {
+    configFileList.value = []
+  }
+
+  showConfigDialog.value = true
+}
+
+function handleUploadSuccess(response: any) {
+  if (response.code === 200) {
+    configForm.usageAttachmentPath = response.data
+    ElMessage.success('上传成功')
+  } else {
+    ElMessage.error(response.message || '上传失败')
+  }
+}
+
+async function handleSaveConfig() {
+  try {
+    await configFormRef.value?.validate()
+  } catch {
     return
   }
 
-  saving.value = true
-  try {
-    const submitData = {
-      ...form,
-      guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
-    }
-
-    if (isEditMode.value) {
-      await updateMaterialApplication(applicationId.value!, submitData)
-      ElMessage.success('保存成功')
-    } else {
-      const res = await createMaterialApplication(submitData)
-      ElMessage.success('保存成功')
-    }
-    hasUnsavedChanges.value = false
-    router.push(to)
-  } catch (e: any) {
-    ElMessage.error(e.message || '保存失败')
-  } finally {
-    saving.value = false
+  if (currentAsset.value) {
+    currentAsset.value.usageDescription = configForm.usageDescription
+    currentAsset.value.usagePublishChannel = configForm.usagePublishChannel
+    currentAsset.value.usageIsSecondaryCreation = configForm.usageIsSecondaryCreation ? 1 : 0
+    currentAsset.value.usageAttachmentPath = configForm.usageAttachmentPath
+    hasUnsavedChanges.value = true
   }
+
+  showConfigDialog.value = false
+  ElMessage.success('配置已保存')
 }
 
 async function handleSaveDraft() {
-  await formRef.value?.validate()
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
 
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
+  if (selectedAssets.value.length === 0) {
+    ElMessage.warning('请至少选择一个素材')
+    return
+  }
+
+  const unconfigured = selectedAssets.value.filter(a => !isAssetConfigured(a))
+  if (unconfigured.length > 0) {
+    ElMessage.warning(`还有 ${unconfigured.length} 个素材未配置使用信息`)
     return
   }
 
   saving.value = true
   try {
-    const submitData = {
-      ...form,
-      guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
-    }
+    const data = buildSubmitData()
 
-    if (isEditMode.value) {
-      await updateMaterialApplication(applicationId.value!, submitData)
+    if (isEdit.value && currentId.value) {
+      await updateUsageDraft(currentId.value, data)
       ElMessage.success('保存成功')
     } else {
-      const res = await createMaterialApplication(submitData)
-      applicationId.value = res.data.id
-      ElMessage.success('创建成功')
+      const res = await createUsageDraft(data)
+      currentId.value = res.data
+      isEdit.value = true
+      ElMessage.success('草稿已保存')
     }
-    // 更新初始状态，标记为已保存
-    initialForm.value = {
-      title: form.title,
-      guaranteeDeclaration: form.guaranteeDeclaration
-    }
-    initialFileCount.value = fileList.length
     hasUnsavedChanges.value = false
-    // 保存草稿后跳转到草稿箱
-    goToDraftBox()
   } catch (e: any) {
     ElMessage.error(e.message || '保存失败')
   } finally {
@@ -724,20 +701,21 @@ async function handleSaveDraft() {
 }
 
 function handleSubmitDialog() {
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
+  if (selectedAssets.value.length === 0) {
+    ElMessage.warning('请至少选择一个素材')
     return
   }
 
-  if (fileList.length === 0) {
-    ElMessage.warning('请至少添加一个素材文件')
+  // 检查所有素材是否都已配置
+  const unconfigured = selectedAssets.value.filter(a => !isAssetConfigured(a))
+  if (unconfigured.length > 0) {
+    ElMessage.warning(`还有 ${unconfigured.length} 个素材未配置使用信息`)
     return
   }
 
   // 先尝试加载绑定的流程，然后加载第一层审批人
   loadWorkflows().then(() => {
     showSubmitDialog.value = true
-    // 重置状态
     approverKeyword.value = ''
     firstStageApproverConfigs.value = []
     selectedFirstStageApprovers.value = {}
@@ -757,7 +735,6 @@ async function handleSubmit() {
 
   // 检查是否需要选择第一层审批人
   if (firstStageApproveType.value === 'OR') {
-    // 或签：需要选择1个审批人 + 所有子流程
     if (firstStageApproverCount.value > 0) {
       const selectedCount = Object.values(selectedFirstStageApprovers.value).filter(v => v !== null && v !== undefined).length
       if (selectedCount === 0) {
@@ -766,7 +743,6 @@ async function handleSubmit() {
       }
     }
   } else {
-    // 会签：需要选择所有配置的审批人 + 所有子流程
     if (firstStageApproverCount.value > 0) {
       const selectedCount = Object.values(selectedFirstStageApprovers.value).filter(v => v !== null && v !== undefined).length
       if (selectedCount < firstStageApproverCount.value) {
@@ -776,19 +752,17 @@ async function handleSubmit() {
     }
   }
 
-  // 检查是否需要选择子流程审批人（根据子流程自己的或签/会签类型）
+  // 检查是否需要选择子流程审批人
   for (const subWorkflow of subWorkflows.value) {
     if (subWorkflow.approverCount > 0) {
       const selectedCount = Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined).length
 
       if (subWorkflow.approveType === 'OR') {
-        // 子流程或签：至少选1个
         if (selectedCount === 0) {
           ElMessage.warning(`请为子流程"${subWorkflow.name}"选择至少 1 位审批人（或签）`)
           return
         }
       } else {
-        // 子流程会签：所有配置都要选
         if (selectedCount < subWorkflow.approverCount) {
           ElMessage.warning(`请为子流程"${subWorkflow.name}"选择所有 ${subWorkflow.approverCount} 位审批人（当前已选 ${selectedCount} 位）`)
           return
@@ -797,25 +771,23 @@ async function handleSubmit() {
     }
   }
 
+  // 先保存草稿
+  if (hasUnsavedChanges.value) {
+    await handleSaveDraft()
+  }
+
+  if (!currentId.value) {
+    ElMessage.error('请先保存草稿')
+    return
+  }
+
   submitting.value = true
   try {
-    // 先保存基本信息
-    if (!applicationId.value) {
-      const submitData = {
-        ...form,
-        guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
-      }
-      const res = await createMaterialApplication(submitData)
-      applicationId.value = res.data.id
-    }
-
     // 提交审批（创建审批实例）
-    const submitRes = await submitMaterialApplication(applicationId.value!, boundWorkflow.value.id)
-    const instanceId = submitRes.data
+    const instanceId = await submitUsageApply(currentId.value, boundWorkflow.value.id)
 
     // 如果有第一层审批人需要选择，先选择审批人
-    if ((firstStageApproverCount.value > 0 || subWorkflows.value.length > 0) && instanceId) {
-      // 构建子流程审批人选择映射（从 configId -> userId 转换为数组）
+    if ((firstStageApproverCount.value > 0 || subWorkflows.value.length > 0) && instanceId.data) {
       const subWorkflowApproverIds: Record<number, number[]> = {}
       for (const subWorkflow of subWorkflows.value) {
         const selectedIds = Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined) as number[]
@@ -824,9 +796,7 @@ async function handleSubmit() {
         }
       }
 
-      // 构建主流程审批人ID列表（按配置顺序）
       const mainApproverIds: number[] = []
-      // 按配置顺序获取选中的用户ID
       for (const config of firstStageApproverConfigs.value) {
         const selectedUserId = selectedFirstStageApprovers.value[config.configId]
         if (selectedUserId) {
@@ -834,10 +804,9 @@ async function handleSubmit() {
         }
       }
 
-      // 如果有子流程或主流程审批人，使用新API
       if (Object.keys(subWorkflowApproverIds).length > 0 || mainApproverIds.length > 0) {
         await selectFirstStageApproversWithSubWorkflows({
-          instanceId,
+          instanceId: instanceId.data,
           approverIds: mainApproverIds,
           subWorkflowApproverIds
         })
@@ -855,176 +824,97 @@ async function handleSubmit() {
   }
 }
 
-function handleFileChange(file: any) {
-  uploadFile.value = file.raw
-  if (!fileForm.name) {
-    fileForm.name = file.name
+function buildSubmitData() {
+  return {
+    title: form.title,
+    assetConfigs: selectedAssets.value.map(asset => ({
+      assetId: asset.id,
+      usageDescription: asset.usageDescription || '',
+      usagePublishChannel: asset.usagePublishChannel || '',
+      usageIsSecondaryCreation: asset.usageIsSecondaryCreation || 0,
+      usageAttachmentPath: asset.usageAttachmentPath || ''
+    }))
   }
-}
-
-function handleCopyrightFileChange(file: any) {
-  copyrightFile.value = file.raw
-}
-
-async function handleAddFile() {
-  await fileFormRef.value?.validate()
-
-  if (!uploadFile.value) {
-    ElMessage.warning('请选择文件')
-    return
-  }
-
-  // 确保有申请单ID
-  if (!applicationId.value) {
-    await formRef.value?.validate()
-    if (!form.title) {
-      ElMessage.warning('请先输入事项标题')
-      return
-    }
-    if (!form.guaranteeDeclaration) {
-      ElMessage.warning('请先勾选保证声明')
-      return
-    }
-
-    const submitData = {
-      ...form,
-      guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
-    }
-    const res = await createMaterialApplication(submitData)
-    applicationId.value = res.data.id
-  }
-
-  addingFile.value = true
-  try {
-    await uploadAsset(uploadFile.value, {
-      ...fileForm,
-      applicationId: applicationId.value
-    })
-    ElMessage.success('添加成功')
-    showAddFile.value = false
-    resetFileForm()
-    // 重新加载文件列表
-    await loadApplication()
-  } catch (e: any) {
-    ElMessage.error(e.message || '添加失败')
-  } finally {
-    addingFile.value = false
-  }
-}
-
-function resetFileForm() {
-  fileForm.name = ''
-  fileForm.type = 'IMAGE'
-  fileForm.tagIds = []
-  fileForm.copyrightText = ''
-  fileForm.copyrightFilePath = ''
-  fileForm.description = ''
-  fileForm.publishChannel = ''
-  uploadFile.value = null
-  copyrightFile.value = null
-  copyrightType.value = 'none'
-}
-
-async function removeFile(row: any) {
-  // 检查申请单状态，只有草稿状态可以移除文件
-  if (applicationStatus.value !== 'DRAFT') {
-    ElMessage.warning('只有草稿状态可以移除文件')
-    return
-  }
-
-  try {
-    await ElMessageBox.confirm('确定要移除该文件吗？', '提示', {
-      type: 'warning',
-      confirmButtonText: '确定',
-      cancelButtonText: '取消'
-    })
-
-    // 调用后端 API 删除文件
-    await deleteAsset(row.id)
-    ElMessage.success('移除成功')
-
-    // 从列表中移除
-    const index = fileList.findIndex(f => f.id === row.id)
-    if (index > -1) {
-      fileList.splice(index, 1)
-    }
-  } catch (e: any) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.message || '移除失败')
-    }
-  }
-}
-
-async function handleCreateTag() {
-  if (!tagForm.name) {
-    ElMessage.warning('请输入标签名称')
-    return
-  }
-  try {
-    await createTag({ name: tagForm.name, category: tagForm.category })
-    ElMessage.success('创建成功')
-    showCreateTag.value = false
-    tagForm.name = ''
-    tagForm.category = ''
-    loadTags()
-  } catch (e: any) {
-    ElMessage.error(e.message || '创建失败')
-  }
-}
-
-function goBack() {
-  goToList()
-}
-
-function goToDraftBox() {
-  router.push('/task/draft')
 }
 
 function goToList() {
-  router.push('/asset')
+  router.push('/asset/usage-list')
 }
 
+function goToDrafts() {
+  router.push('/asset/usage-list?status=DRAFT')
+}
+
+function goBack() {
+  router.back()
+}
+
+// 离开前确认
+onBeforeRouteLeave((to, from, next) => {
+  if (hasUnsavedChanges.value) {
+    ElMessageBox.confirm(
+      '您有未保存的内容，确定要离开吗？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+      .then(() => {
+        next()
+      })
+      .catch(() => {
+        next(false)
+      })
+  } else {
+    next()
+  }
+})
+
 onMounted(async () => {
-  // Fetch fresh user data from backend to get deptName
-  try {
-    const res = await getCurrentUser()
-    currentUser.value = res.data
-    userStore.setUserInfo(res.data)
-  } catch (e) {
-    currentUser.value = userStore.userInfo
-  }
-
-  form.maintainerId = currentUser.value?.id
-  form.deptId = currentUser.value?.deptId
-
-  await Promise.all([
-    loadWorkflows(),
-    loadTags()
-  ])
-
-  // 如果是编辑模式，加载申请单数据
-  if (isEditMode.value) {
-    await loadApplication()
-  }
+  await loadCurrentUser()
+  await loadWorkflows()
+  loadData()
 })
 </script>
 
 <style scoped>
-.file-section {
-  margin-top: 20px;
+.usage-apply-page {
+  padding: 20px;
 }
-.file-header {
+
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  font-weight: bold;
 }
-.action-buttons {
-  margin-top: 30px;
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.footer-actions {
+  margin-top: 20px;
   text-align: center;
 }
-.action-buttons .el-button {
+
+.footer-actions .el-button {
   margin: 0 10px;
+}
+
+.config-summary {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.config-item {
+  margin-bottom: 2px;
+  color: #606266;
+}
+
+.config-item.unconfigured {
+  color: #C0C4CC;
 }
 </style>

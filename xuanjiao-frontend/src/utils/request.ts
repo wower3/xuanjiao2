@@ -22,6 +22,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   response => {
+    // Blob响应类型直接返回，不进行code检查
+    if (response.config.responseType === 'blob') {
+      return response.data
+    }
     const res = response.data
     if (res.code !== 200) {
       ElMessage.error(res.message || '请求失败')

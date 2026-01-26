@@ -12,16 +12,21 @@ See `REQUIREMENTS.md` for the complete Product Requirements Document and `PROGRE
 
 ### Database Setup
 ```bash
+# Initialize complete database (run once for new setup)
 mysql -u root -p123456 < xuanjiao-backend/sql/init_all.sql
 ```
+
+**Important**: The default MySQL credentials are `root` / `123456`. Update these in `xuanjiao-start/src/main/resources/application.yml` if your setup differs.
 
 ### Backend (Java Spring Boot with COLA Architecture)
 ```bash
 cd xuanjiao-backend
-# Build all modules
-mvn clean install
+# Build all modules (skips tests)
+mvn clean install -DskipTests
 # Run the application (runs on port 8080)
 mvn spring-boot:run -pl xuanjiao-start
+# Or run with specific profile
+mvn spring-boot:run -pl xuanjiao-start -Dspring-boot.run.profiles=dev
 ```
 
 ### Frontend (Vue 3 + TypeScript + Vite)
@@ -39,14 +44,69 @@ npm run preview  # Preview production build
 - Swagger/Knife4j Documentation: http://localhost:8080/api/doc.html
 - Default Login: admin / 123456
 
-### Database Migration
-Run SQL migrations in order:
+### Database Migration Scripts
+
+Core schema initialization:
 ```bash
 cd xuanjiao-backend/sql
-mysql -u root -p123456 < init_17_workflow_refactor.sql
+mysql -u root -p123456 < init_all.sql
+```
+
+**Workflow sub-workflow support (required):**
+```bash
+mysql -u root -p123456 < init_17_sub_workflow_refactor.sql
 mysql -u root -p123456 < init_18_add_sub_workflow_approver_ids.sql
 mysql -u root -p123456 < init_19_add_sub_workflow_approver_ids_to_instance.sql
 ```
+
+**Usage application module (many-to-many refactor):**
+```bash
+mysql -u root -p123456 < init_21_add_usage_menu.sql
+mysql -u root -p123456 < init_22_extend_asset_for_usage.sql
+mysql -u root -p123456 < init_23_extend_usage_log.sql
+mysql -u root -p123456 < init_24_refactor_to_intermediate_table.sql
+```
+
+**Other feature migrations:**
+```bash
+mysql -u root -p123456 < init_20_add_material_approval_menu.sql
+mysql -u root -p123456 < init_22_add_returned_status.sql
+mysql -u root -p123456 < init_23_add_task_type.sql
+```
+
+**Note**: Some migration scripts have conflicting numbers (e.g., init_21, init_22, init_23, init_24). Always check the script filename description to determine the correct order. When in doubt, check the creation date in the file or consult the team.
+
+## Development Workflow
+
+### Git Workflow
+- Main development branch: `GLM/progress` (see git status)
+- Feature branches should follow convention: `feature/<description>` or `bugfix/<description>`
+- Always pull latest changes before starting work
+- Commit messages should follow conventional commit format (e.g., `feat: add user login`, `fix: resolve approval bug`)
+
+### Troubleshooting Common Issues
+
+**Backend fails to start:**
+- Check MySQL is running: `mysql -u root -p123456 -e "SELECT 1;"`
+- Verify database exists: `mysql -u root -p123456 -e "SHOW DATABASES LIKE 'xuanjiao_s';"`
+- Check port 8080 is not already in use
+- Review logs in console output
+
+**Frontend build errors:**
+- Delete `node_modules` and run `npm install` again
+- Check TypeScript errors: `npm run build` shows detailed compilation errors
+- Clear Vite cache: delete `node_modules/.vite` folder
+
+**Database migration failures:**
+- Check if migration has already been applied (MySQL doesn't track by default)
+- For conflicting migration numbers, check file contents to determine dependencies
+- Use `mysql -u root -p123456 xuanjiao_s` to connect directly and inspect tables
+
+**Approval workflow issues:**
+- Check `WORKFLOW_REFACTOR_SUMMARY.md` for detailed workflow architecture
+- Verify workflow has at least one stage configured
+- Check that approvers exist in the `user` table
+- Review approval progress in `approval_progress` table
 
 ## Architecture
 
@@ -121,10 +181,31 @@ xuanjiao-frontend/src/
 ├── api/              # Axios-based API client (one file per domain)
 ├── router/           # Vue Router configuration with auth guards
 ├── stores/           # Pinia state stores (user, asset, workflow, etc.)
+├── components/       # Reusable components (AssetSelector, etc.)
 ├── layouts/          # Layout components (MainLayout with sidebar/header)
 ├── views/            # Page components (assets, workflow, approval, etc.)
 └── main.ts           # Application entry point
 ```
+
+### Usage Application Module (Many-to-Many Architecture)
+The usage application module supports multiple assets per application and multiple applications per asset:
+
+**Database Schema:**
+- `usage_apply` - Usage application records (title, status, applicant info)
+- `usage_apply_asset` - Intermediate table (many-to-many relationship)
+  - Links `usage_apply_id` to `asset_id`
+  - Stores per-asset configuration: usage_description, usage_publish_channel, usage_is_secondary_creation, usage_attachment_path
+- `asset` table extended with usage fields (via init_22) - NOTE: Later refactored to use intermediate table instead
+
+**Key Components:**
+- `AssetSelector.vue` - Reusable asset selection component with multi-select support
+- `usage-apply.vue` - Create/edit usage applications with asset configuration
+- `usage-list.vue` - List view of usage applications with detail dialog
+
+**Backend Services:**
+- `UsageApplyService` / `UsageApplyServiceImpl` - Business logic for usage applications
+- `UsageApplyAssetRepository` - Repository for the intermediate table
+- `UsageLogService` - Records asset usage/download logs
 
 ## Technology Stack
 
@@ -187,7 +268,10 @@ PENDING → MAIN_COMPLETED (waiting for sub-workflows) → APPROVED
 ## Key Vue Components (Approval Flow)
 
 - `material-entry.vue` - Asset submission with main/sub-workflow approver selection
+- `usage-apply.vue` - Usage application creation with asset selector and multi-asset configuration
+- `usage-list.vue` - Usage application list with detail view
 - `approval/index.vue` - Task list, approval actions, progress display, approver selection
+- `AssetSelector.vue` - Reusable asset selection component with search and multi-select
 
 ## Key Services (Backend)
 
@@ -259,6 +343,59 @@ Core workflow orchestration:
 - Sub-workflow approver IDs are stored as JSON in `sub_workflow_approver_ids` fields
 - See `WORKFLOW_REFACTOR_SUMMARY.md` for comprehensive workflow system documentation
 
+### Important Constraints & Gotchas
+
+**Workflow System:**
+- Sub-workflows must be configured at the **approver level**, not stage level
+- First approver selection differs between OR-sign (first to approve) and AND-sign (marked at creation)
+- Sub-workflows run independently but must complete for parent approval
+- Missing/invalid sub-workflow configurations log warnings but don't block the flow
+
+**Usage Applications:**
+- Many-to-many relationship via `usage_apply_asset` intermediate table
+- One application can include multiple assets
+- Per-asset configuration stored in intermediate table, not asset table
+- Cannot delete applications that are in "APPROVED" status
+
+**Asset Management:**
+- Assets cannot be deleted if they have associated usage records (check `usage_apply_asset`)
+- Logical deletion is used (sets `deleted=1`)
+- MD5 deduplication means same file content shares storage
+
+**Database Schema Changes:**
+- Always create a new migration script with a descriptive name
+- Use version numbers that don't conflict (check existing scripts first)
+- Some migration numbers are duplicated (e.g., init_21, init_22, init_23) - check file descriptions to determine order
+- Test migrations on a copy of production data if possible
+- Document breaking changes in this CLAUDE.md file
+
+### Adding a New Feature
+
+**Backend (COLA layers):**
+1. Create/modify entities in `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/entity/`
+2. Create repository interface in `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/repository/`
+3. Create mapper in `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
+4. Implement repository in `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
+5. Create service interface in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/`
+6. Implement service in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/impl/`
+7. Create DTOs in `xuanjiao-client/src/main/java/com/xuanjiao/client/dto/`
+8. Create controller in `xuanjiao-adapter/src/main/java/com/xuanjiao/adapter/web/{module}/`
+
+**Frontend:**
+1. Add API client methods in `xuanjiao-frontend/src/api/{domain}.ts`
+2. Create Pinia store in `xuanjiao-frontend/src/stores/{domain}.ts` (if needed)
+3. Create page component in `xuanjiao-frontend/src/views/{path}/`
+4. Add route in `xuanjiao-frontend/src/router/index.ts`
+5. Add menu entry in backend `menu` table if needed
+
+### Understanding Module Boundaries
+
+The COLA architecture enforces strict layer dependencies:
+- `adapter` → `app` → `domain` (dependencies flow inward)
+- `client` is shared by all layers
+- `infrastructure` implements `domain` interfaces
+- Cross-module communication within a layer should use repositories/domain entities, not direct service calls
+
 ### Module-Based Package Structure (Post-Refactoring)
 
 As of January 2025, the backend has been refactored to use module-based packaging within each COLA layer. The following business modules are defined:
@@ -272,7 +409,7 @@ As of January 2025, the backend has been refactored to use module-based packagin
 | `menu` | Menu | Menu tree, menu configuration |
 | `asset` | Asset | Asset upload, download, management, tags |
 | `material` | Material Application | Asset entry applications (including future delete function) |
-| `usage` | Usage Application | Asset usage applications, usage logs |
+| `usage` | Usage Application | Asset usage applications, usage logs, usage_apply_asset intermediate table |
 | `workflow` | Workflow Definition | Workflow design, template management, workflow engine, approver selection |
 | `approval` | Approval Execution | Approval instances, task processing |
 | `log` | Log | Operation log recording |
@@ -287,3 +424,84 @@ As of January 2025, the backend has been refactored to use module-based packagin
 - Repository implementations: `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
 
 **Important**: When adding new features, follow the module-based structure. Place code in the appropriate module subdirectory within each layer.
+
+### Recent Database Architecture Changes (January 2025)
+
+**Usage Application Refactoring (init_24_refactor_to_intermediate_table.sql):**
+- Changed from direct `asset_id` foreign key in `usage_apply` table to a many-to-many relationship
+- Created `usage_apply_asset` intermediate table to support:
+  - One application can include multiple assets
+  - One asset can be used by multiple applications
+  - Per-asset usage configuration (description, channel, secondary creation, attachment)
+
+**Previous Schema (Deprecated):**
+- `usage_apply.asset_id` - Direct foreign key (one-to-one)
+- `asset` table had usage fields (usage_description, usage_publish_channel, etc.)
+
+**Current Schema:**
+- `usage_apply` - No direct asset_id
+- `usage_apply_asset` - Intermediate table with `usage_apply_id`, `asset_id`, and per-asset config fields
+
+## Environment Configuration
+
+### Backend Configuration
+File: `xuanjiao-start/src/main/resources/application.yml`
+
+**Key settings to verify:**
+- Database connection: `spring.datasource.url` (default: `127.0.0.1:3306/xuanjiao_s`)
+- Database credentials: `spring.datasource.username/password` (default: `root`/`123456`)
+- File upload path: `file.upload-path` (default: `D:/xuanjiao/uploads/`)
+- Server port: `server.port` (default: `8080`)
+- JWT secret and expiration: Used for token generation and validation
+
+### Frontend Configuration
+File: `xuanjiao-frontend/vite.config.ts`
+
+**Key settings:**
+- Dev server port: `server.port` (default: `3000`)
+- API proxy: Routes `/api` requests to `http://localhost:8080`
+
+**Environment variables (optional):**
+Create `.env` file in `xuanjiao-frontend/`:
+```
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+## Working with This Codebase
+
+### Adding a New Feature
+
+1. **Backend (COLA layers)**:
+   - Create/modify entities in `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/entity/`
+   - Create repository interface in `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/repository/`
+   - Create mapper in `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
+   - Implement repository in `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
+   - Create service interface in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/`
+   - Implement service in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/impl/`
+   - Create DTOs in `xuanjiao-client/src/main/java/com/xuanjiao/client/dto/`
+   - Create controller in `xuanjiao-adapter/src/main/java/com/xuanjiao/adapter/web/{module}/`
+
+2. **Frontend**:
+   - Add API client methods in `xuanjiao-frontend/src/api/{domain}.ts`
+   - Create Pinia store in `xuanjiao-frontend/src/stores/{domain}.ts` (if needed)
+   - Create page component in `xuanjiao-frontend/src/views/{path}/`
+   - Add route in `xuanjiao-frontend/src/router/index.ts`
+   - Add menu entry in backend `menu` table if needed
+
+### Debugging Approval Workflows
+
+When troubleshooting workflow issues:
+1. Check the workflow definition in `workflow`, `workflow_stage`, and `stage_approver` tables
+2. Inspect the approval instance in `approval_instance` table
+3. View active tasks in `approval_task` table
+4. Review progress tracking in `approval_progress` table
+5. Check logs for workflow engine operations
+6. Refer to `WORKFLOW_REFACTOR_SUMMARY.md` for detailed architecture
+
+### Understanding Module Boundaries
+
+The COLA architecture enforces strict layer dependencies:
+- `adapter` → `app` → `domain` (dependencies flow inward)
+- `client` is shared by all layers
+- `infrastructure` implements `domain` interfaces
+- Cross-module communication within a layer should use repositories/domain entities, not direct service calls

@@ -30,6 +30,16 @@ const router = createRouter({
           component: () => import('@/views/asset/material-entry.vue')
         },
         {
+          path: 'asset/usage-apply',
+          name: 'UsageApply',
+          component: () => import('@/views/asset/usage-apply.vue')
+        },
+        {
+          path: 'asset/usage-list',
+          name: 'UsageList',
+          component: () => import('@/views/asset/usage-list.vue')
+        },
+        {
           path: 'workflow',
           name: 'Workflow',
           component: () => import('@/views/workflow/index.vue')

@@ -4,6 +4,19 @@ export function getWorkflowList() {
   return request.get('/workflow/list')
 }
 
+/**
+ * 查询工作流列表（支持筛选）
+ * @param params 查询参数
+ */
+export function getWorkflows(params?: {
+  type?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}) {
+  return request.get('/workflow/list', { params })
+}
+
 export function getWorkflowById(id: number) {
   return request.get(`/workflow/${id}`)
 }
@@ -50,17 +63,6 @@ export function selectNextStageApprovers(data: {
  */
 export function getApprovalProgress(instanceId: number) {
   return request.get(`/workflow/progress/${instanceId}`)
-}
-
-/**
- * 根据角色获取绑定的审批流程
- * @param params 查询参数
- */
-export function getWorkflowByRole(params: {
-  roleId: number
-  workflowType: string
-}) {
-  return request.get('/workflow/by-role', { params })
 }
 
 /**
