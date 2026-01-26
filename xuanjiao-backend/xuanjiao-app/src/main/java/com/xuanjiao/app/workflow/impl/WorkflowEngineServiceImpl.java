@@ -4,9 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
-import com.xuanjiao.app.material.MaterialApplicationService;
-import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
+import com.xuanjiao.app.workflow.handler.WorkflowCompletionHandler;
 import com.xuanjiao.infrastructure.dataobject.*;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
@@ -23,9 +22,11 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 工作流引擎服务实现（改造版）
@@ -55,15 +56,31 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     @Resource
     private DeptMapper deptMapper;
     @Resource
-    @Lazy
-    private MaterialApplicationService materialApplicationService;
-    @Resource
-    @Lazy
-    private AssetService assetService;
-    @Resource
     private ApproverSelectionService approverSelectionService;
+    @Resource
+    private List<WorkflowCompletionHandler> completionHandlers;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // 业务类型到处理器的映射表
+    private Map<String, WorkflowCompletionHandler> handlerMap;
+
+    /**
+     * 初始化处理器映射表
+     * Spring 自动注入所有 WorkflowCompletionHandler 实现类
+     */
+    @PostConstruct
+    public void initHandlers() {
+        handlerMap = completionHandlers.stream()
+            .collect(Collectors.toMap(
+                WorkflowCompletionHandler::getSupportedBusinessType,
+                handler -> handler
+            ));
+
+        logger.info("已注册 {} 个审批完成处理器: {}",
+            handlerMap.size(),
+            handlerMap.keySet());
+    }
 
     @Override
     @Transactional
@@ -1341,18 +1358,36 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         }
     }
 
+    /**
+     * 处理审批完成后的业务逻辑
+     * 使用策略模式，根据业务类型调用对应的处理器
+     */
     private void handleWorkflowCompletion(String businessType, Long businessId) {
-        if ("MATERIAL_ENTRY".equals(businessType)) {
-            materialApplicationService.updateStatus(businessId, "APPROVED");
-            assetService.updateStatusByApplicationId(businessId, "APPROVED");
+        WorkflowCompletionHandler handler = handlerMap.get(businessType);
+        if (handler == null) {
+            logger.warn("未找到业务类型 {} 的审批完成处理器", businessType);
+            return;
         }
+
+        logger.info("使用 {} 处理审批完成: businessType={}, businessId={}",
+            handler.getClass().getSimpleName(), businessType, businessId);
+        handler.onApproved(businessId, null);
     }
 
+    /**
+     * 处理审批驳回后的业务逻辑
+     * 使用策略模式，根据业务类型调用对应的处理器
+     */
     private void handleWorkflowRejection(String businessType, Long businessId) {
-        if ("MATERIAL_ENTRY".equals(businessType)) {
-            materialApplicationService.updateStatus(businessId, "REJECTED");
-            assetService.updateStatusByApplicationId(businessId, "REJECTED");
+        WorkflowCompletionHandler handler = handlerMap.get(businessType);
+        if (handler == null) {
+            logger.warn("未找到业务类型 {} 的审批驳回处理器", businessType);
+            return;
         }
+
+        logger.info("使用 {} 处理审批驳回: businessType={}, businessId={}",
+            handler.getClass().getSimpleName(), businessType, businessId);
+        handler.onRejected(businessId, null, null);
     }
 
     @Override

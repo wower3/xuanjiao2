@@ -37,6 +37,11 @@ public interface MaterialApplicationService {
     PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize);
 
     /**
+     * 查询草稿箱（支持标题筛选）
+     */
+    PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title);
+
+    /**
      * 查询我的申请单
      */
     PageResult<MaterialApplicationDTO> queryMyApplications(Long userId, Integer pageNum, Integer pageSize);

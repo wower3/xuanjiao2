@@ -977,7 +977,7 @@ function goBack() {
 }
 
 function goToDraftBox() {
-  router.push('/task/draft')
+  router.push('/task/draft-box')
 }
 
 function goToList() {

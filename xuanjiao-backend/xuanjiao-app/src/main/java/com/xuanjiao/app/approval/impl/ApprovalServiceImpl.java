@@ -17,15 +17,16 @@ import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
-import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
-import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,9 +64,9 @@ public class ApprovalServiceImpl implements ApprovalService {
     private DeptMapper deptMapper;
     @Resource
     private MaterialApplicationMapper materialApplicationMapper;
+    @Resource
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     @Override
     public PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize) {
         LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
@@ -174,10 +175,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         logger.info("开始审批: taskId={}, userId={}, passed={}, comment={}", taskId, userId, passed, comment);
 
         try {
-            // 调用工作流引擎完成任务
-            workflowEngineService.completeTask(taskId, userId, passed, comment);
-
-            // 获取任务和实例信息
+            // 获取任务和实例信息（在调用工作流引擎前获取，因为调用后实例状态可能变化）
             ApprovalTaskDO task = taskMapper.selectById(taskId);
             if (task == null) {
                 logger.error("任务不存在: taskId={}", taskId);
@@ -190,48 +188,15 @@ public class ApprovalServiceImpl implements ApprovalService {
                 throw new RuntimeException("审批实例不存在: " + task.getInstanceId());
             }
 
-            logger.info("审批完成，更新业务状态: instanceId={}, businessType={}, businessId={}, instanceStatus={}",
-                instance.getId(), instance.getBusinessType(), instance.getBusinessId(), instance.getStatus());
+            String businessType = instance.getBusinessType();
+            Long businessId = instance.getBusinessId();
+            logger.info("审批前信息: instanceId={}, businessType={}, businessId={}",
+                instance.getId(), businessType, businessId);
 
-            // 根据业务类型更新对应业务状态
-            if ("MATERIAL_ENTRY".equals(instance.getBusinessType())) {
-                // 素材录入审批：由工作流引擎的 handleWorkflowCompletion 处理
-                logger.info("素材录入审批，业务状态由工作流引擎处理: applicationId={}", instance.getBusinessId());
-            } else if ("ASSET".equals(instance.getBusinessType())) {
-                // 素材录入审批：更新素材状态
-                AssetDO asset = assetMapper.selectById(instance.getBusinessId());
-                if (asset != null) {
-                    if ("APPROVED".equals(instance.getStatus())) {
-                        asset.setStatus("APPROVED");
-                        assetMapper.updateById(asset);
-                        logger.info("素材状态已更新为APPROVED: assetId={}", asset.getId());
-                    } else if ("REJECTED".equals(instance.getStatus())) {
-                        asset.setStatus("REJECTED");
-                        assetMapper.updateById(asset);
-                        logger.info("素材状态已更新为REJECTED: assetId={}", asset.getId());
-                    }
-                } else {
-                    logger.warn("素材不存在: assetId={}", instance.getBusinessId());
-                }
-            } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
-                // 素材使用申请审批：更新申请状态
-                UsageApplyDO usageApply = usageApplyMapper.selectById(instance.getBusinessId());
-                if (usageApply != null) {
-                    if ("APPROVED".equals(instance.getStatus())) {
-                        usageApply.setStatus("APPROVED");
-                        usageApplyMapper.updateById(usageApply);
-                        logger.info("使用申请状态已更新为APPROVED: usageApplyId={}", usageApply.getId());
-                    } else if ("REJECTED".equals(instance.getStatus())) {
-                        usageApply.setStatus("REJECTED");
-                        usageApplyMapper.updateById(usageApply);
-                        logger.info("使用申请状态已更新为REJECTED: usageApplyId={}", usageApply.getId());
-                    }
-                } else {
-                    logger.warn("使用申请不存在: usageApplyId={}", instance.getBusinessId());
-                }
-            } else {
-                logger.warn("未知的业务类型: businessType={}, instanceId={}", instance.getBusinessType(), instance.getId());
-            }
+            // 调用工作流引擎完成任务
+            workflowEngineService.completeTask(taskId, userId, passed, comment);
+            // Note: Business status updates (strategy pattern) are handled by WorkflowEngineServiceImpl when the entire workflow completes
+
 
             logger.info("审批处理完成: taskId={}, userId={}", taskId, userId);
         } catch (Exception e) {

@@ -35,11 +35,6 @@ const router = createRouter({
           component: () => import('@/views/asset/usage-apply.vue')
         },
         {
-          path: 'asset/usage-list',
-          name: 'UsageList',
-          component: () => import('@/views/asset/usage-list.vue')
-        },
-        {
           path: 'workflow',
           name: 'Workflow',
           component: () => import('@/views/workflow/index.vue')
@@ -50,14 +45,19 @@ const router = createRouter({
           component: () => import('@/views/workflow/design.vue')
         },
         {
-          path: 'approval',
-          name: 'Approval',
-          component: () => import('@/views/approval/index.vue')
+          path: 'task/pending-approval',
+          name: 'PendingApproval',
+          component: () => import('@/views/task/pending-approval.vue')
         },
         {
-          path: 'task/draft',
+          path: 'task/my-initiated',
+          name: 'MyInitiated',
+          component: () => import('@/views/task/my-initiated.vue')
+        },
+        {
+          path: 'task/draft-box',
           name: 'DraftBox',
-          component: () => import('@/views/task/draft.vue')
+          component: () => import('@/views/task/draft-box.vue')
         },
         {
           path: 'task/in-progress',

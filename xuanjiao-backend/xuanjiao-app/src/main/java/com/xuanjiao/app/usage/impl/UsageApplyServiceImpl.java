@@ -205,6 +205,24 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     }
 
     @Override
+    public PageResult<UsageApplyDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
+        List<UsageApply> list = usageApplyRepository.findDraftsByUserId(userId, (pageNum - 1) * pageSize, pageSize);
+        long total = usageApplyRepository.countDraftsByUserId(userId);
+
+        // 按标题筛选
+        List<UsageApply> filteredList = list;
+        if (title != null && !title.isEmpty()) {
+            final String titleFilter = title;
+            filteredList = list.stream()
+                .filter(apply -> apply.getTitle() != null && apply.getTitle().contains(titleFilter))
+                .collect(Collectors.toList());
+        }
+
+        List<UsageApplyDTO> dtoList = filteredList.stream().map(this::convert).collect(Collectors.toList());
+        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
+    }
+
+    @Override
     public PageResult<UsageApplyDTO> queryMyApplications(Long userId, Integer pageNum, Integer pageSize) {
         List<UsageApply> list = usageApplyRepository.findByUserId(userId, (pageNum - 1) * pageSize, pageSize);
         long total = usageApplyRepository.countByUserId(userId);

@@ -23,6 +23,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class MaterialApplicationServiceImpl implements MaterialApplicationService {
+
+    private static final Logger logger = LoggerFactory.getLogger(MaterialApplicationServiceImpl.class);
 
     @Autowired
     private MaterialApplicationRepository materialApplicationRepository;
@@ -133,8 +137,19 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             throw new RuntimeException("请至少上传一个素材文件");
         }
 
-        // Update asset status from DRAFT/REJECTED to PENDING
+        // 更新素材状态：将所有关联素材的状态统一更新为PENDING
+        // 注意：可能存在部分素材已经是PENDING状态的情况（如复制后添加新素材）
         assetService.updateStatusByApplicationId(id, "PENDING");
+
+        // 再次验证所有素材状态是否正确
+        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> verifyWrapper = new LambdaQueryWrapper<>();
+        verifyWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getApplicationId, id);
+        List<com.xuanjiao.infrastructure.dataobject.AssetDO> allAssets = assetMapper.selectList(verifyWrapper);
+        boolean allPending = allAssets.stream().allMatch(a -> "PENDING".equals(a.getStatus()));
+        if (!allPending) {
+            logger.warn("申请单{}存在非PENDING状态的素材，强制更新", id);
+            assetService.updateStatusByApplicationId(id, "PENDING");
+        }
 
         application.setWorkflowId(workflowId);
         application.setStatus("PENDING");
@@ -196,6 +211,27 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         List<MaterialApplicationDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
+    }
+
+    @Override
+    public PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
+        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
+        // 过滤出草稿状态
+        list = list.stream().filter(app -> "DRAFT".equals(app.getStatus())).collect(Collectors.toList());
+
+        // 按标题筛选
+        List<MaterialApplication> filteredList = list;
+        if (title != null && !title.isEmpty()) {
+            final String titleFilter = title;
+            filteredList = list.stream()
+                .filter(app -> app.getTitle() != null && app.getTitle().contains(titleFilter))
+                .collect(Collectors.toList());
+        }
+
+        long total = materialApplicationRepository.countByApplicant(userId);
+
+        List<MaterialApplicationDTO> dtoList = filteredList.stream().map(this::convert).collect(Collectors.toList());
+        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
     }
 
     @Override
@@ -385,6 +421,17 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
                 newAssetTag.setAssetId(newAsset.getId());
                 newAssetTag.setTagId(assetTag.getTagId());
                 assetTagMapper.insert(newAssetTag);
+            }
+        }
+
+        // 复制完成后，确保所有复制的素材状态都是 DRAFT（草稿状态）
+        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> verifyWrapper = new LambdaQueryWrapper<>();
+        verifyWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getApplicationId, saved.getId());
+        List<com.xuanjiao.infrastructure.dataobject.AssetDO> copiedAssets = assetMapper.selectList(verifyWrapper);
+        for (com.xuanjiao.infrastructure.dataobject.AssetDO asset : copiedAssets) {
+            if (!"DRAFT".equals(asset.getStatus())) {
+                asset.setStatus("DRAFT");
+                assetMapper.updateById(asset);
             }
         }
 

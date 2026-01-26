@@ -39,6 +39,11 @@ public interface UsageApplyService {
     PageResult<UsageApplyDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize);
 
     /**
+     * 查询草稿箱（支持标题筛选）
+     */
+    PageResult<UsageApplyDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title);
+
+    /**
      * 查询我的申请列表（全部）
      */
     PageResult<UsageApplyDTO> queryMyApplications(Long userId, Integer pageNum, Integer pageSize);

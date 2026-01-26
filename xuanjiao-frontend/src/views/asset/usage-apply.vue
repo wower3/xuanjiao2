@@ -688,7 +688,7 @@ async function handleSaveDraft() {
       ElMessage.success('保存成功')
     } else {
       const res = await createUsageDraft(data)
-      currentId.value = res.data
+      currentId.value = res.data.id  // 修复：获取 ID 而不是整个对象
       isEdit.value = true
       ElMessage.success('草稿已保存')
     }
@@ -838,11 +838,11 @@ function buildSubmitData() {
 }
 
 function goToList() {
-  router.push('/asset/usage-list')
+  router.push('/task/my-initiated')
 }
 
 function goToDrafts() {
-  router.push('/asset/usage-list?status=DRAFT')
+  router.push('/task/draft-box')
 }
 
 function goBack() {
