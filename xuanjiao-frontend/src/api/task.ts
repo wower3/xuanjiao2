@@ -48,26 +48,4 @@ export function restartSubWorkflow(id: number, approverIds: number[]) {
 
 // ========== 工作流审批人选择相关API ==========
 // 由 ApproverSelectionController 处理：/workflow/*
-export function selectNextStageApprovers(data: any) {
-  return request.post('/workflow/select-next-stage-approvers', data)
-}
-
-export function selectNextStageApproversWithSubWorkflows(data: any) {
-  return request.post('/workflow/select-next-stage-approvers-with-subworkflows', data)
-}
-
-export function selectFirstStageApprovers(data: any) {
-  return request.post('/workflow/select-first-stage-approvers', data)
-}
-
-export function selectFirstStageApproversWithSubWorkflows(data: any) {
-  return request.post('/workflow/select-first-stage-approvers-with-subworkflows', data)
-}
-
-export function getSubWorkflowFirstStageApprovers(params: any) {
-  return request.get('/workflow/sub-workflow-approvers', { params })
-}
-
-export function selectSubWorkflowFirstStageApprovers(data: any) {
-  return request.post('/workflow/select-sub-workflow-approvers', data)
-}
+// 注意：workflow 相关 API 已统一到 @/api/workflow.ts

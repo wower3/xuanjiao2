@@ -94,12 +94,17 @@
                   <el-tag v-if="progress.isSubWorkflow === 1" type="info" size="small">子流程</el-tag>
                 </div>
                 <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
-                  <span v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
-                    {{ approver.name }}
-                    <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
-                    <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
-                    <span v-else style="color: #909399;">待审批</span>
-                  </span>
+                  <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                    <div class="approver-name">
+                      {{ approver.name }}
+                      <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                      <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                      <span v-else style="color: #909399;">待审批</span>
+                    </div>
+                    <div v-if="approver.comment" class="approver-comment">
+                      <span class="comment-label">意见:</span> {{ approver.comment }}
+                    </div>
+                  </div>
                 </div>
                 <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
                   尚未到达此阶段
@@ -295,7 +300,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
 import { getPendingApproval, getTaskDetail, approve, returnTask } from '@/api/task'
-import { selectNextStageApproversWithSubWorkflows } from '@/api/task'
+import { selectNextStageApproversWithSubWorkflows } from '@/api/workflow'
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -668,7 +673,31 @@ onMounted(loadData)
 }
 
 .approver-item {
-  margin-right: 15px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
+.approver-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.approver-comment {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #606266;
+  border-left: 2px solid #E6A23C;
+}
+
+.comment-label {
+  font-weight: bold;
+  color: #909399;
+  margin-right: 4px;
 }
 
 .progress-status {

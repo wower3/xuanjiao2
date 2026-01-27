@@ -54,7 +54,7 @@
 
     <!-- 我发起的详情对话框 -->
     <el-dialog v-model="showInstanceDetailDialog" title="工单详情" width="1000px">
-      <div v-if="instanceDetail" v-loading="loadingDetail">
+      <div v-if="instanceDetail">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="申请单ID" :span="2">
             AP-{{ instanceDetail.applicationId || instanceDetail.id }}
@@ -97,10 +97,49 @@
           <div v-if="instanceDetail.assetList && instanceDetail.assetList.length > 0" style="margin-top: 15px">
             <div class="asset-list-header">素材清单</div>
             <el-table :data="instanceDetail.assetList" size="small" border>
-              <el-table-column prop="id" label="素材ID" width="100" />
-              <el-table-column prop="name" label="素材名称" min-width="200" />
-              <el-table-column prop="type" label="类型" width="100" />
-              <el-table-column label="状态" width="100">
+              <el-table-column prop="id" label="素材ID" width="80" />
+              <el-table-column prop="name" label="素材名称" min-width="150" />
+              <el-table-column prop="type" label="类型" width="80" />
+              <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="publishChannel" label="发布渠道" width="120" show-overflow-tooltip />
+              <el-table-column label="预览" width="100">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.type === 'IMAGE' && (row.thumbnailPath || row.filePath)"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="previewImage(row)"
+                  >
+                    预览图片
+                  </el-button>
+                  <el-button
+                    v-else-if="row.type === 'VIDEO' && row.filePath"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="previewVideo(row)"
+                  >
+                    预览视频
+                  </el-button>
+                  <span v-else style="color: #909399; font-size: 12px;">不支持预览</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="附件" width="100">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.copyrightFilePath"
+                    type="success"
+                    size="small"
+                    link
+                    @click="downloadAttachment(row.copyrightFilePath, row.name)"
+                  >
+                    下载附件
+                  </el-button>
+                  <span v-else style="color: #909399; font-size: 12px;">无附件</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="90">
                 <template #default="{ row }">
                   <el-tag :type="getAssetStatusType(row.status)" size="small">
                     {{ getAssetStatusText(row.status) }}
@@ -153,12 +192,17 @@
                     </el-tag>
                   </div>
                   <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
-                    <span v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
-                      {{ approver.name }}
-                      <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
-                      <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
-                      <span v-else style="color: #909399;">待审批</span>
-                    </span>
+                    <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                      <div class="approver-name">
+                        {{ approver.name }}
+                        <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                        <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                        <span v-else style="color: #909399;">待审批</span>
+                      </div>
+                      <div v-if="approver.comment" class="approver-comment">
+                        <span class="comment-label">意见:</span> {{ approver.comment }}
+                      </div>
+                    </div>
                   </div>
                   <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
                     尚未到达此阶段
@@ -212,12 +256,17 @@
                     </el-tag>
                   </div>
                   <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
-                    <span v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
-                      {{ approver.name }}
-                      <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
-                      <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
-                      <span v-else style="color: #909399;">待审批</span>
-                    </span>
+                    <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                      <div class="approver-name">
+                        {{ approver.name }}
+                        <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                        <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                        <span v-else style="color: #909399;">待审批</span>
+                      </div>
+                      <div v-if="approver.comment" class="approver-comment">
+                        <span class="comment-label">意见:</span> {{ approver.comment }}
+                      </div>
+                    </div>
                   </div>
                   <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
                     尚未到达此阶段
@@ -269,7 +318,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
-import { getMyInitiated, getInstanceDetail, withdrawInstance } from '@/api/task'
+import { getMyInitiated, withdrawInstance } from '@/api/task'
 import { copyApplication } from '@/api/materialApplication'
 
 const router = useRouter()
@@ -280,7 +329,6 @@ const total = ref(0)
 const statusFilter = ref<string>('')
 const query = reactive({ pageNum: 1, pageSize: 10 })
 const showInstanceDetailDialog = ref(false)
-const loadingDetail = ref(false)
 const withdrawing = ref(false)
 const copying = ref(false)
 
@@ -297,6 +345,7 @@ const instanceDetail = ref<any>({
   assetStatus: '',
   assetCount: null,
   createTime: '',
+  applicantName: '',
   pendingApprovers: [],
   approvalProgress: []
 })
@@ -337,47 +386,8 @@ function handleStatusFilterChange() {
 }
 
 // 打开"我发起的"详情
-async function handleOpenInstanceDetail(row: any) {
-  loadingDetail.value = true
-  try {
-    const res = await getInstanceDetail(row.id)
-    if (res.data) {
-      instanceDetail.value = {
-        id: res.data.id || row.id,
-        applicationId: res.data.applicationId || row.applicationId,
-        businessName: res.data.businessName || row.businessName,
-        workflowName: res.data.workflowName || row.workflowName,
-        currentStageName: res.data.currentStageName || '',
-        approveType: res.data.approveType || '',
-        status: res.data.status || row.status,
-        assetType: res.data.assetType || '',
-        assetStatus: res.data.assetStatus || '',
-        assetCount: res.data.assetCount,
-        createTime: res.data.createTime || row.createTime,
-        pendingApprovers: res.data.pendingApprovers || [],
-        approvalProgress: res.data.approvalProgress || []
-      }
-    }
-  } catch (e: any) {
-    ElMessage.error(e.message || '加载详情失败')
-    instanceDetail.value = {
-      id: row.id,
-      applicationId: row.applicationId,
-      businessName: row.businessName,
-      workflowName: row.workflowName,
-      currentStageName: row.currentStageName || '',
-      approveType: row.approveType || '',
-      status: row.status,
-      assetType: row.assetType || '',
-      assetStatus: row.assetStatus || '',
-      assetCount: row.assetCount,
-      createTime: row.createTime,
-      pendingApprovers: row.pendingApprovers || [],
-      approvalProgress: row.approvalProgress || []
-    }
-  } finally {
-    loadingDetail.value = false
-  }
+function handleOpenInstanceDetail(row: any) {
+  instanceDetail.value = row
   showInstanceDetailDialog.value = true
 }
 
@@ -473,6 +483,61 @@ function getAssetStatusText(status: string) {
     'USED': '已使用'
   }
   return textMap[status] || status
+}
+
+// 预览图片 - 使用后端API
+function previewImage(asset: any) {
+  if (asset.id) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+    const fullUrl = `${baseUrl}/asset/preview/${asset.id}`
+    window.open(fullUrl, '_blank')
+  } else {
+    ElMessage.warning('素材ID为空，无法预览')
+  }
+}
+
+// 预览视频 - 使用后端API
+function previewVideo(asset: any) {
+  if (asset.id) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+    const fullUrl = `${baseUrl}/asset/preview/${asset.id}`
+    window.open(fullUrl, '_blank')
+  } else {
+    ElMessage.warning('素材ID为空，无法预览')
+  }
+}
+
+// 下载附件 - 使用后端API
+async function downloadAttachment(filePath: string, assetName: string) {
+  try {
+    // 注意：filePath 是版权附件路径，不是素材路径，需要直接访问
+    // 检查是否是绝对路径（Windows 盘符开头）
+    const isAbsolutePath = /^[A-Za-z]:/.test(filePath)
+    const isHttpUrl = filePath.startsWith('http://') || filePath.startsWith('https://')
+
+    let downloadUrl: string
+    if (isHttpUrl) {
+      downloadUrl = filePath
+    } else if (isAbsolutePath) {
+      // 绝对路径无法直接访问，提示用户
+      ElMessage.warning('版权附件仅支持在线查看，暂不支持下载')
+      return
+    } else {
+      // 相对路径，拼接baseUrl
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+      downloadUrl = `${baseUrl}${filePath}`
+    }
+
+    // 创建隐藏的a标签触发下载
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = `${assetName}-附件.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (e: any) {
+    ElMessage.error('下载失败: ' + (e.message || '未知错误'))
+  }
 }
 
 onMounted(loadData)
@@ -627,5 +692,34 @@ onMounted(loadData)
   font-size: 15px;
   font-weight: bold;
   color: #303133;
+}
+
+/* 审批人意见样式 */
+.approver-item {
+  margin-bottom: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
+.approver-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.approver-comment {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #fff;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #606266;
+  border-left: 2px solid #E6A23C;
+}
+
+.comment-label {
+  font-weight: bold;
+  color: #909399;
+  margin-right: 4px;
 }
 </style>

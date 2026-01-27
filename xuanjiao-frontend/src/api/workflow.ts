@@ -4,18 +4,6 @@ export function getWorkflowList() {
   return request.get('/workflow/list')
 }
 
-/**
- * 查询工作流列表（支持筛选）
- * @param params 查询参数
- */
-export function getWorkflows(params?: {
-  type?: string
-  status?: number
-  pageNum?: number
-  pageSize?: number
-}) {
-  return request.get('/workflow/list', { params })
-}
 
 export function getWorkflowById(id: number) {
   return request.get(`/workflow/${id}`)
@@ -31,30 +19,6 @@ export function updateWorkflow(data: any) {
 
 export function updateWorkflowStatus(id: number, status: number) {
   return request.put(`/workflow/${id}/status`, null, { params: { status } })
-}
-
-/**
- * 获取下一层可选审批人
- * @param params 查询参数
- */
-export function getNextStageApprovers(params: {
-  stageId: number
-  instanceId: number
-  applicantId: number
-  keyword?: string
-}) {
-  return request.get('/workflow/next-stage-approvers', { params })
-}
-
-/**
- * 选择下一层审批人
- * @param data 请求数据
- */
-export function selectNextStageApprovers(data: {
-  taskId: number
-  approverIds: number[]
-}) {
-  return request.post('/workflow/select-next-stage-approvers', data)
 }
 
 /**
@@ -113,17 +77,6 @@ export function getFirstStageApprovers(params: {
   keyword?: string
 }) {
   return request.get('/workflow/first-stage-approvers', { params })
-}
-
-/**
- * 选择第一层审批人
- * @param data 请求数据
- */
-export function selectFirstStageApprovers(data: {
-  instanceId: number
-  approverIds: number[]
-}) {
-  return request.post('/workflow/select-first-stage-approvers', data)
 }
 
 /**

@@ -321,7 +321,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                     map.put("assetStatus", firstAsset.getStatus());
                     map.put("assetCount", assets.size()); // 素材数量
 
-                    // 构建素材列表（包含ID和名称）
+                    // 构建素材列表（包含完整信息）
                     List<Map<String, Object>> assetList = new ArrayList<>();
                     for (AssetDO asset : assets) {
                         Map<String, Object> assetInfo = new HashMap<>();
@@ -329,6 +329,15 @@ public class ApprovalServiceImpl implements ApprovalService {
                         assetInfo.put("name", asset.getName());
                         assetInfo.put("type", asset.getType());
                         assetInfo.put("status", asset.getStatus());
+                        // 文件路径（用于预览和下载）
+                        assetInfo.put("filePath", asset.getFilePath());
+                        assetInfo.put("thumbnailPath", asset.getThumbnailPath());
+                        assetInfo.put("fileSize", asset.getFileSize());
+                        // 申请单填写信息
+                        assetInfo.put("description", asset.getDescription());
+                        assetInfo.put("publishChannel", asset.getPublishChannel());
+                        // 附件文件路径
+                        assetInfo.put("copyrightFilePath", asset.getCopyrightFilePath());
                         assetList.add(assetInfo);
                     }
                     map.put("assetList", assetList);
