@@ -9,9 +9,10 @@ import java.time.LocalDateTime;
 public class RoleDO {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private String code;
     private String name;
     private String description;
+    private String deptScope;
+    private String roleType;
     private Integer status;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

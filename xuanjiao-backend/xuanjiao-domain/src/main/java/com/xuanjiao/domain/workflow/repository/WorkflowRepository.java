@@ -6,6 +6,7 @@ import java.util.List;
 public interface WorkflowRepository {
     Workflow findById(Long id);
     List<Workflow> findAll();
+    List<Workflow> findByType(String type);
     void save(Workflow workflow);
     void update(Workflow workflow);
     void deleteById(Long id);

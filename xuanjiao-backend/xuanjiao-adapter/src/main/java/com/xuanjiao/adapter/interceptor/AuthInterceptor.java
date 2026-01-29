@@ -24,6 +24,10 @@ public class AuthInterceptor implements HandlerInterceptor {
             response.getWriter().write("{\"code\":401,\"message\":\"未登录\"}");
             return false;
         }
+        // 移除 Bearer 前缀
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
         try {
             Long userId = jwtUtil.getUserId(token);
             request.setAttribute("userId", userId);

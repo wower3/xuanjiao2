@@ -1,6 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/stores/user'
-import { getCurrentPermissionCodes } from '@/api/permission'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,13 +12,32 @@ const router = createRouter({
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
-      redirect: '/asset',
       meta: { requiresAuth: true },
       children: [
         {
           path: 'asset',
           name: 'Asset',
           component: () => import('@/views/asset/index.vue')
+        },
+        {
+          path: 'asset/material-list',
+          name: 'MaterialList',
+          component: () => import('@/views/asset/material-list.vue')
+        },
+        {
+          path: 'asset/material-entry',
+          name: 'MaterialEntry',
+          component: () => import('@/views/asset/material-entry.vue')
+        },
+        {
+          path: 'asset/usage-apply',
+          name: 'UsageApply',
+          component: () => import('@/views/asset/usage-apply.vue')
+        },
+        {
+          path: 'asset/deletion',
+          name: 'AssetDeletion',
+          component: () => import('@/views/asset/deletion/index.vue')
         },
         {
           path: 'workflow',
@@ -33,9 +50,29 @@ const router = createRouter({
           component: () => import('@/views/workflow/design.vue')
         },
         {
-          path: 'approval',
-          name: 'Approval',
-          component: () => import('@/views/approval/index.vue')
+          path: 'task/pending-approval',
+          name: 'PendingApproval',
+          component: () => import('@/views/task/pending-approval.vue')
+        },
+        {
+          path: 'task/my-initiated',
+          name: 'MyInitiated',
+          component: () => import('@/views/task/my-initiated.vue')
+        },
+        {
+          path: 'task/draft-box',
+          name: 'DraftBox',
+          component: () => import('@/views/task/draft-box.vue')
+        },
+        {
+          path: 'task/in-progress',
+          name: 'WorkflowInProgress',
+          component: () => import('@/views/task/workflow-in-progress.vue')
+        },
+        {
+          path: 'task/material-approval',
+          name: 'MaterialApproval',
+          component: () => import('@/views/task/material-approval.vue')
         },
         {
           path: 'log',
@@ -56,29 +93,23 @@ const router = createRouter({
           path: 'system/role',
           name: 'Role',
           component: () => import('@/views/system/role.vue')
+        },
+        {
+          path: 'system/menu',
+          name: 'Menu',
+          component: () => import('@/views/system/menu.vue')
         }
       ]
     }
   ]
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   if (to.meta.requiresAuth !== false && !token) {
     next('/login')
   } else if (to.path === '/login' && token) {
-    next('/')
-  } else if (token) {
-    const userStore = useUserStore()
-    // 如果还没有加载权限，则加载
-    if (userStore.permissions.length === 0) {
-      try {
-        const res = await getCurrentPermissionCodes()
-        userStore.setPermissions(res.data || [])
-      } catch (e) {
-        console.error('加载权限失败', e)
-      }
-    }
+    // 登录后重定向到首页，不需要在这里处理，由 MainLayout 处理
     next()
   } else {
     next()

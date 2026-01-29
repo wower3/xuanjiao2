@@ -15,6 +15,8 @@ public class UserDO {
     private String email;
     private String phone;
     private Long deptId;
+    @TableField("role_id")
+    private Long roleId;
     private Integer status;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

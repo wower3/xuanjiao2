@@ -13,6 +13,9 @@ public class UsageLogDO {
     private Long userId;
     private String action;
     private String ip;
+    private String deptName;
+    private String usageDescription;
+    private String usagePublishChannel;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

@@ -2,6 +2,7 @@ package com.xuanjiao.domain.asset.entity;
 
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class Asset {
@@ -15,6 +16,13 @@ public class Asset {
     private String status;
     private String copyright;
     private Long uploadUserId;
+    private Long applicationId;
+    private String copyrightFilePath;
+    private String copyrightText;
+    private String description;
+    private String publishChannel;
+    private List<Long> tagIds;
+
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

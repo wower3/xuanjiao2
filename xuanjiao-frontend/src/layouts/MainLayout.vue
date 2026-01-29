@@ -3,34 +3,26 @@
     <el-aside width="200px">
       <div class="logo">宣传教育平台</div>
       <el-menu :default-active="route.path" router>
-        <el-menu-item index="/asset">
-          <el-icon><Picture /></el-icon>
-          <span>素材管理</span>
-        </el-menu-item>
-        <el-menu-item index="/workflow">
-          <el-icon><Setting /></el-icon>
-          <span>流程管理</span>
-        </el-menu-item>
-        <el-menu-item index="/approval">
-          <el-icon><Document /></el-icon>
-          <span>审批工单</span>
-        </el-menu-item>
-        <el-menu-item index="/log">
-          <el-icon><List /></el-icon>
-          <span>使用日志</span>
-        </el-menu-item>
-        <el-menu-item index="/system/dept">
-          <el-icon><OfficeBuilding /></el-icon>
-          <span>部门管理</span>
-        </el-menu-item>
-        <el-menu-item index="/system/user">
-          <el-icon><User /></el-icon>
-          <span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="/system/role">
-          <el-icon><Key /></el-icon>
-          <span>角色管理</span>
-        </el-menu-item>
+        <template v-for="menu in menuList" :key="menu.id">
+          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.path">
+            <template #title>
+              <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
+              <span>{{ menu.name }}</span>
+            </template>
+            <el-menu-item
+              v-for="subMenu in menu.children"
+              :key="subMenu.id"
+              :index="subMenu.path"
+            >
+              <el-icon v-if="subMenu.icon"><component :is="subMenu.icon" /></el-icon>
+              <span>{{ subMenu.name }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else :index="menu.path">
+            <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
+            <span>{{ menu.name }}</span>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
     <el-container>
@@ -53,12 +45,59 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { getCurrentMenus } from '@/api/menu'
+import {
+  Picture, Setting, Document, List,
+  OfficeBuilding, User, Key, Menu as MenuIcon
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const menuList = ref<any[]>([])
+
+// 图标映射
+const iconMap: Record<string, any> = {
+  'Picture': Picture,
+  'Setting': Setting,
+  'Document': Document,
+  'List': List,
+  'OfficeBuilding': OfficeBuilding,
+  'User': User,
+  'Key': Key,
+  'Menu': MenuIcon
+}
+
+async function loadMenus() {
+  try {
+    const res = await getCurrentMenus()
+    const menus = res.data || []
+    // 转换图标名称为组件
+    menuList.value = menus.map((menu: any) => ({
+      ...menu,
+      icon: iconMap[menu.icon] || MenuIcon,
+      children: menu.children?.map((sub: any) => ({
+        ...sub,
+        icon: iconMap[sub.icon] || MenuIcon
+      }))
+    }))
+
+    // 如果当前是根路径，重定向到用户有权限的第一个页面
+    if (route.path === '/' && menus.length > 0) {
+      const firstMenu = menus[0]
+      if (firstMenu.children && firstMenu.children.length > 0) {
+        router.push(firstMenu.children[0].path)
+      } else {
+        router.push(firstMenu.path)
+      }
+    }
+  } catch (e) {
+    console.error('加载菜单失败', e)
+  }
+}
 
 function handleCommand(cmd: string) {
   if (cmd === 'logout') {
@@ -66,6 +105,10 @@ function handleCommand(cmd: string) {
     router.push('/login')
   }
 }
+
+onMounted(() => {
+  loadMenus()
+})
 </script>
 
 <style scoped>

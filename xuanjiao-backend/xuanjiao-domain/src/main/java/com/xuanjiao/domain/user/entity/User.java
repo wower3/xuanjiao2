@@ -12,6 +12,7 @@ public class User {
     private String email;
     private String phone;
     private Long deptId;
+    private Long roleId;
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
