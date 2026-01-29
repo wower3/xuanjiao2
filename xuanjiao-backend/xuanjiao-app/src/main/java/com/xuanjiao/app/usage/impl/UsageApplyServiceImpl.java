@@ -75,9 +75,17 @@ public class UsageApplyServiceImpl implements UsageApplyService {
                     throw new RuntimeException("素材不存在: " + config.getAssetId());
                 }
 
-                // 检查素材状态
+                // 检查素材状态：只能使用APPROVED状态的素材
+                // DRAFT/PENDING/DELETED状态的素材不允许使用
+                // 软删除（deleted=1）的素材不允许使用
+                if (asset.getDeleted() != null && asset.getDeleted() == 1) {
+                    throw new RuntimeException("该素材已被删除，无法使用: " + asset.getName());
+                }
                 if (!"APPROVED".equals(asset.getStatus())) {
-                    throw new RuntimeException("只能使用已通过的素材: " + asset.getName());
+                    String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
+                                     "PENDING".equals(asset.getStatus()) ? "待审批" :
+                                     "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
+                    throw new RuntimeException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
                 }
 
                 UsageApplyAsset applyAsset = new UsageApplyAsset();
@@ -122,6 +130,22 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         if (cmd.getAssetConfigs() != null && !cmd.getAssetConfigs().isEmpty()) {
             List<UsageApplyAsset> assets = new ArrayList<>();
             for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
+                AssetDO asset = assetMapper.selectById(config.getAssetId());
+                if (asset == null) {
+                    throw new RuntimeException("素材不存在: " + config.getAssetId());
+                }
+
+                // 检查素材状态：只能使用APPROVED状态的素材
+                if (asset.getDeleted() != null && asset.getDeleted() == 1) {
+                    throw new RuntimeException("该素材已被删除，无法使用: " + asset.getName());
+                }
+                if (!"APPROVED".equals(asset.getStatus())) {
+                    String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
+                                     "PENDING".equals(asset.getStatus()) ? "待审批" :
+                                     "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
+                    throw new RuntimeException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
+                }
+
                 UsageApplyAsset applyAsset = new UsageApplyAsset();
                 applyAsset.setUsageApplyId(id);
                 applyAsset.setAssetId(config.getAssetId());
@@ -253,8 +277,24 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     @Override
     public boolean canUseAsset(Long assetId, Long userId) {
-        // 通过中间表检查是否有已通过的申请
         logger.info("检查用户下载权限 - assetId: {}, userId: {}", assetId, userId);
+
+        // 首先检查素材状态：DELETED状态或软删除的素材不可使用
+        AssetDO asset = assetMapper.selectById(assetId);
+        if (asset == null) {
+            logger.info("素材不存在 - assetId: {}", assetId);
+            return false;
+        }
+        if (asset.getDeleted() != null && asset.getDeleted() == 1) {
+            logger.info("素材已被软删除，不可使用 - assetId: {}", assetId);
+            return false;
+        }
+        if ("DELETED".equals(asset.getStatus())) {
+            logger.info("素材状态为DELETED，不可使用 - assetId: {}", assetId);
+            return false;
+        }
+
+        // 通过中间表检查是否有已通过的申请
         List<UsageApplyAsset> applyAssets = usageApplyAssetRepository.findByAssetId(assetId);
         logger.info("查询到 {} 条使用申请记录", applyAssets.size());
 

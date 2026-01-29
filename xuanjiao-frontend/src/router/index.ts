@@ -35,6 +35,11 @@ const router = createRouter({
           component: () => import('@/views/asset/usage-apply.vue')
         },
         {
+          path: 'asset/deletion',
+          name: 'AssetDeletion',
+          component: () => import('@/views/asset/deletion/index.vue')
+        },
+        {
           path: 'workflow',
           name: 'Workflow',
           component: () => import('@/views/workflow/index.vue')

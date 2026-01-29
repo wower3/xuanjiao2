@@ -297,6 +297,14 @@ Core workflow orchestration:
 - `areAllSubWorkflowsComplete()` - Check if all sub-workflows finished
 - `checkParentCompletion()` - Check parent completion after sub-workflow ends
 
+### AssetDeletionCleanupTask
+Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/schedule/AssetDeletionCleanupTask.java`
+Scheduled task for asset soft deletion:
+- Runs daily at 2:00 AM (`@Scheduled(cron = "0 0 2 * * ?")`)
+- Finds assets with `status='DELETED'` AND `deletion_approve_time < 7 days ago` AND `deleted=0`
+- Sets `deleted=1` to soft delete (MyBatis Plus @TableLogic hides these from queries)
+- `cleanupDeletedAssetsManually()` - Public method for manual triggering (used by admin API)
+
 ## Configuration Files
 
 ### Backend Configuration
@@ -321,9 +329,43 @@ Core workflow orchestration:
 - Duplicate files (same MD5) are not stored twice
 - Three user roles: Regular users, Approvers, Administrators
 
+### Asset Deletion Workflow
+The system supports a two-stage asset deletion process:
+
+**Stage 1: DELETED Status**
+- Triggered by approval of asset deletion application (ASSET_DELETION workflow)
+- Sets `status = 'DELETED'` and `deletion_approve_time = NOW()`
+- Asset remains visible in list but marked as "已删除"
+- Asset cannot be used for new applications or downloaded
+
+**Stage 2: Soft Delete (deleted=1)**
+- Triggered by scheduled task 7 days after deletion approval
+- Sets `deleted = 1` (MyBatis Plus @TableLogic)
+- Asset completely hidden from all queries (MyBatis Plus automatically filters)
+- Asset is effectively removed from the system
+
+**Scheduled Task:**
+- Class: `AssetDeletionCleanupTask` in `xuanjiao-app/src/main/java/com/xuanjiao/app/schedule/`
+- Schedule: Every day at 2:00 AM (`@Scheduled(cron = "0 0 2 * * ?")`)
+- Logic: Find assets where `status='DELETED'` AND `deletion_approve_time < 7 days ago` AND `deleted=0`, then set `deleted=1`
+
+**Admin Testing Features (ROLE_ID=1 only):**
+- `PUT /asset/admin/{id}/adjust-delete-time` - Sets `deletion_approve_time` to 7 days ago (for testing scheduled task)
+- `POST /asset/admin/trigger-cleanup` - Manually triggers the cleanup task (returns count of deleted assets)
+- Frontend button "执行清理" on asset list page (top-right corner)
+
+**Status Visibility Rules:**
+| Status | Admin | Regular User | Notes |
+|--------|-------|--------------|-------|
+| APPROVED | ✅ | ✅ | Normal visible assets |
+| PENDING | ✅ | ❌ | Pending approval |
+| DELETED | ✅ | ✅ | Marked as deleted, visible but unusable |
+| DRAFT | ❌ | ❌ | Never shown |
+| deleted=1 | ❌ | ❌ | Completely hidden (soft deleted) |
+
 ### Workflow & Sub-Workflow Rules
 - **Role-based binding**: Workflows can be bound to specific roles via `bound_role_id`
-- **Workflow types**: ASSET_UPLOAD (素材录入), ASSET_USAGE (素材使用)
+- **Workflow types**: ASSET_UPLOAD (素材录入), ASSET_USAGE (素材使用), ASSET_DELETION (素材删除)
 - **First approver selection**: Only first approver selects next-stage and sub-workflow approvers
 - **OR-sign**: First to approve becomes first approver; other tasks auto-cancel
 - **AND-sign**: Task marked `is_first_approver=1` at creation selects approvers
@@ -343,6 +385,29 @@ Core workflow orchestration:
 - Sub-workflow approver IDs are stored as JSON in `sub_workflow_approver_ids` fields
 - See `WORKFLOW_REFACTOR_SUMMARY.md` for comprehensive workflow system documentation
 
+### MyBatis Plus Best Practices
+
+**Always use LambdaQueryWrapper/LambdaUpdateWrapper instead of QueryWrapper:**
+
+```java
+// ❌ AVOID: String-based field names (error-prone)
+QueryWrapper<AssetDO> wrapper = new QueryWrapper<>();
+wrapper.eq("status", "DELETED")
+       .lt("deletion_approve_time", oneWeekAgo);  // Typo risk!
+
+// ✅ PREFER: Lambda expressions (type-safe)
+LambdaUpdateWrapper<AssetDO> wrapper = new LambdaUpdateWrapper<>();
+wrapper.eq(AssetDO::getStatus, "DELETED")
+       .lt(AssetDO::getDeletionApproveTime, oneWeekAgo)
+       .set(AssetDO::getDeleted, 1);
+```
+
+**Why Lambda is better:**
+- Compile-time checking - typos caught at build time
+- IDE auto-completion support
+- Refactor-friendly (field renames automatically update)
+- No confusion between database column names (underscore) vs Java field names (camelCase)
+
 ### Important Constraints & Gotchas
 
 **Workflow System:**
@@ -359,8 +424,11 @@ Core workflow orchestration:
 
 **Asset Management:**
 - Assets cannot be deleted if they have associated usage records (check `usage_apply_asset`)
-- Logical deletion is used (sets `deleted=1`)
+- **Two-stage deletion process**: DELETED status (visible, unusable) → deleted=1 (hidden)
+- MyBatis Plus `@TableLogic` on `deleted` field automatically filters out soft-deleted records
 - MD5 deduplication means same file content shares storage
+- DELETED status assets cannot be used in new usage applications or downloaded
+- Only admins (ROLE_ID=1) can trigger manual cleanup or adjust deletion times
 
 **Database Schema Changes:**
 - Always create a new migration script with a descriptive name

@@ -53,3 +53,19 @@ export function uploadCopyrightFile(file: File): Promise<{ filePath: string }> {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+// 管理员彻底删除素材
+// 管理员彻底删除素材
+export function adminDeleteAsset(id: number, reason: string) {
+  return request.delete(`/asset/admin/${id}`, { params: { reason } })
+}
+
+// 管理员调整素材删除时间（测试功能）
+export function adjustAssetDeleteTime(id: number) {
+  return request.put(`/asset/admin/${id}/adjust-delete-time`)
+}
+
+// 管理员手动触发定时任务（测试功能）
+export function triggerCleanupTask() {
+  return request.post('/asset/admin/trigger-cleanup')
+}

@@ -22,6 +22,8 @@ import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -65,6 +67,9 @@ public class ApprovalServiceImpl implements ApprovalService {
     @Resource
     private MaterialApplicationMapper materialApplicationMapper;
     @Resource
+    private AssetDeletionApplicationMapper assetDeletionApplicationMapper;
+    @Resource
+    private AssetDeletionAssetMapper assetDeletionAssetMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Override
@@ -274,6 +279,15 @@ public class ApprovalServiceImpl implements ApprovalService {
                     }
                     map.put("businessName", businessName);
                 }
+            } else if ("ASSET_DELETION".equals(instance.getBusinessType())) {
+                // 素材删除申请：获取申请单信息
+                com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO deletionApplication =
+                    assetDeletionApplicationMapper.selectById(instance.getBusinessId());
+                if (deletionApplication != null) {
+                    map.put("applicationId", deletionApplication.getId());
+                    map.put("applicationTitle", deletionApplication.getTitle());
+                    map.put("businessName", deletionApplication.getTitle());
+                }
             }
 
             // 获取申请人信息
@@ -364,6 +378,48 @@ public class ApprovalServiceImpl implements ApprovalService {
                 map.put("assetType", firstAsset.getAssetType());
                 map.put("assetId", firstAsset.getAssetId());
                 map.put("assetCount", applyAssets.size());
+            }
+        } else if ("ASSET_DELETION".equals(instance.getBusinessType())) {
+            // 素材删除申请：获取申请单信息
+            com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO deletionApplication =
+                assetDeletionApplicationMapper.selectById(instance.getBusinessId());
+            if (deletionApplication != null) {
+                map.put("applicationId", deletionApplication.getId());
+                map.put("applicationTitle", deletionApplication.getTitle());
+                map.put("businessName", deletionApplication.getTitle());
+                map.put("deleteReason", deletionApplication.getDeleteReason());
+
+                // 获取关联的素材ID列表
+                LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
+                    new LambdaQueryWrapper<>();
+                wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO::getDeletionApplicationId,
+                    instance.getBusinessId());
+                List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> deletionAssets =
+                    assetDeletionAssetMapper.selectList(wrapper);
+
+                if (deletionAssets != null && !deletionAssets.isEmpty()) {
+                    map.put("assetCount", deletionAssets.size());
+
+                    // 查询每个素材的详细信息
+                    List<Map<String, Object>> assetList = new ArrayList<>();
+                    for (com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO deletionAsset : deletionAssets) {
+                        AssetDO asset = assetMapper.selectById(deletionAsset.getAssetId());
+                        if (asset != null) {
+                            Map<String, Object> assetInfo = new HashMap<>();
+                            assetInfo.put("id", asset.getId());
+                            assetInfo.put("name", asset.getName());
+                            assetInfo.put("type", asset.getType());
+                            assetInfo.put("status", asset.getStatus());
+                            assetInfo.put("filePath", asset.getFilePath());
+                            assetInfo.put("thumbnailPath", asset.getThumbnailPath());
+                            assetInfo.put("fileSize", asset.getFileSize());
+                            assetInfo.put("description", asset.getDescription());
+                            assetInfo.put("publishChannel", asset.getPublishChannel());
+                            assetList.add(assetInfo);
+                        }
+                    }
+                    map.put("assetList", assetList);
+                }
             }
         }
 
@@ -626,6 +682,16 @@ public class ApprovalServiceImpl implements ApprovalService {
                         businessName += " 等" + applyAssets.size() + "个素材";
                     }
                     result.put("businessName", businessName);
+                }
+            } else if ("ASSET_DELETION".equals(instance.getBusinessType())) {
+                // 素材删除申请：获取申请单信息
+                com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO deletionApplication =
+                    assetDeletionApplicationMapper.selectById(instance.getBusinessId());
+                if (deletionApplication != null) {
+                    result.put("applicationId", deletionApplication.getId());
+                    result.put("applicationTitle", deletionApplication.getTitle());
+                    result.put("businessName", deletionApplication.getTitle());
+                    result.put("deleteReason", deletionApplication.getDeleteReason());
                 }
             }
 

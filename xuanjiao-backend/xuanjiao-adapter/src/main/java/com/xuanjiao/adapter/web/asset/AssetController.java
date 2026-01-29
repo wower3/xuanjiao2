@@ -71,6 +71,56 @@ public class AssetController {
         return Result.success(assetService.queryWithRoleFilter(cmd, userId));
     }
 
+    @ApiOperation("查询用户已录入的素材（APPROVED状态）")
+    @GetMapping("/my-approved")
+    public Result<PageResult<AssetDTO>> getMyApprovedAssets(
+            @RequestParam(defaultValue = "") String name,
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestAttribute("userId") Long userId) {
+        return Result.success(assetService.getMyApprovedAssets(name, type, pageNum, pageSize, userId));
+    }
+
+    @ApiOperation("管理员彻底删除素材")
+    @DeleteMapping("/admin/{id}")
+    public Result<Void> adminDelete(
+            @PathVariable Long id,
+            @RequestParam String reason,
+            @RequestAttribute("userId") Long userId) {
+        Boolean isAdmin = checkIsAdmin(userId);
+        assetService.adminDelete(id, reason, userId, isAdmin);
+        return Result.success();
+    }
+
+    @ApiOperation("管理员调整素材删除时间（测试功能）")
+    @PutMapping("/admin/{id}/adjust-delete-time")
+    public Result<Void> adjustDeleteTime(@PathVariable Long id, @RequestAttribute("userId") Long userId) {
+        Boolean isAdmin = checkIsAdmin(userId);
+        assetService.adjustDeleteTime(id, isAdmin);
+        return Result.success();
+    }
+
+    @ApiOperation("手动触发定时任务（测试功能）")
+    @PostMapping("/admin/trigger-cleanup")
+    public Result<Integer> triggerCleanupTask(@RequestAttribute("userId") Long userId) {
+        Boolean isAdmin = checkIsAdmin(userId);
+        int count = assetService.triggerCleanupTask(isAdmin);
+        return Result.success(count);
+    }
+
+    /**
+     * 检查用户是否是系统管理员
+     */
+    private Boolean checkIsAdmin(Long userId) {
+        UserDO user = userMapper.selectById(userId);
+        if (user == null) {
+            return false;
+        }
+        // 系统管理员的role_id是1
+        return user.getRoleId() != null && user.getRoleId().equals(1L);
+    }
+
     @ApiOperation("删除素材")
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {

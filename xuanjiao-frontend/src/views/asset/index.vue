@@ -5,6 +5,10 @@
         <div class="header">
           <span>素材管理</span>
           <div class="header-actions">
+            <!-- 管理员功能：执行清理定时任务 -->
+            <el-button v-if="isAdmin" type="warning" @click="handleTriggerCleanup" :loading="cleanupLoading">
+              执行清理
+            </el-button>
             <el-button @click="previewMode = previewMode === 'image' ? 'list' : 'image'">
               <el-icon><View v-if="previewMode === 'image'" /><List v-else /></el-icon>
               {{ previewMode === 'image' ? '列表模式' : '预览模式' }}
@@ -62,7 +66,11 @@
             <el-button link type="primary" @click="handleDownload(row)">下载</el-button>
             <el-button link type="primary" @click="showApplyDialog(row)">申请使用</el-button>
             <el-button v-if="previewMode === 'image' && row.status === 'APPROVED'" link type="success" @click="showUsageDetails(row)">使用详情</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <!-- 管理员功能 -->
+            <template v-if="isAdmin">
+              <el-button v-if="row.status === 'DELETED'" link type="warning" @click="handleAdjustDeleteTime(row)">模拟时间</el-button>
+              <el-button v-if="row.status === 'APPROVED'" link type="danger" @click="handleAdminDelete(row)">彻底删除</el-button>
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -151,16 +159,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAssetList, deleteAsset } from '@/api/asset'
+import { getAssetList, adminDeleteAsset, adjustAssetDeleteTime, triggerCleanupTask } from '@/api/asset'
 import { downloadAsset, checkCanUseAsset } from '@/api/usageApply'
 import { getAssetUsageLogs } from '@/api/usageLog'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { View, List, VideoCamera, Document } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(false)
+const cleanupLoading = ref(false)
 const list = ref([])
 const total = ref(0)
 const query = reactive({ name: '', type: '', pageNum: 1, pageSize: 10 })
@@ -168,6 +179,11 @@ const showPreview = ref(false)
 const previewAsset = ref<any>(null)
 const previewUrl = ref('')
 const previewMode = ref<'image' | 'list'>('image')
+
+// 判断是否是管理员
+const isAdmin = computed(() => {
+  return userStore.userInfo?.roleId === 1
+})
 
 // 使用记录相关（预览弹窗用）
 const usageLogs = ref<any[]>([])
@@ -293,11 +309,75 @@ async function showUsageDetails(row: any) {
   await loadUsageDetails()
 }
 
-async function handleDelete(row: any) {
-  await ElMessageBox.confirm('确定删除该素材?', '提示')
-  await deleteAsset(row.id)
-  ElMessage.success('删除成功')
-  loadData()
+// 管理员彻底删除素材
+async function handleAdminDelete(row: any) {
+  try {
+    await ElMessageBox.prompt('请输入删除理由（必填）', '彻底删除素材', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPattern: /.+/,
+      inputErrorMessage: '删除理由不能为空'
+    })
+    const reason = (document.querySelector('.el-message-box__input input') as HTMLInputElement)?.value || ''
+
+    await ElMessageBox.confirm('彻底删除后素材将无法恢复，确定要删除吗？', '警告', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    await adminDeleteAsset(row.id, reason)
+    ElMessage.success('彻底删除成功')
+    loadData()
+  } catch (e) {
+    // 用户取消操作
+  }
+}
+
+// 管理员模拟删除时间（测试功能）
+async function handleAdjustDeleteTime(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      '此操作将素材的删除审批时间改为一周前，用于测试定时清理功能。确定执行吗？',
+      '模拟删除时间',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    await adjustAssetDeleteTime(row.id)
+    ElMessage.success('删除时间调整成功')
+    loadData()
+  } catch (e) {
+    // 用户取消操作
+  }
+}
+
+// 管理员手动触发定时任务（测试功能）
+async function handleTriggerCleanup() {
+  try {
+    await ElMessageBox.confirm(
+      '此操作将执行素材清理定时任务，删除所有状态为DELETED且删除审批时间超过一周的素材。确定执行吗？',
+      '执行清理任务',
+      {
+        confirmButtonText: '确定执行',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    cleanupLoading.value = true
+    const res = await triggerCleanupTask()
+    const count = res.data || 0
+    ElMessage.success(`清理任务执行完成，共清理 ${count} 个素材`)
+    loadData()
+  } catch (e) {
+    // 用户取消操作
+  } finally {
+    cleanupLoading.value = false
+  }
 }
 
 onMounted(() => {

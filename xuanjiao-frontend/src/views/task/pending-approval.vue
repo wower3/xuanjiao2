@@ -27,7 +27,10 @@
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button v-if="row.taskType === 'RESTART_SUB_WORKFLOW'" link type="warning" @click="handleOpenRestartDetail(row)">重新发起</el-button>
-            <el-button v-else link type="primary" @click="handleOpenDetail(row)">审批</el-button>
+            <template v-else>
+              <el-button link type="info" @click="handleViewDetail(row)">查看详情</el-button>
+              <el-button link type="primary" @click="handleOpenDetail(row)">审批</el-button>
+            </template>
           </template>
         </el-table-column>
       </el-table>
@@ -41,23 +44,240 @@
     </el-card>
 
     <!-- 审批详情对话框 -->
-    <el-dialog v-model="showApproveDialog" title="审批详情" width="800px" @closed="resetForm">
+    <el-dialog v-model="showApproveDialog" title="审批详情" width="1000px" @closed="resetForm">
       <div v-loading="loadingDetail">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="素材名称">{{ taskDetail.businessName }}</el-descriptions-item>
-          <el-descriptions-item label="审批流程">{{ taskDetail.workflowName }}</el-descriptions-item>
-          <el-descriptions-item label="当前阶段">{{ taskDetail.stageName }}</el-descriptions-item>
-          <el-descriptions-item label="申请人">{{ taskDetail.applicantName }}</el-descriptions-item>
-          <el-descriptions-item label="审批类型">
-            <el-tag v-if="taskDetail.approveType === 'OR'" type="warning">或签（任一通过即可）</el-tag>
-            <el-tag v-else type="primary">会签（全部通过）</el-tag>
+          <el-descriptions-item label="申请单ID" :span="2">
+            AP-{{ taskDetail.applicationId || taskDetail.id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="申请标题" :span="2">
+            {{ taskDetail.applicationTitle || taskDetail.businessName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发起人">
+            {{ taskDetail.applicantName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="审批流程">
+            {{ taskDetail.workflowName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="当前状态">
+            <el-tag :type="getStatusType(taskDetail.status)" size="small">
+              {{ getStatusText(taskDetail.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="当前阶段">
+            {{ taskDetail.currentStageName || taskDetail.stageName || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间" :span="2">
+            {{ taskDetail.createTime }}
           </el-descriptions-item>
         </el-descriptions>
 
+        <!-- 素材信息 -->
+        <div v-if="taskDetail.assetType || taskDetail.assetCount" style="margin-top: 20px">
+          <h4>素材信息</h4>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="素材类型">
+              {{ taskDetail.assetType || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="素材数量">
+              {{ taskDetail.assetCount || 0 }} 个
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <!-- 素材列表 -->
+          <div v-if="taskDetail.assetList && taskDetail.assetList.length > 0" style="margin-top: 15px">
+            <div class="asset-list-header">素材清单</div>
+            <el-table :data="taskDetail.assetList" size="small" border>
+              <el-table-column prop="id" label="素材ID" width="80" />
+              <el-table-column prop="name" label="素材名称" min-width="150" />
+              <el-table-column prop="type" label="类型" width="80" />
+              <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="publishChannel" label="发布渠道" width="120" show-overflow-tooltip />
+              <el-table-column label="预览" width="100">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.type === 'IMAGE' && (row.thumbnailPath || row.filePath)"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="previewImage(row)"
+                  >
+                    预览图片
+                  </el-button>
+                  <el-button
+                    v-else-if="row.type === 'VIDEO' && row.filePath"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="previewVideo(row)"
+                  >
+                    预览视频
+                  </el-button>
+                  <span v-else style="color: #909399; font-size: 12px;">不支持预览</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="附件" width="100">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.copyrightFilePath"
+                    type="success"
+                    size="small"
+                    link
+                    @click="downloadAttachment(row.copyrightFilePath, row.name)"
+                  >
+                    下载附件
+                  </el-button>
+                  <span v-else style="color: #909399; font-size: 12px;">无附件</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="getAssetStatusType(row.status)" size="small">
+                    {{ getAssetStatusText(row.status) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+
+        <!-- 审批进度 -->
+        <div v-if="taskDetail.approvalProgress && taskDetail.approvalProgress.length > 0" style="margin-top: 20px">
+
+          <!-- 主流程进度 -->
+          <div v-if="mainWorkflowProgress.length > 0" style="margin-bottom: 25px">
+            <div class="workflow-section-header">
+              <el-icon style="color: #409EFF; margin-right: 8px;"><Document /></el-icon>
+              <span class="workflow-section-title">主流程审批进度</span>
+            </div>
+            <div class="progress-list">
+              <div
+                v-for="(progress, index) in mainWorkflowProgress"
+                :key="'main-' + (progress.id || progress.stageId)"
+                class="progress-item"
+                :class="{
+                  'active': progress.status === 'PENDING',
+                  'approved': progress.status === 'APPROVED',
+                  'rejected': progress.status === 'REJECTED',
+                  'returned': progress.status === 'RETURNED',
+                  'not-started': progress.status === 'NOT_STARTED'
+                }"
+              >
+                <div class="progress-icon">
+                  <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
+                  <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
+                  <el-icon v-else><MoreFilled /></el-icon>
+                </div>
+                <div class="progress-content">
+                  <div class="progress-stage">
+                    {{ progress.stageName }}
+                    <el-tag
+                      v-if="progress.status"
+                      :type="getStatusType(progress.status)"
+                      size="small"
+                      style="margin-left: 8px"
+                    >
+                      {{ getStatusText(progress.status) }}
+                    </el-tag>
+                  </div>
+                  <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
+                    <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                      <div class="approver-name">
+                        {{ approver.name }}
+                        <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                        <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                        <span v-else style="color: #909399;">待审批</span>
+                      </div>
+                      <div v-if="approver.comment" class="approver-comment">
+                        <span class="comment-label">意见:</span> {{ approver.comment }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
+                    尚未到达此阶段
+                  </div>
+                  <div class="progress-status">
+                    <span v-if="progress.approveTime" style="color: #909399; font-size: 12px">
+                      {{ progress.approveTime }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 子流程进度 -->
+          <div v-if="subWorkflowProgress.length > 0">
+            <div class="workflow-section-header sub-workflow">
+              <el-icon style="color: #E6A23C; margin-right: 8px;"><Folder /></el-icon>
+              <span class="workflow-section-title">子流程审批进度</span>
+            </div>
+            <div class="progress-list sub-workflow-list">
+              <div
+                v-for="(progress, index) in subWorkflowProgress"
+                :key="'sub-' + (progress.id || progress.stageId)"
+                class="progress-item sub-workflow-item"
+                :class="{
+                  'active': progress.status === 'PENDING',
+                  'approved': progress.status === 'APPROVED',
+                  'rejected': progress.status === 'REJECTED',
+                  'returned': progress.status === 'RETURNED',
+                  'not-started': progress.status === 'NOT_STARTED'
+                }"
+              >
+                <div class="progress-icon">
+                  <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
+                  <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
+                  <el-icon v-else><MoreFilled /></el-icon>
+                </div>
+                <div class="progress-content">
+                  <div class="progress-stage">
+                    {{ progress.stageName }}
+                    <el-tag
+                      v-if="progress.status"
+                      :type="getStatusType(progress.status)"
+                      size="small"
+                      style="margin-left: 8px"
+                    >
+                      {{ getStatusText(progress.status) }}
+                    </el-tag>
+                  </div>
+                  <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
+                    <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                      <div class="approver-name">
+                        {{ approver.name }}
+                        <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                        <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                        <span v-else style="color: #909399;">待审批</span>
+                      </div>
+                      <div v-if="approver.comment" class="approver-comment">
+                        <span class="comment-label">意见:</span> {{ approver.comment }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
+                    尚未到达此阶段
+                  </div>
+                  <div class="progress-status">
+                    <span v-if="progress.approveTime" style="color: #909399; font-size: 12px">
+                      {{ progress.approveTime }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
         <!-- 同阶段其他审批人 -->
-        <div v-if="taskDetail.otherApprovers && taskDetail.otherApprovers.length > 0" style="margin-top: 15px;">
-          <div style="font-weight: bold; margin-bottom: 10px;">同阶段其他审批人：</div>
-          <el-tag v-for="approver in taskDetail.otherApprovers" :key="approver.id" style="margin-right: 5px;">
+        <div v-if="taskDetail.otherApprovers && taskDetail.otherApprovers.length > 0" style="margin-top: 20px;">
+          <h4>同阶段其他审批人</h4>
+          <el-tag v-for="approver in taskDetail.otherApprovers" :key="approver.id" style="margin-right: 5px; margin-bottom: 5px;">
             {{ approver.name }}
             <el-tag v-if="approver.status === 'APPROVED'" type="success" size="small">已通过</el-tag>
             <el-tag v-else-if="approver.status === 'REJECTED'" type="danger" size="small">已驳回</el-tag>
@@ -65,62 +285,18 @@
           </el-tag>
         </div>
 
-        <!-- 审批进度 -->
-        <div style="margin-top: 20px;">
-          <div style="font-weight: bold; margin-bottom: 10px;">审批进度：</div>
-          <div class="progress-list">
-            <div
-              v-for="progress in taskDetail.approvalProgress"
-              :key="progress.id || progress.stageId"
-              class="progress-item"
-              :class="{
-                'active': progress.status === 'PENDING',
-                'approved': progress.status === 'APPROVED',
-                'rejected': progress.status === 'REJECTED',
-                'returned': progress.status === 'RETURNED',
-                'not-started': progress.status === 'NOT_STARTED'
-              }"
+        <!-- 当前待审批人 -->
+        <div v-if="taskDetail.pendingApprovers && taskDetail.pendingApprovers.length > 0" style="margin-top: 20px">
+          <h4>当前待审批人</h4>
+          <div>
+            <el-tag
+              v-for="approver in taskDetail.pendingApprovers"
+              :key="approver.id"
+              type="warning"
+              style="margin-right: 10px"
             >
-              <div class="progress-icon">
-                <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
-                <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
-                <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
-                <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
-                <el-icon v-else><MoreFilled /></el-icon>
-              </div>
-              <div class="progress-content">
-                <div class="progress-stage">
-                  {{ progress.stageName }}
-                  <el-tag v-if="progress.isSubWorkflow === 1" type="info" size="small">子流程</el-tag>
-                </div>
-                <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
-                  <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
-                    <div class="approver-name">
-                      {{ approver.name }}
-                      <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
-                      <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
-                      <span v-else style="color: #909399;">待审批</span>
-                    </div>
-                    <div v-if="approver.comment" class="approver-comment">
-                      <span class="comment-label">意见:</span> {{ approver.comment }}
-                    </div>
-                  </div>
-                </div>
-                <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
-                  尚未到达此阶段
-                </div>
-                <div class="progress-status">
-                  <el-tag v-if="progress.status === 'PENDING'" type="warning" size="small">待审批</el-tag>
-                  <el-tag v-else-if="progress.status === 'APPROVED'" type="success" size="small">已通过</el-tag>
-                  <el-tag v-else-if="progress.status === 'REJECTED'" type="danger" size="small">已驳回</el-tag>
-                  <el-tag v-else-if="progress.status === 'RETURNED'" type="warning" size="small">已退回</el-tag>
-                  <el-tag v-else-if="progress.status === 'NOT_STARTED'" type="info" size="small">未开始</el-tag>
-                  <span v-if="progress.approveTime" style="margin-left: 10px; color: #909399; font-size: 12px;">
-                    {{ progress.approveTime }}
-                  </span>
-                </div>
-              </div>
-            </div>
+              {{ approver.name }}
+            </el-tag>
           </div>
         </div>
 
@@ -292,14 +468,265 @@
         <el-button @click="showReturnReasonInput = false" v-if="showReturnReasonInput">取消退回</el-button>
       </template>
     </el-dialog>
+
+    <!-- 只读详情对话框 -->
+    <el-dialog v-model="showViewDialog" title="工单详情" width="1000px">
+      <div v-loading="loadingDetail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="申请单ID" :span="2">
+            AP-{{ viewDetail.applicationId || viewDetail.id }}
+          </el-descriptions-item>
+          <el-descriptions-item label="申请标题" :span="2">
+            {{ viewDetail.applicationTitle || viewDetail.businessName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="发起人">
+            {{ viewDetail.applicantName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="审批流程">
+            {{ viewDetail.workflowName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="当前状态">
+            <el-tag :type="getStatusType(viewDetail.status)" size="small">
+              {{ getStatusText(viewDetail.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="当前阶段">
+            {{ viewDetail.currentStageName || viewDetail.stageName || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间" :span="2">
+            {{ viewDetail.createTime }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 素材信息 -->
+        <div v-if="viewDetail.assetType || viewDetail.assetCount" style="margin-top: 20px">
+          <h4>素材信息</h4>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="素材类型">
+              {{ viewDetail.assetType || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="素材数量">
+              {{ viewDetail.assetCount || 0 }} 个
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <!-- 素材列表 -->
+          <div v-if="viewDetail.assetList && viewDetail.assetList.length > 0" style="margin-top: 15px">
+            <div class="asset-list-header">素材清单</div>
+            <el-table :data="viewDetail.assetList" size="small" border>
+              <el-table-column prop="id" label="素材ID" width="80" />
+              <el-table-column prop="name" label="素材名称" min-width="150" />
+              <el-table-column prop="type" label="类型" width="80" />
+              <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+              <el-table-column prop="publishChannel" label="发布渠道" width="120" show-overflow-tooltip />
+              <el-table-column label="预览" width="100">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.type === 'IMAGE' && (row.thumbnailPath || row.filePath)"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="previewImage(row)"
+                  >
+                    预览图片
+                  </el-button>
+                  <el-button
+                    v-else-if="row.type === 'VIDEO' && row.filePath"
+                    type="primary"
+                    size="small"
+                    link
+                    @click="previewVideo(row)"
+                  >
+                    预览视频
+                  </el-button>
+                  <span v-else style="color: #909399; font-size: 12px;">不支持预览</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="附件" width="100">
+                <template #default="{ row }">
+                  <el-button
+                    v-if="row.copyrightFilePath"
+                    type="success"
+                    size="small"
+                    link
+                    @click="downloadAttachment(row.copyrightFilePath, row.name)"
+                  >
+                    下载附件
+                  </el-button>
+                  <span v-else style="color: #909399; font-size: 12px;">无附件</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="getAssetStatusType(row.status)" size="small">
+                    {{ getAssetStatusText(row.status) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+
+        <!-- 审批进度 -->
+        <div v-if="viewDetail.approvalProgress && viewDetail.approvalProgress.length > 0" style="margin-top: 20px">
+
+          <!-- 主流程进度 -->
+          <div v-if="mainWorkflowProgressView.length > 0" style="margin-bottom: 25px">
+            <div class="workflow-section-header">
+              <el-icon style="color: #409EFF; margin-right: 8px;"><Document /></el-icon>
+              <span class="workflow-section-title">主流程审批进度</span>
+            </div>
+            <div class="progress-list">
+              <div
+                v-for="(progress, index) in mainWorkflowProgressView"
+                :key="'main-' + (progress.id || progress.stageId)"
+                class="progress-item"
+                :class="{
+                  'active': progress.status === 'PENDING',
+                  'approved': progress.status === 'APPROVED',
+                  'rejected': progress.status === 'REJECTED',
+                  'returned': progress.status === 'RETURNED',
+                  'not-started': progress.status === 'NOT_STARTED'
+                }"
+              >
+                <div class="progress-icon">
+                  <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
+                  <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
+                  <el-icon v-else><MoreFilled /></el-icon>
+                </div>
+                <div class="progress-content">
+                  <div class="progress-stage">
+                    {{ progress.stageName }}
+                    <el-tag
+                      v-if="progress.status"
+                      :type="getStatusType(progress.status)"
+                      size="small"
+                      style="margin-left: 8px"
+                    >
+                      {{ getStatusText(progress.status) }}
+                    </el-tag>
+                  </div>
+                  <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
+                    <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                      <div class="approver-name">
+                        {{ approver.name }}
+                        <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                        <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                        <span v-else style="color: #909399;">待审批</span>
+                      </div>
+                      <div v-if="approver.comment" class="approver-comment">
+                        <span class="comment-label">意见:</span> {{ approver.comment }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
+                    尚未到达此阶段
+                  </div>
+                  <div class="progress-status">
+                    <span v-if="progress.approveTime" style="color: #909399; font-size: 12px">
+                      {{ progress.approveTime }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 子流程进度 -->
+          <div v-if="subWorkflowProgressView.length > 0">
+            <div class="workflow-section-header sub-workflow">
+              <el-icon style="color: #E6A23C; margin-right: 8px;"><Folder /></el-icon>
+              <span class="workflow-section-title">子流程审批进度</span>
+            </div>
+            <div class="progress-list sub-workflow-list">
+              <div
+                v-for="(progress, index) in subWorkflowProgressView"
+                :key="'sub-' + (progress.id || progress.stageId)"
+                class="progress-item sub-workflow-item"
+                :class="{
+                  'active': progress.status === 'PENDING',
+                  'approved': progress.status === 'APPROVED',
+                  'rejected': progress.status === 'REJECTED',
+                  'returned': progress.status === 'RETURNED',
+                  'not-started': progress.status === 'NOT_STARTED'
+                }"
+              >
+                <div class="progress-icon">
+                  <el-icon v-if="progress.status === 'PENDING'"><Clock /></el-icon>
+                  <el-icon v-else-if="progress.status === 'APPROVED'"><SuccessFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'REJECTED'"><CircleCloseFilled /></el-icon>
+                  <el-icon v-else-if="progress.status === 'RETURNED'"><WarningFilled /></el-icon>
+                  <el-icon v-else><MoreFilled /></el-icon>
+                </div>
+                <div class="progress-content">
+                  <div class="progress-stage">
+                    {{ progress.stageName }}
+                    <el-tag
+                      v-if="progress.status"
+                      :type="getStatusType(progress.status)"
+                      size="small"
+                      style="margin-left: 8px"
+                    >
+                      {{ getStatusText(progress.status) }}
+                    </el-tag>
+                  </div>
+                  <div v-if="progress.approvers && progress.approvers.length > 0" class="progress-approvers">
+                    <div v-for="approver in progress.approvers" :key="approver.id" class="approver-item">
+                      <div class="approver-name">
+                        {{ approver.name }}
+                        <span v-if="approver.status === 'APPROVED'" style="color: #67C23A;">✓</span>
+                        <span v-else-if="approver.status === 'REJECTED'" style="color: #F56C6C;">✗</span>
+                        <span v-else style="color: #909399;">待审批</span>
+                      </div>
+                      <div v-if="approver.comment" class="approver-comment">
+                        <span class="comment-label">意见:</span> {{ approver.comment }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="progress.status === 'NOT_STARTED'" class="progress-approvers" style="color: #909399; font-style: italic;">
+                    尚未到达此阶段
+                  </div>
+                  <div class="progress-status">
+                    <span v-if="progress.approveTime" style="color: #909399; font-size: 12px">
+                      {{ progress.approveTime }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 当前待审批人 -->
+        <div v-if="viewDetail.pendingApprovers && viewDetail.pendingApprovers.length > 0" style="margin-top: 20px">
+          <h4>当前待审批人</h4>
+          <div>
+            <el-tag
+              v-for="approver in viewDetail.pendingApprovers"
+              :key="approver.id"
+              type="warning"
+              style="margin-right: 10px"
+            >
+              {{ approver.name }}
+            </el-tag>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showViewDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
-import { getPendingApproval, getTaskDetail, approve, returnTask } from '@/api/task'
+import { getPendingApproval, getTaskDetail, getInstanceDetail, approve, returnTask } from '@/api/task'
 import { selectNextStageApproversWithSubWorkflows } from '@/api/workflow'
 
 const loading = ref(false)
@@ -307,6 +734,7 @@ const list = ref<any[]>([])
 const total = ref(0)
 const query = reactive({ pageNum: 1, pageSize: 10 })
 const showApproveDialog = ref(false)
+const showViewDialog = ref(false)
 const loadingDetail = ref(false)
 const submitting = ref(false)
 const currentTask = ref<any>(null)
@@ -322,11 +750,19 @@ const selectedSubWorkflowApprovers = ref<Record<number, Record<number, number>>>
 
 // 任务详情
 const taskDetail = ref<any>({
+  id: null,
+  applicationId: null,
   businessName: '',
+  applicationTitle: '',
   workflowName: '',
+  currentStageName: '',
   stageName: '',
   applicantName: '',
   approveType: '',
+  status: '',
+  assetType: '',
+  assetCount: null,
+  createTime: '',
   canSelectNextApprovers: false,
   nextStageId: null,
   nextStageName: '',
@@ -335,7 +771,46 @@ const taskDetail = ref<any>({
   selectedNextApprovers: [],
   approvalProgress: [],
   hasSubWorkflows: false,
-  subWorkflows: []
+  subWorkflows: [],
+  pendingApprovers: []
+})
+
+// 只读详情
+const viewDetail = ref<any>({
+  id: null,
+  applicationId: null,
+  businessName: '',
+  applicationTitle: '',
+  workflowName: '',
+  currentStageName: '',
+  stageName: '',
+  applicantName: '',
+  status: '',
+  createTime: '',
+  approvalProgress: [],
+  assetList: []
+})
+
+// 分离主流程和子流程进度
+const mainWorkflowProgress = computed(() => {
+  if (!taskDetail.value || !taskDetail.value.approvalProgress) return []
+  return taskDetail.value.approvalProgress.filter((p: any) => p.isSubWorkflow !== 1)
+})
+
+const subWorkflowProgress = computed(() => {
+  if (!taskDetail.value || !taskDetail.value.approvalProgress) return []
+  return taskDetail.value.approvalProgress.filter((p: any) => p.isSubWorkflow === 1)
+})
+
+// 只读详情的主流程和子流程进度
+const mainWorkflowProgressView = computed(() => {
+  if (!viewDetail.value || !viewDetail.value.approvalProgress) return []
+  return viewDetail.value.approvalProgress.filter((p: any) => p.isSubWorkflow !== 1)
+})
+
+const subWorkflowProgressView = computed(() => {
+  if (!viewDetail.value || !viewDetail.value.approvalProgress) return []
+  return viewDetail.value.approvalProgress.filter((p: any) => p.isSubWorkflow === 1)
 })
 
 async function loadData() {
@@ -359,6 +834,7 @@ async function handleOpenDetail(row: any) {
   selectedSubWorkflowApprovers.value = {}
 
   try {
+    // 修改为调用 getTaskDetail 获取任务详情（包含下一层审批人选择信息）
     const res = await getTaskDetail(row.id)
     taskDetail.value = res.data
 
@@ -371,6 +847,20 @@ async function handleOpenDetail(row: any) {
         selectedSubWorkflowApprovers.value[subWorkflow.id] = {}
       }
     }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载详情失败')
+  } finally {
+    loadingDetail.value = false
+  }
+}
+
+async function handleViewDetail(row: any) {
+  showViewDialog.value = true
+  loadingDetail.value = true
+
+  try {
+    const res = await getInstanceDetail(row.instanceId)
+    viewDetail.value = res.data
   } catch (e: any) {
     ElMessage.error(e.message || '加载详情失败')
   } finally {
@@ -591,6 +1081,83 @@ function handleOpenRestartDetail(row: any) {
   ElMessage.info('重新发起子流程功能待实现')
 }
 
+function getAssetStatusType(status: string) {
+  const typeMap: Record<string, string> = {
+    'PENDING': 'warning',
+    'APPROVED': 'success',
+    'REJECTED': 'danger',
+    'AVAILABLE': 'success',
+    'USED': 'info'
+  }
+  return typeMap[status] || 'info'
+}
+
+function getAssetStatusText(status: string) {
+  const textMap: Record<string, string> = {
+    'PENDING': '待审批',
+    'APPROVED': '已通过',
+    'REJECTED': '已驳回',
+    'AVAILABLE': '可用',
+    'USED': '已使用'
+  }
+  return textMap[status] || status
+}
+
+// 预览图片 - 使用后端API
+function previewImage(asset: any) {
+  if (asset.id) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+    const fullUrl = `${baseUrl}/asset/preview/${asset.id}`
+    window.open(fullUrl, '_blank')
+  } else {
+    ElMessage.warning('素材ID为空，无法预览')
+  }
+}
+
+// 预览视频 - 使用后端API
+function previewVideo(asset: any) {
+  if (asset.id) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+    const fullUrl = `${baseUrl}/asset/preview/${asset.id}`
+    window.open(fullUrl, '_blank')
+  } else {
+    ElMessage.warning('素材ID为空，无法预览')
+  }
+}
+
+// 下载附件 - 使用后端API
+async function downloadAttachment(filePath: string, assetName: string) {
+  try {
+    // 注意：filePath 是版权附件路径，不是素材路径，需要直接访问
+    // 检查是否是绝对路径（Windows 盘符开头）
+    const isAbsolutePath = /^[A-Za-z]:/.test(filePath)
+    const isHttpUrl = filePath.startsWith('http://') || filePath.startsWith('https://')
+
+    let downloadUrl: string
+    if (isHttpUrl) {
+      downloadUrl = filePath
+    } else if (isAbsolutePath) {
+      // 绝对路径无法直接访问，提示用户
+      ElMessage.warning('版权附件仅支持在线查看，暂不支持下载')
+      return
+    } else {
+      // 相对路径，拼接baseUrl
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+      downloadUrl = `${baseUrl}${filePath}`
+    }
+
+    // 创建隐藏的a标签触发下载
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = `${assetName}-附件.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (e: any) {
+    ElMessage.error('下载失败: ' + (e.message || '未知错误'))
+  }
+}
+
 onMounted(loadData)
 </script>
 
@@ -611,9 +1178,24 @@ onMounted(loadData)
   transition: all 0.3s;
 }
 
+/* 子流程列表样式 */
+.sub-workflow-list {
+  padding-left: 0;
+}
+
+.sub-workflow-item {
+  background: #fffbf0;
+  border-left-color: #E6A23C;
+}
+
 .progress-item.active {
   border-left-color: #1890ff;
   background: #bae7ff;
+}
+
+.sub-workflow-item.active {
+  background: #fff3e0;
+  border-left-color: #FF9800;
 }
 
 .progress-item.approved {
@@ -621,9 +1203,17 @@ onMounted(loadData)
   background: #d9f7be;
 }
 
+.sub-workflow-item.approved {
+  background: #e8f5e9;
+}
+
 .progress-item.rejected {
   border-left-color: #ff4d4f;
   background: #ffccc7;
+}
+
+.sub-workflow-item.rejected {
+  background: #ffebee;
 }
 
 .progress-item.returned {
@@ -631,10 +1221,18 @@ onMounted(loadData)
   background: #fff7e6;
 }
 
+.sub-workflow-item.returned {
+  background: #fff7e6;
+}
+
 .progress-item.not-started {
   border-left-color: #d9d9d9;
   background: #f5f5f5;
   opacity: 0.7;
+}
+
+.sub-workflow-item.not-started {
+  background: #ffebee;
 }
 
 .progress-icon {
@@ -703,5 +1301,43 @@ onMounted(loadData)
 .progress-status {
   display: flex;
   align-items: center;
+}
+
+/* 素材列表样式 */
+.asset-list-header {
+  font-weight: bold;
+  color: #606266;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  border-left: 3px solid #409EFF;
+}
+
+/* 流程区域标题 */
+.workflow-section-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #e6f7ff 0%, #ffffff 100%);
+  border-left: 4px solid #409EFF;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.workflow-section-header.sub-workflow {
+  background: linear-gradient(90deg, #fffbf0 0%, #ffffff 100%);
+  border-left-color: #E6A23C;
+}
+
+.workflow-section-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #303133;
+}
+
+h4 {
+  margin: 15px 0 10px;
+  color: #303133;
 }
 </style>

@@ -106,7 +106,9 @@ function handleCommand(cmd: string) {
   }
 }
 
-onMounted(loadMenus)
+onMounted(() => {
+  loadMenus()
+})
 </script>
 
 <style scoped>

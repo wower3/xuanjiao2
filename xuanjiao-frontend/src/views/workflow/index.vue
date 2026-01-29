@@ -12,6 +12,7 @@
           <el-select v-model="typeFilter" placeholder="全部" clearable @change="loadData">
             <el-option label="素材录入审批" value="ASSET_UPLOAD" />
             <el-option label="素材使用审批" value="ASSET_USAGE" />
+            <el-option label="素材删除审批" value="ASSET_DELETION" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -22,7 +23,9 @@
           <template #default="{ row }">
             <span v-if="row.workflowType">
               <el-tag v-if="row.workflowType === 'ASSET_UPLOAD'" type="primary">素材录入</el-tag>
-              <el-tag v-else type="success">素材使用</el-tag>
+              <el-tag v-else-if="row.workflowType === 'ASSET_USAGE'" type="success">素材使用</el-tag>
+              <el-tag v-else-if="row.workflowType === 'ASSET_DELETION'" type="danger">素材删除</el-tag>
+              <el-tag v-else type="info">{{ row.workflowType }}</el-tag>
             </span>
             <span v-else style="color: #909399;">-</span>
           </template>
@@ -32,7 +35,10 @@
             <span v-if="row.boundRoleId">
               <el-tag type="info">{{ row.roleName || '-' }}</el-tag>
               <el-tag v-if="row.workflowType" size="small" style="margin-left: 5px">
-                {{ row.workflowType === 'ASSET_UPLOAD' ? '素材录入' : '素材使用' }}
+                <span v-if="row.workflowType === 'ASSET_UPLOAD'">素材录入</span>
+                <span v-else-if="row.workflowType === 'ASSET_USAGE'">素材使用</span>
+                <span v-else-if="row.workflowType === 'ASSET_DELETION'">素材删除</span>
+                <span v-else>{{ row.workflowType }}</span>
               </el-tag>
             </span>
             <span v-else style="color: #909399;">未绑定</span>
@@ -77,12 +83,16 @@
           <el-select v-model="bindForm.workflowType" placeholder="请选择流程类型" style="width: 100%;">
             <el-option label="素材录入审批" value="ASSET_UPLOAD" />
             <el-option label="素材使用审批" value="ASSET_USAGE" />
+            <el-option label="素材删除审批" value="ASSET_DELETION" />
           </el-select>
         </el-form-item>
         <el-form-item v-if="currentWorkflow?.boundRoleId" label="当前绑定">
           <el-tag type="info">{{ currentWorkflow.roleName }}</el-tag>
           <el-tag size="small" style="margin-left: 5px">
-            {{ currentWorkflow.workflowType === 'ASSET_UPLOAD' ? '素材录入' : '素材使用' }}
+            <span v-if="currentWorkflow.workflowType === 'ASSET_UPLOAD'">素材录入</span>
+            <span v-else-if="currentWorkflow.workflowType === 'ASSET_USAGE'">素材使用</span>
+            <span v-else-if="currentWorkflow.workflowType === 'ASSET_DELETION'">素材删除</span>
+            <span v-else>{{ currentWorkflow.workflowType }}</span>
           </el-tag>
         </el-form-item>
       </el-form>
