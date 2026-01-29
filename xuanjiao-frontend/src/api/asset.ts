@@ -55,7 +55,6 @@ export function uploadCopyrightFile(file: File): Promise<{ filePath: string }> {
 }
 
 // 管理员彻底删除素材
-// 管理员彻底删除素材
 export function adminDeleteAsset(id: number, reason: string) {
   return request.delete(`/asset/admin/${id}`, { params: { reason } })
 }

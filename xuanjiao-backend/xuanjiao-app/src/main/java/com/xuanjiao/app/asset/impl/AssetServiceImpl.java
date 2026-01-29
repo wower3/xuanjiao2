@@ -22,6 +22,8 @@ import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.app.log.OperationLogService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class AssetServiceImpl implements AssetService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AssetServiceImpl.class);
 
     @Resource
     private AssetRepository assetRepository;
@@ -283,6 +287,9 @@ public class AssetServiceImpl implements AssetService {
             throw new RuntimeException("素材不存在");
         }
 
+        logger.info("管理员彻底删除素材 - id={}, name={}, status={}, deleted={}",
+            asset.getId(), asset.getName(), asset.getStatus(), asset.getDeleted());
+
         // 只能删除已通过审批的素材或已删除状态的素材
         if (!"APPROVED".equals(asset.getStatus()) && !"DELETED".equals(asset.getStatus())) {
             throw new RuntimeException("只能删除已通过审批或已删除状态的素材");
@@ -294,9 +301,16 @@ public class AssetServiceImpl implements AssetService {
             throw new RuntimeException("用户不存在");
         }
 
-        // 执行软删除（直接设置deleted=1，素材从列表中消失）
-        asset.setDeleted(1);
-        assetMapper.updateById(asset);
+        // 使用 LambdaUpdateWrapper 绕过 MyBatis Plus 的逻辑删除限制
+        // 直接更新 deleted 字段为 1
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> updateWrapper =
+            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        updateWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getId, assetId)
+                   .set(com.xuanjiao.infrastructure.dataobject.AssetDO::getDeleted, 1)
+                   .set(com.xuanjiao.infrastructure.dataobject.AssetDO::getUpdateTime, java.time.LocalDateTime.now());
+
+        int updateResult = assetMapper.update(null, updateWrapper);
+        logger.info("软删除更新结果：影响行数={}", updateResult);
 
         // 记录操作日志
         operationLogService.log(
