@@ -124,6 +124,7 @@ xuanjiao-backend/
 │   ├── menu/              # Menu module (entity, repository)
 │   ├── asset/             # Asset module (entity, repository)
 │   ├── material/          # Material application module (entity, repository)
+│   ├── deletion/          # Asset deletion application module (entity, repository)
 │   ├── usage/             # Usage application module (entity, repository)
 │   ├── workflow/          # Workflow definition module (entity, repository)
 │   ├── approval/          # Approval execution module (entity, repository)
@@ -135,6 +136,7 @@ xuanjiao-backend/
 │   ├── role/              # Role services
 │   ├── menu/              # Menu services
 │   ├── asset/             # Asset services
+│   ├── deletion/          # Asset deletion application services
 │   ├── material/          # Material application services
 │   ├── usage/             # Usage application services
 │   ├── workflow/          # Workflow services (WorkflowService, WorkflowEngineService, ApproverSelectionService)
@@ -145,6 +147,7 @@ xuanjiao-backend/
 │   ├── role/              # Role mappers
 │   ├── menu/              # Menu mappers
 │   ├── asset/             # Asset mappers and repository impl
+│   ├── deletion/          # Asset deletion application mappers and repository impl
 │   ├── material/          # Material application mappers and repository impl
 │   ├── usage/             # Usage application mappers and repository impl
 │   ├── workflow/          # Workflow mappers
@@ -158,6 +161,7 @@ xuanjiao-backend/
 │   ├── role/              # RoleController
 │   ├── menu/              # MenuController
 │   ├── asset/             # AssetController, TagController
+│   ├── deletion/          # AssetDeletionController
 │   ├── material/          # MaterialApplicationController
 │   ├── usage/             # UsageApplyController, UsageLogController
 │   ├── workflow/          # WorkflowController, ApproverSelectionController
@@ -408,6 +412,21 @@ wrapper.eq(AssetDO::getStatus, "DELETED")
 - Refactor-friendly (field renames automatically update)
 - No confusion between database column names (underscore) vs Java field names (camelCase)
 
+**MyBatis Plus @TableLogic Update Limitation:**
+- `updateById()` method cannot directly update fields with `@TableLogic` annotation
+- Use `LambdaUpdateWrapper` with `.set()` to bypass this restriction:
+```java
+// ❌ Does NOT work
+asset.setDeleted(1);
+assetMapper.updateById(asset);
+
+// ✅ Works correctly
+LambdaUpdateWrapper<AssetDO> wrapper = new LambdaUpdateWrapper<>();
+wrapper.eq(AssetDO::getId, assetId)
+       .set(AssetDO::getDeleted, 1);
+assetMapper.update(null, wrapper);
+```
+
 ### Important Constraints & Gotchas
 
 **Workflow System:**
@@ -476,8 +495,9 @@ As of January 2025, the backend has been refactored to use module-based packagin
 | `role` | Role | Role CRUD, role permissions |
 | `menu` | Menu | Menu tree, menu configuration |
 | `asset` | Asset | Asset upload, download, management, tags |
-| `material` | Material Application | Asset entry applications (including future delete function) |
+| `material` | Material Application | Asset entry applications |
 | `usage` | Usage Application | Asset usage applications, usage logs, usage_apply_asset intermediate table |
+| `deletion` | Asset Deletion | Asset deletion applications, two-stage deletion process (DELETED → soft delete) |
 | `workflow` | Workflow Definition | Workflow design, template management, workflow engine, approver selection |
 | `approval` | Approval Execution | Approval instances, task processing |
 | `log` | Log | Operation log recording |
