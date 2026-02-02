@@ -3,25 +3,25 @@ import request from '@/utils/request'
 // ========== 草稿箱相关API ==========
 // 由 TaskController 处理：/task/drafts
 export function getDrafts(params: any) {
-  return request.get('/task/drafts', { params })
+  return request.post('/task/queryDrafts', params)
 }
 
 // ========== 审批相关API ==========
 // 由 ApprovalController 处理：/approval/*
 export function getMyInitiated(params: any) {
-  return request.get('/approval/applied', { params })
+  return request.post('/approval/getMyApplied', params)
 }
 
 export function getPendingApproval(params: any) {
-  return request.get('/approval/tasks', { params })
+  return request.post('/approval/getMyTasks', params)
 }
 
 export function getTaskDetail(id: number) {
-  return request.get(`/approval/tasks/${id}/detail`)
+  return request.post('/approval/getTaskDetail', { id })
 }
 
 export function getInstanceDetail(instanceId: number) {
-  return request.get(`/approval/instances/${instanceId}/detail`)
+  return request.post('/approval/getInstanceDetail', { id: instanceId })
 }
 
 export function approve(id: number, comment: string, passed: boolean) {

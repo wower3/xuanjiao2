@@ -2,6 +2,7 @@ package com.xuanjiao.adapter.web.auth;
 
 import com.xuanjiao.app.auth.AuthService;
 import com.xuanjiao.client.dto.*;
+import com.xuanjiao.client.dto.auth.LogoutCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
@@ -24,8 +25,8 @@ public class AuthController {
 
     @ApiOperation("用户登出")
     @PostMapping("/logout")
-    public Result<Void> logout(@RequestHeader("Authorization") String token) {
-        authService.logout(token);
+    public Result<Void> logout(@Valid @RequestBody LogoutCmd cmd) {
+        authService.logout(cmd.getToken());
         return Result.success();
     }
 }

@@ -1,23 +1,23 @@
 import request from '@/utils/request'
 
 export function getRoleList() {
-  return request.get('/role/list')
+  return request.post('/role/getList', {})
 }
 
 export function getRoleById(id: number) {
-  return request.get(`/role/${id}`)
+  return request.post('/role/getDetail', { id })
 }
 
 export function createRole(data: any) {
-  return request.post('/role', data)
+  return request.post('/role/create', data)
 }
 
 export function updateRole(data: any) {
-  return request.put('/role', data)
+  return request.post('/role/update', data)
 }
 
 export function deleteRole(id: number) {
-  return request.delete(`/role/${id}`)
+  return request.post('/role/delete', { id })
 }
 
 export function assignRoleMenus(roleId: number, menuIds: number[]) {
@@ -25,6 +25,5 @@ export function assignRoleMenus(roleId: number, menuIds: number[]) {
 }
 
 export function getRoleMenus(roleId: number) {
-  return request.get(`/role/${roleId}/menus`)
+  return request.post('/role/getRoleMenus', { roleId })
 }
-

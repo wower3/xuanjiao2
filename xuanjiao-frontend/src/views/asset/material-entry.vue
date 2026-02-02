@@ -623,6 +623,12 @@ watch([() => form.title, () => form.guaranteeDeclaration, () => fileList.length]
 
 // 路由守卫：离开前检查未保存的更改
 onBeforeRouteLeave((to, from, next) => {
+  // 如果正在保存中，直接放行，避免重复保存
+  if (saving.value || submitting.value) {
+    next()
+    return
+  }
+
   if (hasUnsavedChanges.value) {
     ElMessageBox.confirm(
       '您有未保存的内容，是否保存为草稿？',

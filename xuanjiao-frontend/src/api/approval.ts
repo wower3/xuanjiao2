@@ -1,19 +1,28 @@
 import request from '@/utils/request'
 
-export function getMyTasks(params: any) {
-  return request.get('/approval/tasks', { params })
+export function getMyTasks(params: { pageNum?: number; pageSize?: number }) {
+  return request.post('/approval/getMyTasks', params)
 }
 
-export function getMyApplied(params: any) {
-  return request.get('/approval/applied', { params })
+export function getMyApplied(params: {
+  pageNum?: number
+  pageSize?: number
+  businessType?: string
+  forAllUsers?: boolean
+  applicantId?: number
+  deptId?: number
+  roleType?: string
+  status?: string
+}) {
+  return request.post('/approval/getMyApplied', params)
 }
 
 export function getTaskDetail(id: number) {
-  return request.get(`/approval/tasks/${id}/detail`)
+  return request.post('/approval/getTaskDetail', { id })
 }
 
 export function getInstanceDetail(instanceId: number) {
-  return request.get(`/approval/instances/${instanceId}/detail`)
+  return request.post('/approval/getInstanceDetail', { id: instanceId })
 }
 
 export function withdrawInstance(instanceId: number, comment?: string) {

@@ -270,6 +270,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         updateProgressRecordWithApprovers(instanceId, firstStage.getId(), approverIds);
 
         // 立即启动第一阶段的所有子流程（子流程独立运行，不阻塞主流程）
+        // parentTaskId 为 null，因为还没有人完成审批
         if (subWorkflowApproverIds != null && !subWorkflowApproverIds.isEmpty()) {
             workflowEngineService.startSubProcessesForStage(instanceId, firstStage.getId(), null, subWorkflowApproverIds);
         }
@@ -282,6 +283,24 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         if (instance == null) {
             return new ArrayList<>();
         }
+
+        // 判断是否是子流程
+        boolean isSubWorkflow = instance.getParentInstanceId() != null;
+
+        if (isSubWorkflow) {
+            // 子流程：只返回子流程自己的进度
+            return getSubWorkflowProgress(instance);
+        } else {
+            // 主流程：返回主流程进度 + 所有子流程进度
+            return getMainWorkflowProgress(instance);
+        }
+    }
+
+    /**
+     * 获取主流程的进度（包含所有子流程进度）
+     */
+    private List<ApprovalProgressDTO> getMainWorkflowProgress(ApprovalInstanceDO instance) {
+        Long instanceId = instance.getId();
 
         // 获取主实例进度（主流程的进度）
         LambdaQueryWrapper<ApprovalProgressDO> mainWrapper = new LambdaQueryWrapper<>();
@@ -322,12 +341,73 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         }
 
         // 获取所有子流程进度（parentInstanceId指向主实例的记录）
-        LambdaQueryWrapper<ApprovalProgressDO> subWrapper = new LambdaQueryWrapper<>();
-        subWrapper.eq(ApprovalProgressDO::getParentInstanceId, instanceId);
-        List<ApprovalProgressDO> subProgress = approvalProgressMapper.selectList(subWrapper);
+        // 只获取非 CANCELLED 状态的子流程实例的进度
+        LambdaQueryWrapper<ApprovalInstanceDO> subInstanceWrapper = new LambdaQueryWrapper<>();
+        subInstanceWrapper.eq(ApprovalInstanceDO::getParentInstanceId, instanceId)
+                       .ne(ApprovalInstanceDO::getStatus, "CANCELLED");
+        List<ApprovalInstanceDO> activeSubInstances = approvalInstanceMapper.selectList(subInstanceWrapper);
+
+        List<ApprovalProgressDO> subProgress = new ArrayList<>();
+        if (!activeSubInstances.isEmpty()) {
+            List<Long> activeSubInstanceIds = activeSubInstances.stream()
+                .map(ApprovalInstanceDO::getId)
+                .collect(Collectors.toList());
+
+            LambdaQueryWrapper<ApprovalProgressDO> subProgressWrapper = new LambdaQueryWrapper<>();
+            subProgressWrapper.in(ApprovalProgressDO::getInstanceId, activeSubInstanceIds);
+            subProgress = approvalProgressMapper.selectList(subProgressWrapper);
+        }
 
         // 合并主流程和子流程进度
         allProgress.addAll(subProgress);
+
+        return allProgress.stream()
+            .map(this::convertToProgressDTO)
+            .sorted(Comparator.comparing(ApprovalProgressDTO::getStageOrder))
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取子流程的进度（只返回子流程自己的进度）
+     */
+    private List<ApprovalProgressDTO> getSubWorkflowProgress(ApprovalInstanceDO subInstance) {
+        Long instanceId = subInstance.getId();
+
+        // 获取子流程已有的进度记录
+        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId);
+        List<ApprovalProgressDO> existingProgress = approvalProgressMapper.selectList(wrapper);
+
+        // 获取子流程的所有阶段
+        LambdaQueryWrapper<WorkflowStageDO> stageWrapper = new LambdaQueryWrapper<>();
+        stageWrapper.eq(WorkflowStageDO::getWorkflowId, subInstance.getWorkflowId())
+                    .orderByAsc(WorkflowStageDO::getStageOrder);
+        List<WorkflowStageDO> allStages = workflowStageMapper.selectList(stageWrapper);
+
+        // 创建已有进度的stageId集合
+        Set<Long> existingStageIds = existingProgress.stream()
+            .map(ApprovalProgressDO::getStageId)
+            .collect(Collectors.toSet());
+
+        // 为还没有到达的阶段创建"未开始"状态的进度记录
+        List<ApprovalProgressDO> allProgress = new ArrayList<>(existingProgress);
+        for (WorkflowStageDO stage : allStages) {
+            if (!existingStageIds.contains(stage.getId())) {
+                ApprovalProgressDO notStartedProgress = new ApprovalProgressDO();
+                notStartedProgress.setId(null);
+                notStartedProgress.setInstanceId(instanceId);
+                notStartedProgress.setStageId(stage.getId());
+                notStartedProgress.setStageName(stage.getName());
+                notStartedProgress.setStageOrder(stage.getStageOrder());
+                notStartedProgress.setStatus("NOT_STARTED");
+                notStartedProgress.setIsSubWorkflow(1); // 子流程
+                notStartedProgress.setParentInstanceId(subInstance.getParentInstanceId());
+                notStartedProgress.setParentTaskId(subInstance.getParentTaskId());
+                notStartedProgress.setApprovers(null);
+                notStartedProgress.setApproveTime(null);
+                allProgress.add(notStartedProgress);
+            }
+        }
 
         return allProgress.stream()
             .map(this::convertToProgressDTO)

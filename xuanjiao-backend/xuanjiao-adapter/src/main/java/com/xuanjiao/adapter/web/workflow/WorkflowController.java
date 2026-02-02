@@ -3,10 +3,12 @@ package com.xuanjiao.adapter.web.workflow;
 import com.xuanjiao.app.workflow.WorkflowService;
 import com.xuanjiao.client.dto.Result;
 import com.xuanjiao.client.dto.WorkflowDTO;
+import com.xuanjiao.client.dto.workflow.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.util.List;
 
 @Api(tags = "流程管理")
@@ -18,56 +20,56 @@ public class WorkflowController {
     private WorkflowService workflowService;
 
     @ApiOperation("流程列表")
-    @GetMapping("/list")
-    public Result<List<WorkflowDTO>> list() {
+    @PostMapping("/getList")
+    public Result<List<WorkflowDTO>> list(@Valid @RequestBody WorkflowGetListQry qry) {
         return Result.success(workflowService.list());
     }
 
     @ApiOperation("流程详情")
-    @GetMapping("/{id}")
-    public Result<WorkflowDTO> getById(@PathVariable Long id) {
-        return Result.success(workflowService.getById(id));
+    @PostMapping("/getDetail")
+    public Result<WorkflowDTO> getById(@Valid @RequestBody WorkflowGetDetailQry qry) {
+        return Result.success(workflowService.getById(qry.getId()));
     }
 
     @ApiOperation("保存流程")
-    @PostMapping
-    public Result<Void> save(@RequestBody WorkflowDTO dto) {
-        workflowService.save(dto);
-        return Result.success();
+    @PostMapping("/create")
+    public Result<WorkflowDTO> save(@RequestBody WorkflowDTO dto) {
+        WorkflowDTO savedWorkflow = workflowService.save(dto);
+        return Result.success(savedWorkflow);
     }
 
     @ApiOperation("更新流程")
-    @PutMapping
-    public Result<Void> update(@RequestBody WorkflowDTO dto) {
-        workflowService.update(dto);
+    @PostMapping("/update")
+    public Result<Void> update(@Valid @RequestBody WorkflowUpdateCmd cmd) {
+        workflowService.update(convertToDto(cmd));
         return Result.success();
     }
 
     @ApiOperation("更新状态")
-    @PutMapping("/{id}/status")
-    public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
-        workflowService.updateStatus(id, status);
+    @PostMapping("/updateStatus")
+    public Result<Void> updateStatus(@Valid @RequestBody WorkflowUpdateStatusCmd cmd) {
+        workflowService.updateStatus(cmd.getId(), cmd.getStatus());
         return Result.success();
     }
 
     @ApiOperation("删除流程")
-    @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
-        workflowService.delete(id);
+    @PostMapping("/delete")
+    public Result<Void> delete(@Valid @RequestBody WorkflowDeleteCmd cmd) {
+        workflowService.delete(cmd.getId());
         return Result.success();
     }
 
     @ApiOperation("绑定角色")
-    @PutMapping("/{id}/bind-role")
-    public Result<Void> bindRole(@PathVariable Long id, @RequestParam Long roleId, @RequestParam String workflowType) {
-        workflowService.bindRole(id, roleId, workflowType);
+    @PostMapping("/bindRole")
+    public Result<Void> bindRole(@Valid @RequestBody WorkflowBindRoleCmd cmd) {
+        workflowService.bindRole(cmd.getId(), cmd.getRoleId(), cmd.getWorkflowType());
         return Result.success();
     }
 
     @ApiOperation("解除角色绑定")
-    @PutMapping("/{id}/unbind-role")
-    public Result<Void> unbindRole(@PathVariable Long id) {
-        workflowService.unbindRole(id);
+    @PostMapping("/unbindRole")
+    public Result<Void> unbindRole(@Valid @RequestBody WorkflowUnbindRoleCmd cmd) {
+        workflowService.unbindRole(cmd.getId());
         return Result.success();
     }
 
@@ -75,5 +77,15 @@ public class WorkflowController {
     @PostMapping("/{id}/copy")
     public Result<WorkflowDTO> copy(@PathVariable Long id) {
         return Result.success(workflowService.copy(id));
+    }
+
+    private WorkflowDTO convertToDto(WorkflowUpdateCmd cmd) {
+        WorkflowDTO dto = new WorkflowDTO();
+        dto.setId(cmd.getId());
+        dto.setName(cmd.getName());
+        dto.setDescription(cmd.getDescription());
+        dto.setWorkflowType(cmd.getWorkflowType());
+        dto.setStages(cmd.getStages());
+        return dto;
     }
 }

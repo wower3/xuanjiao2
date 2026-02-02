@@ -1,24 +1,23 @@
 import request from '@/utils/request'
 
 export function getWorkflowList() {
-  return request.get('/workflow/list')
+  return request.post('/workflow/getList', {})
 }
 
-
 export function getWorkflowById(id: number) {
-  return request.get(`/workflow/${id}`)
+  return request.post('/workflow/getDetail', { id })
 }
 
 export function saveWorkflow(data: any) {
-  return request.post('/workflow', data)
+  return request.post('/workflow/create', data)
 }
 
 export function updateWorkflow(data: any) {
-  return request.put('/workflow', data)
+  return request.post('/workflow/update', data)
 }
 
 export function updateWorkflowStatus(id: number, status: number) {
-  return request.put(`/workflow/${id}/status`, null, { params: { status } })
+  return request.post('/workflow/updateStatus', { id, status })
 }
 
 /**
@@ -26,7 +25,7 @@ export function updateWorkflowStatus(id: number, status: number) {
  * @param instanceId 实例ID
  */
 export function getApprovalProgress(instanceId: number) {
-  return request.get(`/workflow/progress/${instanceId}`)
+  return request.post('/workflow/getApprovalProgress', { instanceId })
 }
 
 /**
@@ -34,7 +33,7 @@ export function getApprovalProgress(instanceId: number) {
  * @param id 流程ID
  */
 export function deleteWorkflow(id: number) {
-  return request.delete(`/workflow/${id}`)
+  return request.post('/workflow/delete', { id })
 }
 
 /**
@@ -46,9 +45,7 @@ export function bindRole(data: {
   roleId: number
   workflowType: string
 }) {
-  return request.put(`/workflow/${data.id}/bind-role`, null, {
-    params: { roleId: data.roleId, workflowType: data.workflowType }
-  })
+  return request.post('/workflow/bindRole', data)
 }
 
 /**
@@ -56,7 +53,7 @@ export function bindRole(data: {
  * @param id 流程ID
  */
 export function unbindRole(id: number) {
-  return request.put(`/workflow/${id}/unbind-role`)
+  return request.post('/workflow/unbindRole', { id })
 }
 
 /**
@@ -76,7 +73,7 @@ export function getFirstStageApprovers(params: {
   applicantId: number
   keyword?: string
 }) {
-  return request.get('/workflow/first-stage-approvers', { params })
+  return request.post('/workflow/getFirstStageApprovers', params)
 }
 
 /**
@@ -100,7 +97,7 @@ export function getSubWorkflowFirstStageApprovers(params: {
   applicantId: number
   keyword?: string
 }) {
-  return request.get('/workflow/sub-workflow-approvers', { params })
+  return request.post('/workflow/getSubWorkflowFirstStageApprovers', params)
 }
 
 /**

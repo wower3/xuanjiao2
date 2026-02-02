@@ -719,6 +719,79 @@
         <el-button @click="showViewDialog = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 重新发起子流程对话框 -->
+    <el-dialog v-model="showRestartDialog" title="重新发起子流程" width="700px" @closed="resetRestartForm">
+      <div v-loading="loadingDetail">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="子流程名称">
+            {{ restartForm.subWorkflowName || '未命名' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="审批类型">
+            <el-tag v-if="restartForm.approveType === 'OR'" type="warning" size="small">或签</el-tag>
+            <el-tag v-else type="success" size="small">会签</el-tag>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <el-alert
+          title="提示"
+          type="info"
+          :closable="false"
+          style="margin-top: 15px; margin-bottom: 15px"
+        >
+          <template v-if="restartForm.approveType === 'OR'">
+            或签：请从以下配置中选择 1 个审批人
+          </template>
+          <template v-else>
+            会签：请按照配置顺序为每个配置项选择一个审批人，共需要选择 {{ restartForm.approverCount }} 个审批人。
+          </template>
+        </el-alert>
+
+        <div v-if="restartForm.approverConfigs && restartForm.approverConfigs.length > 0">
+          <div v-for="(config, index) in restartForm.approverConfigs" :key="config.configId" style="margin-bottom: 15px;">
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #E6A23C; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
+              <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName || '未知类型' }}：{{ config.approverName || '未命名' }}</span>
+              <span v-if="!config.availableUsers || config.availableUsers.length === 0" style="color: #F56C6C; font-size: 12px; margin-left: 10px;">
+                （无可选用户，请检查用户状态）
+              </span>
+            </div>
+            <el-select
+              v-model="restartForm.selectedApprovers[config.configId]"
+              filterable
+              placeholder="请选择审批人"
+              style="width: 100%;"
+              clearable
+              @change="handleRestartApproverChange"
+              :disabled="!config.availableUsers || config.availableUsers.length === 0"
+            >
+              <el-option
+                v-for="user in (config.availableUsers || [])"
+                :key="user.id"
+                :label="user.realName || user.username"
+                :value="user.id"
+              >
+                <span>{{ user.realName || user.username }}</span>
+                <span style="color: #909399; font-size: 12px; margin-left: 10px;">
+                  {{ user.deptName }} / {{ user.roleName }}
+                </span>
+              </el-option>
+            </el-select>
+          </div>
+          <!-- 已选择提示 -->
+          <div style="margin-top: 8px; color: #67C23A; font-size: 12px">
+            已选择 {{ Object.values(restartForm.selectedApprovers).filter(v => v !== null && v !== undefined).length }} / {{ restartForm.approveType === 'OR' ? 1 : restartForm.approverCount }} 位审批人
+          </div>
+        </div>
+        <div v-else style="color: #F56C6C; font-size: 13px;">
+          该子流程未配置审批人，请在流程设计器中配置。
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showRestartDialog = false" :disabled="submitting">取消</el-button>
+        <el-button type="primary" @click="submitRestartSubWorkflow" :loading="submitting" :disabled="!isRestartFormValid">确认重新发起</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -726,8 +799,8 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
-import { getPendingApproval, getTaskDetail, getInstanceDetail, approve, returnTask } from '@/api/task'
-import { selectNextStageApproversWithSubWorkflows } from '@/api/workflow'
+import { getPendingApproval, getTaskDetail, getInstanceDetail, approve, returnTask, restartSubWorkflow } from '@/api/task'
+import { selectNextStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers, getWorkflowById } from '@/api/workflow'
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -735,12 +808,23 @@ const total = ref(0)
 const query = reactive({ pageNum: 1, pageSize: 10 })
 const showApproveDialog = ref(false)
 const showViewDialog = ref(false)
+const showRestartDialog = ref(false)
 const loadingDetail = ref(false)
 const submitting = ref(false)
 const currentTask = ref<any>(null)
 const approveForm = reactive({ comment: '' })
 const showReturnReasonInput = ref(false)
 const returnForm = reactive({ reason: '' })
+
+// 子流程重新发起相关
+const restartForm = reactive({
+  subWorkflowId: null as number | null,
+  subWorkflowName: '',
+  approverConfigs: [] as any[],
+  selectedApprovers: {} as Record<number, number>,
+  approveType: '',
+  approverCount: 0
+})
 
 // 下一层审批人选择
 const selectedNextApprovers = ref<Record<number, number>>({})
@@ -811,6 +895,18 @@ const mainWorkflowProgressView = computed(() => {
 const subWorkflowProgressView = computed(() => {
   if (!viewDetail.value || !viewDetail.value.approvalProgress) return []
   return viewDetail.value.approvalProgress.filter((p: any) => p.isSubWorkflow === 1)
+})
+
+// 重新发起子流程表单验证
+const isRestartFormValid = computed(() => {
+  if (restartForm.approveType === 'OR') {
+    return Object.values(restartForm.selectedApprovers).filter(v => v !== null && v !== undefined).length === 1
+  } else {
+    const selectedCount = Object.keys(restartForm.selectedApprovers).filter(
+      key => restartForm.selectedApprovers[key] !== null && restartForm.selectedApprovers[key] !== undefined
+    ).length
+    return selectedCount === restartForm.approverConfigs.length
+  }
 })
 
 async function loadData() {
@@ -1052,6 +1148,7 @@ function resetForm() {
     hasSubWorkflows: false,
     subWorkflows: []
   }
+  resetRestartForm()
 }
 
 function getStatusType(status: string) {
@@ -1076,9 +1173,112 @@ function getStatusText(status: string) {
   return map[status] || status
 }
 
-function handleOpenRestartDetail(row: any) {
-  // TODO: Implement restart sub workflow dialog
-  ElMessage.info('重新发起子流程功能待实现')
+async function handleOpenRestartDetail(row: any) {
+  currentTask.value = row
+  showRestartDialog.value = true
+  loadingDetail.value = true
+
+  resetRestartForm()
+
+  try {
+    // Parse sub-workflow info from task
+    let subWorkflowInfo: any
+    try {
+      subWorkflowInfo = JSON.parse(row.subWorkflowApproverIds || '{}')
+    } catch (e) {
+      ElMessage.error('解析子流程信息失败')
+      loadingDetail.value = false
+      return
+    }
+
+    const subWorkflowId = subWorkflowInfo.subWorkflowId
+    if (!subWorkflowId) {
+      ElMessage.error('子流程ID不存在')
+      loadingDetail.value = false
+      return
+    }
+
+    restartForm.subWorkflowId = subWorkflowId
+
+    // Get sub-workflow details
+    const workflowRes = await getWorkflowById(subWorkflowId)
+    const workflow = workflowRes.data
+    restartForm.subWorkflowName = workflow.name || '未命名'
+    restartForm.approveType = workflow.approveType || 'OR'
+
+    // Get first stage approvers for sub-workflow
+    const approversRes = await getSubWorkflowFirstStageApprovers({
+      subWorkflowId,
+      applicantId: row.applicantId || row.applicantId
+    })
+
+    restartForm.approverConfigs = approversRes.data?.approverConfigs || []
+    restartForm.approverCount = approversRes.data?.approverCount || 0
+
+    // Initialize selected approvers object
+    for (const config of restartForm.approverConfigs) {
+      restartForm.selectedApprovers[config.configId] = null
+    }
+
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载子流程信息失败')
+  } finally {
+    loadingDetail.value = false
+  }
+}
+
+// 处理重新发起审批人选择变化（或签时只允许选1个）
+function handleRestartApproverChange() {
+  if (restartForm.approveType === 'OR') {
+    const selectedKeys = Object.keys(restartForm.selectedApprovers).filter(
+      key => restartForm.selectedApprovers[key] !== null && restartForm.selectedApprovers[key] !== undefined
+    )
+    if (selectedKeys.length > 1) {
+      const lastKey = selectedKeys[selectedKeys.length - 1]
+      const lastValue = restartForm.selectedApprovers[lastKey]
+      restartForm.selectedApprovers = {}
+      restartForm.selectedApprovers[lastKey] = lastValue
+    }
+  }
+}
+
+// 提交重新发起子流程
+async function submitRestartSubWorkflow() {
+  if (!isRestartFormValid.value) {
+    ElMessage.warning('请选择审批人')
+    return
+  }
+
+  submitting.value = true
+  try {
+    const approverIds: number[] = []
+    for (const configId in restartForm.selectedApprovers) {
+      const approverId = restartForm.selectedApprovers[configId]
+      if (approverId) {
+        approverIds.push(approverId)
+      }
+    }
+
+    await restartSubWorkflow(currentTask.value.id, approverIds)
+
+    ElMessage.success('子流程已重新发起')
+    showRestartDialog.value = false
+    loadData()
+  } catch (e: any) {
+    ElMessage.error(e.message || '重新发起失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 重置重新发起表单
+function resetRestartForm() {
+  restartForm.subWorkflowId = null
+  restartForm.subWorkflowName = ''
+  restartForm.approverConfigs = []
+  restartForm.selectedApprovers = {}
+  restartForm.approveType = ''
+  restartForm.approverCount = 0
 }
 
 function getAssetStatusType(status: string) {

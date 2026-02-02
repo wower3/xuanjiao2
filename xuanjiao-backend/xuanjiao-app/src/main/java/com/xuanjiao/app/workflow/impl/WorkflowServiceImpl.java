@@ -58,6 +58,21 @@ public class WorkflowServiceImpl implements WorkflowService {
                     dto.setRoleName(role.getName());
                 }
             }
+            // 加载阶段和审批人信息（包括子流程配置）
+            LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(WorkflowStageDO::getWorkflowId, workflow.getId()).orderByAsc(WorkflowStageDO::getStageOrder);
+            List<WorkflowStageDO> stages = stageMapper.selectList(wrapper);
+            List<WorkflowStageDTO> stageDTOs = new ArrayList<>();
+            for (WorkflowStageDO stage : stages) {
+                WorkflowStageDTO stageDTO = convertStage(stage);
+                // 查询该阶段的所有审批人（包括普通审批人和子流程）
+                LambdaQueryWrapper<StageApproverDO> approverWrapper = new LambdaQueryWrapper<>();
+                approverWrapper.eq(StageApproverDO::getStageId, stage.getId());
+                List<StageApproverDO> approvers = approverMapper.selectList(approverWrapper);
+                stageDTO.setApprovers(approvers.stream().map(this::convertApprover).collect(Collectors.toList()));
+                stageDTOs.add(stageDTO);
+            }
+            dto.setStages(stageDTOs);
             return dto;
         }).collect(Collectors.toList());
     }
@@ -93,11 +108,13 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Override
     @Transactional
-    public void save(WorkflowDTO dto) {
+    public WorkflowDTO save(WorkflowDTO dto) {
         WorkflowDO workflow = new WorkflowDO();
         BeanUtils.copyProperties(dto, workflow);
         workflowMapper.insert(workflow);
         saveStages(workflow.getId(), dto.getStages());
+        // 返回新创建的流程（包含ID）
+        return getById(workflow.getId());
     }
 
     @Override

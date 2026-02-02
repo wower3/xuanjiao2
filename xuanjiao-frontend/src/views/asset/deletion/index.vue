@@ -15,6 +15,7 @@
             :key="deletionKey"
             :selected-asset-ids="selectedAssetIds"
             :selected-assets="selectedAssets"
+            :application-id="applicationId"
             @back-to-assets="handleBackToAssets"
             @reset="handleResetDeletion"
           />
@@ -25,14 +26,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import MyAssets from './MyAssets.vue'
 import DeletionApply from './DeletionApply.vue'
+
+const route = useRoute()
 
 const activeTab = ref('assets')
 const selectedAssetIds = ref<number[]>([])
 const selectedAssets = ref<any[]>([])
 const deletionKey = ref(0)
+const applicationId = ref<number | null>(null)
+
+// 检查 URL 参数，如果有 id 则进入编辑模式
+onMounted(() => {
+  const id = route.query.id as number
+  if (id) {
+    applicationId.value = id
+    activeTab.value = 'deletion'
+    deletionKey.value++
+  }
+})
 
 function handleSelectionChange(data: { assetIds: number[]; assets: any[] }) {
   selectedAssetIds.value = data.assetIds
@@ -53,6 +68,7 @@ function handleResetDeletion() {
   // 重置删除申请页面的状态
   selectedAssetIds.value = []
   selectedAssets.value = []
+  applicationId.value = null
   deletionKey.value++
 }
 </script>

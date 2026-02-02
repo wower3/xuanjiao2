@@ -1,0 +1,15 @@
+package com.xuanjiao.client.dto.role;
+
+import lombok.Data;
+
+import javax.validation.constraints.NotNull;
+
+/**
+ * 获取角色菜单查询对象
+ */
+@Data
+public class RoleGetRoleMenusQry {
+
+    @NotNull(message = "角色ID不能为空")
+    private Long roleId;
+}

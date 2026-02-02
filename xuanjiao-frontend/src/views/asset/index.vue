@@ -18,13 +18,21 @@
       </template>
       <el-form :inline="true" :model="query">
         <el-form-item label="名称">
-          <el-input v-model="query.name" placeholder="素材名称" clearable />
+          <el-input v-model="query.name" placeholder="素材名称" clearable @change="handleQueryChange" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="query.type" placeholder="全部" clearable>
+          <el-select v-model="query.type" placeholder="全部" clearable @change="handleQueryChange">
             <el-option label="视频" value="VIDEO" />
             <el-option label="图片" value="IMAGE" />
             <el-option label="文档" value="DOCUMENT" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="query.status" placeholder="全部" clearable @change="handleQueryChange">
+            <el-option label="待审批" value="PENDING" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="草稿" value="DRAFT" />
+            <el-option label="已删除" value="DELETED" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -63,8 +71,8 @@
         <el-table-column prop="createTime" label="上传时间" width="180" />
         <el-table-column label="操作" width="240">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleDownload(row)">下载</el-button>
-            <el-button link type="primary" @click="showApplyDialog(row)">申请使用</el-button>
+            <el-button v-if="row.status === 'APPROVED'" link type="primary" @click="handleDownload(row)">下载</el-button>
+            <el-button v-if="row.status === 'APPROVED'" link type="primary" @click="showApplyDialog(row)">申请使用</el-button>
             <el-button v-if="previewMode === 'image' && row.status === 'APPROVED'" link type="success" @click="showUsageDetails(row)">使用详情</el-button>
             <!-- 管理员功能 -->
             <template v-if="isAdmin">
@@ -174,7 +182,7 @@ const loading = ref(false)
 const cleanupLoading = ref(false)
 const list = ref([])
 const total = ref(0)
-const query = reactive({ name: '', type: '', pageNum: 1, pageSize: 10 })
+const query = reactive({ name: '', type: '', status: '', pageNum: 1, pageSize: 10 })
 const showPreview = ref(false)
 const previewAsset = ref<any>(null)
 const previewUrl = ref('')
@@ -199,8 +207,40 @@ const usageDetailsTotal = ref(0)
 const loadingUsageDetails = ref(false)
 const usageDetailsQuery = reactive({ pageNum: 1, pageSize: 10 })
 
+// 从URL初始化筛选条件
+function initQueryFromUrl() {
+  const routeQuery = router.currentRoute.value.query
+  if (routeQuery.name) query.name = routeQuery.name as string
+  if (routeQuery.type) query.type = routeQuery.type as string
+  if (routeQuery.status) query.status = routeQuery.status as string
+  if (routeQuery.pageNum) query.pageNum = parseInt(routeQuery.pageNum as string)
+  if (routeQuery.pageSize) query.pageSize = parseInt(routeQuery.pageSize as string)
+}
+
+// 更新URL中的筛选条件
+function updateUrlQuery() {
+  router.replace({
+    query: {
+      ...router.currentRoute.value.query,
+      name: query.name || undefined,
+      type: query.type || undefined,
+      status: query.status || undefined,
+      pageNum: query.pageNum.toString(),
+      pageSize: query.pageSize.toString()
+    }
+  })
+}
+
+// 筛选条件变化时处理
+function handleQueryChange() {
+  query.pageNum = 1
+  updateUrlQuery()
+  loadData()
+}
+
 async function loadData() {
   loading.value = true
+  updateUrlQuery()
   try {
     const res = await getAssetList(query)
     list.value = res.data.list
@@ -381,6 +421,7 @@ async function handleTriggerCleanup() {
 }
 
 onMounted(() => {
+  initQueryFromUrl()
   loadData()
 })
 </script>

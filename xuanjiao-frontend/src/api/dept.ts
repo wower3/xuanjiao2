@@ -1,30 +1,29 @@
 import request from '@/utils/request'
 
 export function getDeptList() {
-  return request.get('/dept/list')
+  return request.post('/dept/getList', {})
 }
 
 export function getDeptTree() {
-  return request.get('/dept/tree')
+  return request.post('/dept/getTree', {})
 }
 
 export function getDeptById(id: number) {
-  return request.get(`/dept/${id}`)
+  return request.post('/dept/getDetail', { id })
 }
 
 export function saveDept(data: any) {
-  return request.post('/dept', data)
+  return request.post('/dept/create', data)
 }
 
 export function updateDept(data: any) {
-  return request.put('/dept', data)
+  return request.post('/dept/update', data)
 }
 
 export function deleteDept(id: number) {
-  return request.delete(`/dept/${id}`)
+  return request.post('/dept/delete', { id })
 }
 
 export function generateDeptCode() {
   return request.get('/dept/generate-code')
 }
-

@@ -1,15 +1,15 @@
 import request from '@/utils/request'
 
 export function getAssetList(params: any) {
-  return request.get('/asset/list', { params })
+  return request.post('/asset/list', params)
 }
 
 export function getAssetById(id: number) {
-  return request.get(`/asset/${id}`)
+  return request.post('/asset/getDetail', { id })
 }
 
 export function deleteAsset(id: number) {
-  return request.delete(`/asset/${id}`)
+  return request.post('/asset/delete', { id })
 }
 
 export function uploadAsset(file: File, data: any) {
@@ -56,15 +56,20 @@ export function uploadCopyrightFile(file: File): Promise<{ filePath: string }> {
 
 // 管理员彻底删除素材
 export function adminDeleteAsset(id: number, reason: string) {
-  return request.delete(`/asset/admin/${id}`, { params: { reason } })
+  return request.post('/asset/adminDelete', { id, reason })
 }
 
 // 管理员调整素材删除时间（测试功能）
 export function adjustAssetDeleteTime(id: number) {
-  return request.put(`/asset/admin/${id}/adjust-delete-time`)
+  return request.post('/asset/adjustDeleteTime', { id })
 }
 
 // 管理员手动触发定时任务（测试功能）
 export function triggerCleanupTask() {
   return request.post('/asset/admin/trigger-cleanup')
+}
+
+// 查询用户已录入的素材（APPROVED状态）
+export function getMyApprovedAssets(params: any) {
+  return request.post('/asset/getMyApproved', params)
 }

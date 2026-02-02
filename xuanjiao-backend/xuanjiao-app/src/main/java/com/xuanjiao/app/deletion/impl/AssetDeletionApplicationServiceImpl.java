@@ -199,6 +199,30 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     }
 
     @Override
+    public PageResult<AssetDeletionApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
+        // 查询草稿状态的申请（状态为DRAFT）
+        List<AssetDeletionApplication> applications = deletionApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
+        List<AssetDeletionApplication> filteredList = applications.stream()
+            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .collect(Collectors.toList());
+
+        // 按标题筛选
+        if (StringUtils.hasText(title)) {
+            filteredList = filteredList.stream()
+                .filter(app -> app.getTitle() != null && app.getTitle().contains(title))
+                .collect(Collectors.toList());
+        }
+
+        long total = deletionApplicationRepository.countByApplicant(userId);
+
+        List<AssetDeletionApplicationDTO> dtoList = filteredList.stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+
+        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
+    }
+
+    @Override
     @Transactional
     public void deleteById(Long id) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
@@ -310,6 +334,51 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
         logger.info("素材删除审批通过处理完成: applicationId={}, updatedAssetCount={}",
             id, deletionAssetDOs.size());
+    }
+
+    @Override
+    @Transactional
+    public Long copyApplication(Long id, Long userId) {
+        // 1. 获取原申请单
+        AssetDeletionApplication original = deletionApplicationRepository.findById(id);
+        if (original == null) {
+            throw new RuntimeException("原申请单不存在");
+        }
+
+        // 2. 创建新申请单（草稿状态）
+        AssetDeletionApplication newApplication = new AssetDeletionApplication();
+        newApplication.setTitle(original.getTitle() + " - 副本");
+        newApplication.setApplicantId(userId);
+        UserDO currentUser = userMapper.selectById(userId);
+        if (currentUser != null) {
+            newApplication.setDeptId(currentUser.getDeptId());
+        }
+        newApplication.setStatus("DRAFT");
+        newApplication.setDeleteReason(original.getDeleteReason());
+        newApplication.setAttachmentPath(original.getAttachmentPath());
+        newApplication.setCreateTime(LocalDateTime.now());
+        newApplication.setUpdateTime(LocalDateTime.now());
+
+        AssetDeletionApplication saved = deletionApplicationRepository.save(newApplication);
+
+        // 3. 复制素材关联（只复制引用，不复制文件）
+        QueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
+            new QueryWrapper<>();
+        wrapper.eq("deletion_application_id", id);
+        List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> originalAssets =
+            deletionAssetMapper.selectList(wrapper);
+
+        for (com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO originalAsset : originalAssets) {
+            com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO newAsset =
+                new com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO();
+            newAsset.setDeletionApplicationId(saved.getId());
+            newAsset.setAssetId(originalAsset.getAssetId());
+            newAsset.setAssetName(originalAsset.getAssetName());
+            newAsset.setAssetType(originalAsset.getAssetType());
+            deletionAssetMapper.insert(newAsset);
+        }
+
+        return saved.getId();
     }
 
     /**

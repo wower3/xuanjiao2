@@ -17,6 +17,7 @@
         >
           <el-option label="素材录入" value="MATERIAL_ENTRY" />
           <el-option label="使用申请" value="ASSET_USAGE" />
+          <el-option label="素材删除" value="ASSET_DELETION" />
         </el-select>
         <el-input
           v-model="filterForm.title"
@@ -36,7 +37,8 @@
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag v-if="row.type === 'MATERIAL_ENTRY'" type="primary">素材录入</el-tag>
-            <el-tag v-else type="success">使用申请</el-tag>
+            <el-tag v-else-if="row.type === 'ASSET_USAGE'" type="success">使用申请</el-tag>
+            <el-tag v-else-if="row.type === 'ASSET_DELETION'" type="danger">素材删除</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="事项标题" min-width="200">
@@ -46,7 +48,7 @@
         </el-table-column>
         <el-table-column label="维护人/申请人" width="120">
           <template #default="{ row }">
-            {{ row.data.maintainerName || row.data.userName || '-' }}
+            {{ row.data.maintainerName || row.data.userName || row.data.applicantName || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="归属部门" width="120">
@@ -60,9 +62,8 @@
           </template>
         </el-table-column>
         <el-table-column prop="data.createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="220">
+        <el-table-column label="操作" width="150">
           <template #default="{ row }">
-            <el-button link type="primary" @click="viewDetail(row)">查看详情</el-button>
             <el-button link type="primary" @click="continueEdit(row)">继续编辑</el-button>
             <el-button link type="danger" @click="deleteDraft(row)">删除</el-button>
           </template>
@@ -76,61 +77,6 @@
         @change="loadDrafts"
       />
     </el-card>
-
-    <!-- 查看详情对话框 - 只读 -->
-    <el-dialog v-model="showDetail" title="申请单详情" width="900px">
-      <div v-if="currentDraft">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="类型" :span="2">
-            <el-tag v-if="currentDraft.type === 'MATERIAL_ENTRY'" type="primary">素材录入</el-tag>
-            <el-tag v-else type="success">使用申请</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="事项标题" :span="2">{{ currentDraft.data.title || currentDraft.data.businessName }}</el-descriptions-item>
-          <el-descriptions-item label="维护人/申请人">
-            {{ currentDraft.data.maintainerName || currentDraft.data.userName || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="归属部门">
-            {{ currentDraft.data.deptName || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="创建时间" :span="2">{{ currentDraft.data.createTime }}</el-descriptions-item>
-        </el-descriptions>
-
-        <div class="file-section">
-          <div class="file-header">
-            <span>素材文件 ({{ currentDraft.data.assets?.length || 0 }})</span>
-          </div>
-          <el-table :data="currentDraft.data.assets" size="small" v-if="currentDraft.type === 'MATERIAL_ENTRY'">
-            <el-table-column prop="name" label="文件名称" />
-            <el-table-column prop="type" label="类型" width="80" />
-            <el-table-column label="标签" width="150">
-              <template #default="{ row }">
-                <el-tag
-                  v-for="tag in row.tags"
-                  :key="tag.id"
-                  size="small"
-                  style="margin-right: 5px"
-                >
-                  {{ tag.name }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="description" label="说明" show-overflow-tooltip />
-          </el-table>
-          <el-table :data="currentDraft.data.assets" size="small" v-else>
-            <el-table-column prop="assetName" label="文件名称" />
-            <el-table-column prop="assetType" label="类型" width="80" />
-            <el-table-column prop="usageDescription" label="使用说明" show-overflow-tooltip />
-            <el-table-column prop="usagePublishChannel" label="发布渠道" width="120" />
-            <el-table-column label="二次创作" width="80">
-              <template #default="{ row }">
-                <el-tag v-if="row.usageIsSecondaryCreation === 1" type="success" size="small">是</el-tag>
-                <el-tag v-else type="info" size="small">否</el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -139,6 +85,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getDrafts } from '@/api/task'
 import { deleteMaterialApplication } from '@/api/materialApplication'
+import { deleteDeletionApplication } from '@/api/assetDeletion'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
@@ -151,8 +98,6 @@ const filterForm = reactive({
   draftType: '',
   title: ''
 })
-const showDetail = ref(false)
-const currentDraft = ref<any>(null)
 
 async function loadDrafts() {
   loading.value = true
@@ -180,11 +125,6 @@ function handleFilterChange() {
   loadDrafts()
 }
 
-function viewDetail(row: any) {
-  currentDraft.value = row
-  showDetail.value = true
-}
-
 function continueEdit(row: any) {
   if (row.type === 'MATERIAL_ENTRY') {
     // 跳转到素材录入页面，带上工单ID
@@ -192,6 +132,9 @@ function continueEdit(row: any) {
   } else if (row.type === 'ASSET_USAGE') {
     // 跳转到使用申请页面，带上工单ID
     router.push(`/asset/usage-apply?id=${row.data.id}`)
+  } else if (row.type === 'ASSET_DELETION') {
+    // 跳转到素材删除页面，带上工单ID
+    router.push(`/asset/deletion?id=${row.data.id}`)
   }
 }
 
@@ -200,8 +143,11 @@ async function deleteDraft(row: any) {
   if (row.type === 'MATERIAL_ENTRY') {
     await deleteMaterialApplication(row.data.id)
     ElMessage.success('删除成功')
+  } else if (row.type === 'ASSET_DELETION') {
+    await deleteDeletionApplication(row.data.id)
+    ElMessage.success('删除成功')
   } else {
-    // TODO: 使用申请删除
+    // 使用申请删除
     ElMessage.info('使用申请删除功能待实现')
   }
   loadDrafts()

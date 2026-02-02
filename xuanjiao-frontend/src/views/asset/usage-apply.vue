@@ -282,9 +282,9 @@
 
         <!-- 无需选择审批人的提示 -->
         <el-form-item v-if="boundWorkflow && hasLoadedInitialApprovers && firstStageApproverConfigs.length === 0 && !approverKeyword && subWorkflows.length === 0">
-          <div style="color: #E6A23C; font-size: 13px">
-            <el-icon><WarningFilled /></el-icon>
-            该流程第一层为子流程阶段，将由子流程自动选择审批人，无需手动选择
+          <div style="color: #67C23A; font-size: 13px">
+            <el-icon><SuccessFilled /></el-icon>
+            该流程第一层为子流程阶段，将由子流程自动选择审批人。请直接点击「提交」按钮完成提交。
           </div>
         </el-form-item>
       </el-form>
@@ -539,7 +539,13 @@ async function loadData() {
       const res = await getUsageApplyById(id)
       const data = res.data
       form.title = data.title
-      selectedAssets.value = data.assets || []
+      // 转换 assets 字段：将 assetId/assetName/assetType 映射为 id/name/type
+      selectedAssets.value = (data.assets || []).map((asset: any) => ({
+        ...asset,
+        id: asset.assetId,
+        name: asset.assetName,
+        type: asset.assetType
+      }))
       hasUnsavedChanges.value = false
     } catch (e) {
       ElMessage.error('加载失败')

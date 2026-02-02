@@ -4,10 +4,12 @@ import com.xuanjiao.app.approval.ApprovalService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.dto.PageResult;
 import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.approval.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -23,28 +25,21 @@ public class ApprovalController {
     private WorkflowEngineService workflowEngineService;
 
     @ApiOperation("待我审批")
-    @GetMapping("/tasks")
+    @PostMapping("/getMyTasks")
     public Result<PageResult<Map<String, Object>>> getMyTasks(
             @RequestAttribute("userId") Long userId,
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        return Result.success(approvalService.getMyTasks(userId, pageNum, pageSize));
+            @Valid @RequestBody ApprovalGetMyTasksQry qry) {
+        return Result.success(approvalService.getMyTasks(userId, qry.getPageNum(), qry.getPageSize()));
     }
 
     @ApiOperation("我发起的")
-    @GetMapping("/applied")
+    @PostMapping("/getMyApplied")
     public Result<PageResult<Map<String, Object>>> getMyApplied(
             @RequestAttribute("userId") Long userId,
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String businessType,
-            @RequestParam(required = false, defaultValue = "false") boolean forAllUsers,
-            @RequestParam(required = false) Long applicantId,
-            @RequestParam(required = false) Long deptId,
-            @RequestParam(required = false) String roleType,
-            @RequestParam(required = false) String status) {
-        return Result.success(approvalService.getMyApplied(userId, pageNum, pageSize,
-                businessType, forAllUsers, applicantId, deptId, roleType, status));
+            @Valid @RequestBody ApprovalGetMyAppliedQry qry) {
+        return Result.success(approvalService.getMyApplied(userId, qry.getPageNum(), qry.getPageSize(),
+                qry.getBusinessType(), qry.getForAllUsers(), qry.getApplicantId(),
+                qry.getDeptId(), qry.getRoleType(), qry.getStatus()));
     }
 
     @ApiOperation("审批")
@@ -69,15 +64,15 @@ public class ApprovalController {
     }
 
     @ApiOperation("获取审批任务详情")
-    @GetMapping("/tasks/{id}/detail")
-    public Result<Map<String, Object>> getTaskDetail(@PathVariable Long id) {
-        return Result.success(approvalService.getTaskDetail(id));
+    @PostMapping("/getTaskDetail")
+    public Result<Map<String, Object>> getTaskDetail(@Valid @RequestBody ApprovalGetTaskDetailQry qry) {
+        return Result.success(approvalService.getTaskDetail(qry.getId()));
     }
 
     @ApiOperation("获取审批实例详情")
-    @GetMapping("/instances/{id}/detail")
-    public Result<Map<String, Object>> getInstanceDetail(@PathVariable Long id) {
-        return Result.success(approvalService.getInstanceDetail(id));
+    @PostMapping("/getInstanceDetail")
+    public Result<Map<String, Object>> getInstanceDetail(@Valid @RequestBody ApprovalGetInstanceDetailQry qry) {
+        return Result.success(approvalService.getInstanceDetail(qry.getId()));
     }
 
     @ApiOperation("追回工单（发起人追回正在审批的工单）")

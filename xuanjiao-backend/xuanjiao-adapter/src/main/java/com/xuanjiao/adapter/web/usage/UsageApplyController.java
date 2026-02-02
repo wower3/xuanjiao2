@@ -2,10 +2,12 @@ package com.xuanjiao.adapter.web.usage;
 
 import com.xuanjiao.app.usage.UsageApplyService;
 import com.xuanjiao.client.dto.*;
+import com.xuanjiao.client.dto.usage.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import javax.validation.Valid;
 
 @Api(tags = "素材使用申请")
 @RestController
@@ -38,18 +40,25 @@ public class UsageApplyController {
     @ApiOperation("创建使用申请草稿")
     @PostMapping("/draft")
     public Result<UsageApplyDTO> createDraft(
-            @RequestBody UsageApplyCmd cmd,
+            @Valid @RequestBody UsageApplyCreateDraftCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(usageApplyService.createDraft(cmd, userId));
+        // Convert to UsageApplyCmd
+        UsageApplyCmd applyCmd = new UsageApplyCmd();
+        applyCmd.setTitle(cmd.getTitle());
+        applyCmd.setAssetConfigs(cmd.getAssetConfigs());
+        return Result.success(usageApplyService.createDraft(applyCmd, userId));
     }
 
     @ApiOperation("更新使用申请草稿")
-    @PutMapping("/{id}")
+    @PostMapping("/update")
     public Result<UsageApplyDTO> updateDraft(
-            @PathVariable Long id,
-            @RequestBody UsageApplyCmd cmd,
+            @Valid @RequestBody UsageApplyUpdateCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(usageApplyService.updateDraft(id, cmd, userId));
+        // Convert to UsageApplyCmd
+        UsageApplyCmd applyCmd = new UsageApplyCmd();
+        applyCmd.setTitle(cmd.getTitle());
+        applyCmd.setAssetConfigs(cmd.getAssetConfigs());
+        return Result.success(usageApplyService.updateDraft(cmd.getId(), applyCmd, userId));
     }
 
     @ApiOperation("提交使用申请")
@@ -63,45 +72,52 @@ public class UsageApplyController {
     }
 
     @ApiOperation("删除使用申请（仅草稿）")
-    @DeleteMapping("/{id}")
+    @PostMapping("/delete")
     public Result<Void> delete(
-            @PathVariable Long id,
+            @Valid @RequestBody UsageApplyDeleteCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        usageApplyService.delete(id, userId);
+        usageApplyService.delete(cmd.getId(), userId);
         return Result.success();
     }
 
     @ApiOperation("查询申请单详情")
-    @GetMapping("/{id}")
-    public Result<UsageApplyDTO> getById(@PathVariable Long id) {
-        return Result.success(usageApplyService.getById(id));
+    @PostMapping("/getDetail")
+    public Result<UsageApplyDTO> getDetail(@Valid @RequestBody UsageApplyGetDetailQry qry) {
+        return Result.success(usageApplyService.getById(qry.getId()));
     }
 
     @ApiOperation("查询草稿箱")
-    @GetMapping("/drafts")
+    @PostMapping("/getDrafts")
     public Result<PageResult<UsageApplyDTO>> queryDrafts(
-            @RequestAttribute("userId") Long userId,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(usageApplyService.queryDrafts(userId, pageNum, pageSize));
+            @Valid @RequestBody UsageApplyGetDraftsQry qry,
+            @RequestAttribute("userId") Long userId) {
+        return Result.success(usageApplyService.queryDrafts(userId, qry.getPageNum(), qry.getPageSize()));
     }
 
     @ApiOperation("查询我的所有申请")
-    @GetMapping("/my")
+    @PostMapping("/getMyApplications")
     public Result<PageResult<UsageApplyDTO>> queryMyApplications(
-            @RequestAttribute("userId") Long userId,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(usageApplyService.queryMyApplications(userId, pageNum, pageSize));
+            @Valid @RequestBody UsageApplyGetMyApplicationsQry qry,
+            @RequestAttribute("userId") Long userId) {
+        return Result.success(usageApplyService.queryMyApplications(userId, qry.getPageNum(), qry.getPageSize()));
     }
 
     // ========== 通用API ==========
 
     @ApiOperation("检查是否有权限使用素材")
-    @GetMapping("/can-use/{assetId}")
+    @PostMapping("/canUseAsset")
     public Result<Boolean> canUseAsset(
-            @PathVariable Long assetId,
+            @Valid @RequestBody UsageApplyCanUseAssetQry qry,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(usageApplyService.canUseAsset(assetId, userId));
+        return Result.success(usageApplyService.canUseAsset(qry.getAssetId(), userId));
+    }
+
+    @ApiOperation("复制使用申请")
+    @PostMapping("/{id}/copy")
+    public Result<Long> copyApplication(
+            @PathVariable Long id,
+            @RequestAttribute("userId") Long userId) {
+        Long newApplicationId = usageApplyService.copyApplication(id, userId);
+        return Result.success(newApplicationId);
     }
 }
