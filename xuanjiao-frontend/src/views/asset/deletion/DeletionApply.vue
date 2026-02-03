@@ -202,7 +202,8 @@ import {
   createDeletionApplication,
   updateDeletionApplication,
   submitDeletionApplication,
-  getMyDeletionApplications
+  getMyDeletionApplications,
+  getDeletionApplicationById
 } from '@/api/assetDeletion'
 import { getWorkflowList, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows } from '@/api/workflow'
 import { getCurrentUser } from '@/api/user'
@@ -210,11 +211,13 @@ import { getCurrentUser } from '@/api/user'
 interface Props {
   selectedAssetIds?: number[]
   selectedAssets?: any[]
+  applicationId?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   selectedAssetIds: () => [],
-  selectedAssets: () => []
+  selectedAssets: () => [],
+  applicationId: null
 })
 
 const emit = defineEmits<{
@@ -543,8 +546,39 @@ function getTypeColor(type: string) {
   return colorMap[type] || ''
 }
 
+// 加载草稿数据
+async function loadData() {
+  if (props.applicationId) {
+    isEdit.value = true
+    currentId.value = props.applicationId
+    loadingAssets.value = true
+    try {
+      const res = await getDeletionApplicationById(props.applicationId)
+      const data = res.data
+      form.title = data.title || ''
+      form.deleteReason = data.deleteReason || ''
+      form.attachmentPath = data.attachmentPath || ''
+
+      // 加载素材列表 - 后端返回的 assets 字段已经包含 id, name, type 兼容字段
+      if (data.assets && data.assets.length > 0) {
+        localSelectedAssets.value = data.assets.map((asset: any) => ({
+          id: asset.id || asset.assetId,
+          name: asset.name || asset.assetName,
+          type: asset.type || asset.assetType,
+          status: 'APPROVED'
+        }))
+      }
+    } catch (e) {
+      ElMessage.error('加载草稿失败')
+    } finally {
+      loadingAssets.value = false
+    }
+  }
+}
+
 onMounted(async () => {
   await loadCurrentUser()
+  await loadData()
 })
 </script>
 

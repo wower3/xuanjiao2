@@ -389,6 +389,52 @@ The system supports a two-stage asset deletion process:
 - Sub-workflow approver IDs are stored as JSON in `sub_workflow_approver_ids` fields
 - See `WORKFLOW_REFACTOR_SUMMARY.md` for comprehensive workflow system documentation
 
+### API Design Conventions
+
+**POST-First Approach for All Endpoints:**
+
+The project follows a POST-first approach for API design to ensure consistency and avoid RESTful ambiguity:
+
+**Default Rule: Use POST for all operations**
+- Query operations: `POST /{module}/get{Action}` (e.g., `POST /asset/getDetail`)
+- Command operations: `POST /{module}/{action}` (e.g., `POST /asset/delete`)
+- All request parameters should be in the request body as DTO objects
+- Use `@PostMapping` with `@RequestBody @Valid` for all controller methods
+
+**DTO Naming Convention:**
+- Query DTOs: `{Action}Qry` (e.g., `AssetGetDetailQry`, `ApprovalGetMyTasksQry`)
+- Command DTOs: `{Action}Cmd` (e.g., `AssetDeleteCmd`, `ApprovalApproveCmd`)
+- Always use JSR-303 validation annotations (`@NotNull`, `@NotBlank`, `@Min`, etc.)
+
+**Exceptions (When to use GET):**
+Use `@GetMapping` only when POST is impractical:
+- **File preview endpoints** for `<img>` tags: Browsers can only send GET requests for image sources
+  - Example: `@GetMapping("/asset/preview/{id}")` - Must be GET for browser compatibility
+- **File download endpoints** when triggered by direct browser URL access
+  - Example: `@GetMapping("/asset/download/{id}")` - Allows direct download links
+- **Public endpoints** that need to be accessible from external systems without POST capabilities
+
+**Why POST-first?**
+1. **Consistency**: All endpoints follow the same pattern, reducing cognitive load
+2. **Type safety**: DTOs with validation ensure data integrity
+3. **Flexibility**: Easy to add parameters without breaking existing clients
+4. **Logging**: Request bodies are easier to log and audit than URL parameters
+5. **Security**: POST bodies are not logged in access logs or browser history
+
+**Example Controller Pattern:**
+```java
+@PostMapping("/getDetail")
+public Result<AssetDTO> getDetail(@Valid @RequestBody AssetGetDetailQry qry) {
+    return Result.success(assetService.getById(qry.getId()));
+}
+
+// Only use GET for browser-compatible file access
+@GetMapping("/preview/{id}")
+public ResponseEntity<FileSystemResource> preview(@PathVariable Long id) {
+    // ... implementation
+}
+```
+
 ### MyBatis Plus Best Practices
 
 **Always use LambdaQueryWrapper/LambdaUpdateWrapper instead of QueryWrapper:**
@@ -427,6 +473,22 @@ wrapper.eq(AssetDO::getId, assetId)
 assetMapper.update(null, wrapper);
 ```
 
+**MyBatis Plus updateById() Ignores Null Values:**
+- `updateById()` method, by default, **ignores null values** and will NOT update fields to null
+- This is the default FieldStrategy behavior in MyBatis Plus
+- Use `LambdaUpdateWrapper` with `.set()` to force update a field to null:
+```java
+// ❌ Does NOT work - null value is ignored, approvers keeps original value
+progress.setApprovers(null);
+progressMapper.updateById(progress);
+
+// ✅ Works correctly - forces the field to null
+LambdaUpdateWrapper<ApprovalProgressDO> wrapper = new LambdaUpdateWrapper<>();
+wrapper.eq(ApprovalProgressDO::getId, progressId)
+       .set(ApprovalProgressDO::getApprovers, null);  // Force to null
+progressMapper.update(null, wrapper);
+```
+
 ### Important Constraints & Gotchas
 
 **Workflow System:**
@@ -434,6 +496,12 @@ assetMapper.update(null, wrapper);
 - First approver selection differs between OR-sign (first to approve) and AND-sign (marked at creation)
 - Sub-workflows run independently but must complete for parent approval
 - Missing/invalid sub-workflow configurations log warnings but don't block the flow
+- **AND-sign stage completion**: Stage is complete when NO tasks have status PENDING or RETURNED (CANCELLED tasks don't block completion)
+  - This handles workflow return/resubmit scenarios where old tasks are marked CANCELLED
+  - Original bug: Required ALL tasks to be APPROVED, which blocked completion after returns
+- **Duplicate approvers display**: When showing "other approvers" in the same stage, filter by status=PENDING and deduplicate by approver_id
+  - This prevents showing the same approver multiple times after workflow returns
+  - Original bug: Queried all tasks without filtering, showing old CANCELLED/APPROVED task approvers
 
 **Usage Applications:**
 - Many-to-many relationship via `usage_apply_asset` intermediate table
@@ -466,10 +534,17 @@ assetMapper.update(null, wrapper);
 5. Create service interface in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/`
 6. Implement service in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/impl/`
 7. Create DTOs in `xuanjiao-client/src/main/java/com/xuanjiao/client/dto/`
+   - Follow naming convention: `{Action}Qry` for queries, `{Action}Cmd` for commands
+   - Add JSR-303 validation annotations (`@Valid`, `@NotNull`, `@NotBlank`)
 8. Create controller in `xuanjiao-adapter/src/main/java/com/xuanjiao/adapter/web/{module}/`
+   - Use `@PostMapping` for all endpoints (except file preview/download which require GET)
+   - Use `@RequestBody @Valid` for all parameters
+   - Follow URL pattern: `POST /{module}/get{Action}` or `POST /{module}/{action}`
 
 **Frontend:**
 1. Add API client methods in `xuanjiao-frontend/src/api/{domain}.ts`
+   - Use `request.post()` for all API calls (matching backend POST endpoints)
+   - Pass parameters in request body, not as URL params
 2. Create Pinia store in `xuanjiao-frontend/src/stores/{domain}.ts` (if needed)
 3. Create page component in `xuanjiao-frontend/src/views/{path}/`
 4. Add route in `xuanjiao-frontend/src/router/index.ts`

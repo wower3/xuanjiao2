@@ -6,7 +6,7 @@ import java.util.List;
 public interface WorkflowService {
     List<WorkflowDTO> list();
     WorkflowDTO getById(Long id);
-    void save(WorkflowDTO dto);
+    WorkflowDTO save(WorkflowDTO dto);
     void update(WorkflowDTO dto);
     void delete(Long id);
     void updateStatus(Long id, Integer status);

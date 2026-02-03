@@ -62,4 +62,9 @@ public interface UsageApplyService {
      * 更新申请单状态（用于审批流程完成后调用）
      */
     void updateStatus(Long id, String status);
+
+    /**
+     * 复制使用申请
+     */
+    Long copyApplication(Long id, Long userId);
 }

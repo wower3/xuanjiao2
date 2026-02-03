@@ -39,7 +39,7 @@
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleOpenInstanceDetail(row)">详情</el-button>
-            <el-button v-if="row.businessType === 'MATERIAL_ENTRY'" link type="success" @click="handleCopyApplication(row)" :loading="copying">复制申请单</el-button>
+            <el-button v-if="row.status === 'REJECTED'" link type="success" @click="handleCopyApplication(row)" :loading="copying">复制申请单</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -320,6 +320,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
 import { getMyInitiated, withdrawInstance } from '@/api/task'
 import { copyApplication } from '@/api/materialApplication'
+import { copyApplication as copyUsageApplication } from '@/api/usageApply'
+import { copyApplication as copyDeletionApplication } from '@/api/assetDeletion'
 
 const router = useRouter()
 
@@ -418,7 +420,7 @@ async function handleWithdraw() {
 
 async function handleCopyApplication(row: any) {
   await ElMessageBox.confirm(
-    `确定要复制申请单"${row.businessName}"吗？复制后将创建一个新的草稿，您可以在草稿箱中继续编辑。`,
+    `确定要复制申请单"${row.businessName || row.applicationTitle}"吗？复制后将创建一个新的草稿，您可以在草稿箱中继续编辑。`,
     '确认复制',
     {
       confirmButtonText: '确定复制',
@@ -429,10 +431,33 @@ async function handleCopyApplication(row: any) {
 
   copying.value = true
   try {
-    const newApplicationId = await copyApplication(row.applicationId || row.id)
-    ElMessage.success('复制成功，正在跳转到素材录入页面...')
+    let newApplicationId: any
+    let targetPage = ''
+
+    // 根据工单类型调用不同的复制 API
+    if (row.businessType === 'MATERIAL_ENTRY') {
+      newApplicationId = await copyApplication(row.applicationId || row.id)
+      targetPage = '素材录入'
+    } else if (row.businessType === 'ASSET_USAGE') {
+      newApplicationId = await copyUsageApplication(row.applicationId || row.id)
+      targetPage = '素材使用'
+    } else if (row.businessType === 'ASSET_DELETION') {
+      newApplicationId = await copyDeletionApplication(row.applicationId || row.id)
+      targetPage = '素材删除'
+    } else {
+      ElMessage.error('不支持的工单类型')
+      return
+    }
+
+    ElMessage.success(`复制成功，正在跳转到${targetPage}页面...`)
     setTimeout(() => {
-      router.push(`/asset/material-entry?id=${newApplicationId.data}`)
+      if (row.businessType === 'MATERIAL_ENTRY') {
+        router.push(`/asset/material-entry?id=${newApplicationId.data}`)
+      } else if (row.businessType === 'ASSET_USAGE') {
+        router.push(`/asset/usage-apply?id=${newApplicationId.data}`)
+      } else if (row.businessType === 'ASSET_DELETION') {
+        router.push(`/asset/deletion?id=${newApplicationId.data}`)
+      }
     }, 500)
   } catch (e: any) {
     ElMessage.error('复制失败: ' + (e.message || '未知错误'))

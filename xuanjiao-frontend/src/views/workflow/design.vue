@@ -386,11 +386,20 @@ async function save() {
   try {
     if (workflow.id) {
       await updateWorkflow(data)
+      ElMessage.success('保存成功')
+      router.push('/workflow')
     } else {
-      await saveWorkflow(data)
+      // 新建流程：保存后跳转到编辑页面
+      const res = await saveWorkflow(data)
+      ElMessage.success('保存成功')
+      // 后端应该返回新创建的流程ID，跳转到编辑页面
+      if (res.data && res.data.id) {
+        router.push(`/workflow/design/${res.data.id}`)
+      } else {
+        // 如果没有返回ID，可能是后端问题，跳转到列表页
+        router.push('/workflow')
+      }
     }
-    ElMessage.success('保存成功')
-    router.push('/workflow')
   } catch (error: any) {
     ElMessage.error(error.message || '保存失败')
   }

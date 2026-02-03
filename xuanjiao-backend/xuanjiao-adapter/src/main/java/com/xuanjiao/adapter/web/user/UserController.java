@@ -3,6 +3,7 @@ package com.xuanjiao.adapter.web.user;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.client.dto.Result;
 import com.xuanjiao.client.dto.UserDTO;
+import com.xuanjiao.client.dto.user.*;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
@@ -11,6 +12,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -36,8 +38,8 @@ public class UserController {
     }
 
     @ApiOperation("用户列表")
-    @GetMapping("/list")
-    public Result<List<UserDTO>> list(@RequestAttribute(value = "userId", required = false) Long userId) {
+    @PostMapping("/getList")
+    public Result<List<UserDTO>> list(@RequestAttribute(value = "userId", required = false) Long userId, @Valid @RequestBody UserGetListQry qry) {
         // 获取当前用户角色，如果是分消保管理岗，只显示其二级机构的用户
         if (userId != null) {
             UserDTO currentUser = userService.getCurrentUser(userId);
@@ -52,30 +54,16 @@ public class UserController {
     }
 
     @ApiOperation("用户列表（带筛选条件）")
-    @GetMapping("/listWithFilter")
+    @PostMapping("/getListWithFilter")
     public Result<List<UserDTO>> listWithFilter(
             @RequestAttribute(value = "userId", required = false) Long userId,
-            @RequestParam(value = "roleIds", required = false) String roleIdsStr,
-            @RequestParam(value = "deptId", required = false) Long deptId,
-            @RequestParam(value = "includeSubDept", required = false, defaultValue = "true") Boolean includeSubDept) {
-        // 将逗号分隔的字符串转换为 List<Long>
-        List<Long> roleIds = null;
-        if (roleIdsStr != null && !roleIdsStr.trim().isEmpty()) {
-            roleIds = new java.util.ArrayList<>();
-            for (String id : roleIdsStr.split(",")) {
-                try {
-                    roleIds.add(Long.parseLong(id.trim()));
-                } catch (NumberFormatException e) {
-                    // 忽略无效的ID
-                }
-            }
-        }
-        return Result.success(userService.listWithFilter(userId, roleIds, deptId, includeSubDept));
+            @Valid @RequestBody UserGetListWithFilterQry qry) {
+        return Result.success(userService.listWithFilter(userId, qry.getRoleIds(), qry.getDeptId(), qry.getIncludeSubDept()));
     }
 
     @ApiOperation("获取当前用户的默认筛选部门")
-    @GetMapping("/defaultFilterDept")
-    public Result<DefaultFilterDeptDTO> getDefaultFilterDept(@RequestAttribute("userId") Long userId) {
+    @PostMapping("/getDefaultFilterDept")
+    public Result<DefaultFilterDeptDTO> getDefaultFilterDept(@RequestAttribute("userId") Long userId, @Valid @RequestBody UserGetDefaultFilterDeptQry qry) {
         UserDTO currentUser = userService.getCurrentUser(userId);
         if (currentUser == null) {
             return Result.error("用户不存在");
@@ -109,42 +97,65 @@ public class UserController {
     }
 
     @ApiOperation("新增用户")
-    @PostMapping
-    public Result<Void> create(@RequestAttribute("userId") Long currentUserId, @RequestBody UserDTO userDTO) {
+    @PostMapping("/create")
+    public Result<Void> create(@RequestAttribute("userId") Long currentUserId, @Valid @RequestBody UserCreateCmd cmd) {
         // 部门权限检查：只能创建允许查询的部门的用户
-        checkCreateUpdatePermission(currentUserId, userDTO.getDeptId());
+        checkCreateUpdatePermission(currentUserId, cmd.getDeptId());
         // 角色分配权限检查
-        checkRoleAssignmentPermission(currentUserId, userDTO.getRoleId());
-        userService.create(userDTO);
+        checkRoleAssignmentPermission(currentUserId, cmd.getRoleId());
+        userService.create(convertToDto(cmd));
         return Result.success();
     }
 
     @ApiOperation("更新用户")
-    @PutMapping
-    public Result<Void> update(@RequestAttribute("userId") Long currentUserId, @RequestBody UserDTO userDTO) {
-        UserDTO targetUser = userService.getById(userDTO.getId());
+    @PostMapping("/update")
+    public Result<Void> update(@RequestAttribute("userId") Long currentUserId, @Valid @RequestBody UserUpdateCmd cmd) {
+        UserDTO targetUser = userService.getById(cmd.getId());
         if (targetUser == null) {
             return Result.error("用户不存在");
         }
         // 部门权限检查：只能更新允许查询的部门的用户
         checkCreateUpdatePermission(currentUserId, targetUser.getDeptId());
         // 角色分配权限检查
-        checkRoleAssignmentPermission(currentUserId, userDTO.getRoleId());
-        userService.update(userDTO);
+        checkRoleAssignmentPermission(currentUserId, cmd.getRoleId());
+        userService.update(convertToDto(cmd));
         return Result.success();
     }
 
     @ApiOperation("删除用户")
-    @DeleteMapping("/{id}")
-    public Result<Void> delete(@RequestAttribute("userId") Long currentUserId, @PathVariable Long id) {
-        UserDTO targetUser = userService.getById(id);
+    @PostMapping("/delete")
+    public Result<Void> delete(@RequestAttribute("userId") Long currentUserId, @Valid @RequestBody UserDeleteCmd cmd) {
+        UserDTO targetUser = userService.getById(cmd.getId());
         if (targetUser == null) {
             return Result.error("用户不存在");
         }
         // 部门权限检查：只能删除允许查询的部门的用户
         checkCreateUpdatePermission(currentUserId, targetUser.getDeptId());
-        userService.delete(id);
+        userService.delete(cmd.getId());
         return Result.success();
+    }
+
+    private UserDTO convertToDto(UserCreateCmd cmd) {
+        UserDTO dto = new UserDTO();
+        dto.setUsername(cmd.getUsername());
+        dto.setRealName(cmd.getRealName());
+        dto.setEmail(cmd.getEmail());
+        dto.setPhone(cmd.getPhone());
+        dto.setDeptId(cmd.getDeptId());
+        dto.setRoleId(cmd.getRoleId());
+        return dto;
+    }
+
+    private UserDTO convertToDto(UserUpdateCmd cmd) {
+        UserDTO dto = new UserDTO();
+        dto.setId(cmd.getId());
+        dto.setUsername(cmd.getUsername());
+        dto.setRealName(cmd.getRealName());
+        dto.setEmail(cmd.getEmail());
+        dto.setPhone(cmd.getPhone());
+        dto.setDeptId(cmd.getDeptId());
+        dto.setRoleId(cmd.getRoleId());
+        return dto;
     }
 
     /**

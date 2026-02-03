@@ -9,7 +9,7 @@ export function createUsageDraft(data: any) {
 
 // 更新使用申请草稿
 export function updateUsageDraft(id: number, data: any) {
-  return request.put(`/usage-apply/${id}`, data)
+  return request.post('/usage-apply/update', { id, ...data })
 }
 
 // 提交使用申请
@@ -21,27 +21,32 @@ export function submitUsageApply(id: number, workflowId: number) {
 
 // 删除使用申请
 export function deleteUsageApply(id: number) {
-  return request.delete(`/usage-apply/${id}`)
+  return request.post('/usage-apply/delete', { id })
 }
 
 // 查询申请单详情
 export function getUsageApplyById(id: number) {
-  return request.get(`/usage-apply/${id}`)
+  return request.post('/usage-apply/getDetail', { id })
 }
 
 // 查询草稿箱
 export function getUsageDrafts(params: any) {
-  return request.get('/usage-apply/drafts', { params })
+  return request.post('/usage-apply/getDrafts', params)
 }
 
 // 查询我的所有申请
 export function getMyUsageApplies(params: any) {
-  return request.get('/usage-apply/my', { params })
+  return request.post('/usage-apply/getMyApplications', params)
 }
 
 // 检查是否有权限使用素材
 export function checkCanUseAsset(assetId: number) {
-  return request.get(`/usage-apply/can-use/${assetId}`)
+  return request.post('/usage-apply/canUseAsset', { assetId })
+}
+
+// 复制使用申请
+export function copyApplication(id: number) {
+  return request.post(`/usage-apply/${id}/copy`)
 }
 
 // ========== 旧API（保持兼容） ==========

@@ -231,6 +231,13 @@ public class ApprovalServiceImpl implements ApprovalService {
         map.put("id", task.getId());
         map.put("status", task.getStatus());
         map.put("createTime", task.getCreateTime());
+        // 添加任务类型和子流程信息，用于前端区分不同类型的任务
+        map.put("taskType", task.getTaskType());
+        map.put("approverId", task.getApproverId());
+        map.put("stageId", task.getStageId());
+        if (task.getSubWorkflowApproverIds() != null) {
+            map.put("subWorkflowApproverIds", task.getSubWorkflowApproverIds());
+        }
 
         // 获取实例信息
         ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
@@ -474,9 +481,14 @@ public class ApprovalServiceImpl implements ApprovalService {
         Map<String, Object> result = new HashMap<>();
         result.put("id", task.getId());
         result.put("status", task.getStatus());
+        result.put("taskType", task.getTaskType());
         result.put("isFirstApprover", task.getIsFirstApprover());
         result.put("nextStageApproverIds", task.getNextStageApproverIds());
         result.put("selectedByUserId", task.getSelectedByUserId());
+        result.put("approverId", task.getApproverId());
+        if (task.getSubWorkflowApproverIds() != null) {
+            result.put("subWorkflowApproverIds", task.getSubWorkflowApproverIds());
+        }
 
         // 获取实例信息
         ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
@@ -793,14 +805,23 @@ public class ApprovalServiceImpl implements ApprovalService {
         }
 
         // 获取同阶段的其他审批人（用于判断是或签还是会签）
+        // 只查询待审批状态的任务，过滤掉已退回、已取消、已完成等无效任务
         LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
         taskWrapper.eq(ApprovalTaskDO::getInstanceId, task.getInstanceId())
                    .eq(ApprovalTaskDO::getStageId, task.getStageId())
-                   .ne(ApprovalTaskDO::getId, task.getId());
+                   .ne(ApprovalTaskDO::getId, task.getId())
+                   .eq(ApprovalTaskDO::getStatus, "PENDING");  // 只查询待审批状态的任务
         List<ApprovalTaskDO> otherTasks = taskMapper.selectList(taskWrapper);
 
+        // 使用Set对审批人去重（同一审批人可能有多条任务记录，但只显示一次）
+        Set<Long> approverIds = new HashSet<>();
         List<Map<String, Object>> otherApprovers = new ArrayList<>();
         for (ApprovalTaskDO otherTask : otherTasks) {
+            // 去重：如果该审批人已经添加过，跳过
+            if (approverIds.contains(otherTask.getApproverId())) {
+                continue;
+            }
+
             UserDO user = userMapper.selectById(otherTask.getApproverId());
             if (user != null) {
                 Map<String, Object> approverInfo = new HashMap<>();
@@ -808,6 +829,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                 approverInfo.put("name", user.getRealName() != null ? user.getRealName() : user.getUsername());
                 approverInfo.put("status", otherTask.getStatus());
                 otherApprovers.add(approverInfo);
+                approverIds.add(otherTask.getApproverId());
             }
         }
         result.put("otherApprovers", otherApprovers);

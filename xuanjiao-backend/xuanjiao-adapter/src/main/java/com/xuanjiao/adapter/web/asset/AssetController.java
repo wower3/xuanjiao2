@@ -5,6 +5,7 @@ import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.usage.UsageApplyService;
 import com.xuanjiao.app.usage.UsageLogService;
 import com.xuanjiao.client.dto.*;
+import com.xuanjiao.client.dto.asset.*;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.util.List;
@@ -60,44 +62,40 @@ public class AssetController {
     }
 
     @ApiOperation("查询素材详情")
-    @GetMapping("/{id}")
-    public Result<AssetDTO> getById(@PathVariable Long id) {
-        return Result.success(assetService.getById(id));
+    @PostMapping("/getDetail")
+    public Result<AssetDTO> getDetail(@Valid @RequestBody AssetGetDetailQry qry) {
+        return Result.success(assetService.getById(qry.getId()));
     }
 
     @ApiOperation("分页查询素材")
-    @GetMapping("/list")
-    public Result<PageResult<AssetDTO>> list(AssetQueryCmd cmd, @RequestAttribute("userId") Long userId) {
+    @PostMapping("/list")
+    public Result<PageResult<AssetDTO>> list(@Valid @RequestBody AssetQueryCmd cmd, @RequestAttribute("userId") Long userId) {
         return Result.success(assetService.queryWithRoleFilter(cmd, userId));
     }
 
     @ApiOperation("查询用户已录入的素材（APPROVED状态）")
-    @GetMapping("/my-approved")
+    @PostMapping("/getMyApproved")
     public Result<PageResult<AssetDTO>> getMyApprovedAssets(
-            @RequestParam(defaultValue = "") String name,
-            @RequestParam(required = false) String type,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
+            @Valid @RequestBody AssetGetMyApprovedQry qry,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(assetService.getMyApprovedAssets(name, type, pageNum, pageSize, userId));
+        return Result.success(assetService.getMyApprovedAssets(qry.getName(), qry.getType(), qry.getPageNum(), qry.getPageSize(), userId));
     }
 
     @ApiOperation("管理员彻底删除素材")
-    @DeleteMapping("/admin/{id}")
+    @PostMapping("/adminDelete")
     public Result<Void> adminDelete(
-            @PathVariable Long id,
-            @RequestParam String reason,
+            @Valid @RequestBody AssetAdminDeleteCmd cmd,
             @RequestAttribute("userId") Long userId) {
         Boolean isAdmin = checkIsAdmin(userId);
-        assetService.adminDelete(id, reason, userId, isAdmin);
+        assetService.adminDelete(cmd.getId(), cmd.getReason(), userId, isAdmin);
         return Result.success();
     }
 
     @ApiOperation("管理员调整素材删除时间（测试功能）")
-    @PutMapping("/admin/{id}/adjust-delete-time")
-    public Result<Void> adjustDeleteTime(@PathVariable Long id, @RequestAttribute("userId") Long userId) {
+    @PostMapping("/adjustDeleteTime")
+    public Result<Void> adjustDeleteTime(@Valid @RequestBody AssetAdjustDeleteTimeCmd cmd, @RequestAttribute("userId") Long userId) {
         Boolean isAdmin = checkIsAdmin(userId);
-        assetService.adjustDeleteTime(id, isAdmin);
+        assetService.adjustDeleteTime(cmd.getId(), isAdmin);
         return Result.success();
     }
 
@@ -122,9 +120,9 @@ public class AssetController {
     }
 
     @ApiOperation("删除素材")
-    @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
-        assetService.delete(id);
+    @PostMapping("/delete")
+    public Result<Void> delete(@Valid @RequestBody AssetDeleteCmd cmd) {
+        assetService.delete(cmd.getId());
         return Result.success();
     }
 

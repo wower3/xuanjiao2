@@ -5,11 +5,13 @@ import com.xuanjiao.client.dto.ApproverSelectionDTO;
 import com.xuanjiao.client.dto.ApprovalProgressDTO;
 import com.xuanjiao.client.dto.Result;
 import com.xuanjiao.client.dto.WorkflowDTO;
+import com.xuanjiao.client.dto.workflow.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
 
@@ -22,21 +24,17 @@ public class ApproverSelectionController {
     private ApproverSelectionService approverSelectionService;
 
     @ApiOperation("获取审批实例进度")
-    @GetMapping("/progress/{instanceId}")
-    public Result<List<ApprovalProgressDTO>> getApprovalProgress(@PathVariable Long instanceId) {
-        List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(instanceId);
+    @PostMapping("/getApprovalProgress")
+    public Result<List<ApprovalProgressDTO>> getApprovalProgress(@Valid @RequestBody WorkflowGetApprovalProgressQry qry) {
+        List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(qry.getInstanceId());
         return Result.success(progress);
     }
 
     @ApiOperation("获取第一层可选审批人")
-    @GetMapping("/first-stage-approvers")
-    public Result<Map<String, Object>> getFirstStageApprovers(
-            @RequestParam Long workflowId,
-            @RequestParam Long applicantId,
-            @RequestParam(required = false) String keyword
-    ) {
+    @PostMapping("/getFirstStageApprovers")
+    public Result<Map<String, Object>> getFirstStageApprovers(@Valid @RequestBody WorkflowGetFirstStageApproversQry qry) {
         Map<String, Object> data = approverSelectionService.getFirstStageApprovers(
-            workflowId, applicantId, keyword
+            qry.getWorkflowId(), qry.getApplicantId(), qry.getKeyword()
         );
         return Result.success(data);
     }
@@ -60,14 +58,10 @@ public class ApproverSelectionController {
     }
 
     @ApiOperation("获取子流程第一层可选审批人")
-    @GetMapping("/sub-workflow-approvers")
-    public Result<Map<String, Object>> getSubWorkflowFirstStageApprovers(
-            @RequestParam Long subWorkflowId,
-            @RequestParam Long applicantId,
-            @RequestParam(required = false) String keyword
-    ) {
+    @PostMapping("/getSubWorkflowFirstStageApprovers")
+    public Result<Map<String, Object>> getSubWorkflowFirstStageApprovers(@Valid @RequestBody WorkflowGetSubWorkflowFirstStageApproversQry qry) {
         Map<String, Object> data = approverSelectionService.getSubWorkflowFirstStageApprovers(
-            subWorkflowId, applicantId, keyword
+            qry.getSubWorkflowId(), qry.getApplicantId(), qry.getKeyword()
         );
         return Result.success(data);
     }

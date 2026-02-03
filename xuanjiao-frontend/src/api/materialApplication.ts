@@ -1,11 +1,11 @@
 import request from '@/utils/request'
 
 export function createMaterialApplication(data: any) {
-  return request.post('/material-application', data)
+  return request.post('/material-application/create', data)
 }
 
 export function updateMaterialApplication(id: number, data: any) {
-  return request.put(`/material-application/${id}`, data)
+  return request.post('/material-application/update', { id, ...data })
 }
 
 export function submitMaterialApplication(id: number, workflowId: number) {
@@ -15,19 +15,19 @@ export function submitMaterialApplication(id: number, workflowId: number) {
 }
 
 export function deleteMaterialApplication(id: number) {
-  return request.delete(`/material-application/${id}`)
+  return request.post('/material-application/delete', { id })
 }
 
 export function getMaterialApplicationById(id: number) {
-  return request.get(`/material-application/${id}`)
+  return request.post('/material-application/getDetail', { id })
 }
 
 export function getDraftApplications(params: any) {
-  return request.get('/material-application/drafts', { params })
+  return request.post('/material-application/getDrafts', params)
 }
 
 export function getMyApplications(params: any) {
-  return request.get('/material-application/my', { params })
+  return request.post('/material-application/getMyApplications', params)
 }
 
 export function copyApplication(id: number) {

@@ -3,12 +3,14 @@ package com.xuanjiao.adapter.web.material;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.client.dto.MaterialApplicationCmd;
 import com.xuanjiao.client.dto.MaterialApplicationDTO;
+import com.xuanjiao.client.dto.material.*;
 import com.xuanjiao.client.dto.PageResult;
 import com.xuanjiao.client.dto.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
+import javax.validation.Valid;
 
 @Api(tags = "素材申请单管理")
 @RestController
@@ -19,20 +21,31 @@ public class MaterialApplicationController {
     private MaterialApplicationService materialApplicationService;
 
     @ApiOperation("创建申请单（草稿）")
-    @PostMapping
+    @PostMapping("/create")
     public Result<MaterialApplicationDTO> create(
-            @RequestBody MaterialApplicationCmd cmd,
+            @Valid @RequestBody MaterialApplicationCreateCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(materialApplicationService.create(cmd, userId));
+        // Convert to MaterialApplicationCmd
+        MaterialApplicationCmd applicationCmd = new MaterialApplicationCmd();
+        applicationCmd.setTitle(cmd.getTitle());
+        applicationCmd.setMaintainerId(cmd.getMaintainerId());
+        applicationCmd.setDeptId(cmd.getDeptId());
+        applicationCmd.setGuaranteeDeclaration(cmd.getGuaranteeDeclaration());
+        return Result.success(materialApplicationService.create(applicationCmd, userId));
     }
 
     @ApiOperation("更新申请单")
-    @PutMapping("/{id}")
+    @PostMapping("/update")
     public Result<MaterialApplicationDTO> update(
-            @PathVariable Long id,
-            @RequestBody MaterialApplicationCmd cmd,
+            @Valid @RequestBody MaterialApplicationUpdateCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(materialApplicationService.update(id, cmd, userId));
+        // Convert to MaterialApplicationCmd
+        MaterialApplicationCmd applicationCmd = new MaterialApplicationCmd();
+        applicationCmd.setTitle(cmd.getTitle());
+        applicationCmd.setMaintainerId(cmd.getMaintainerId());
+        applicationCmd.setDeptId(cmd.getDeptId());
+        applicationCmd.setGuaranteeDeclaration(cmd.getGuaranteeDeclaration());
+        return Result.success(materialApplicationService.update(cmd.getId(), applicationCmd, userId));
     }
 
     @ApiOperation("提交申请单")
@@ -46,36 +59,34 @@ public class MaterialApplicationController {
     }
 
     @ApiOperation("删除申请单")
-    @DeleteMapping("/{id}")
+    @PostMapping("/delete")
     public Result<Void> delete(
-            @PathVariable Long id,
+            @Valid @RequestBody MaterialApplicationDeleteCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        materialApplicationService.delete(id, userId);
+        materialApplicationService.delete(cmd.getId(), userId);
         return Result.success();
     }
 
     @ApiOperation("查询申请单详情")
-    @GetMapping("/{id}")
-    public Result<MaterialApplicationDTO> getById(@PathVariable Long id) {
-        return Result.success(materialApplicationService.getById(id));
+    @PostMapping("/getDetail")
+    public Result<MaterialApplicationDTO> getDetail(@Valid @RequestBody MaterialApplicationGetDetailQry qry) {
+        return Result.success(materialApplicationService.getById(qry.getId()));
     }
 
     @ApiOperation("查询草稿箱")
-    @GetMapping("/drafts")
+    @PostMapping("/getDrafts")
     public Result<PageResult<MaterialApplicationDTO>> queryDrafts(
-            @RequestAttribute("userId") Long userId,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(materialApplicationService.queryDrafts(userId, pageNum, pageSize));
+            @Valid @RequestBody MaterialApplicationGetDraftsQry qry,
+            @RequestAttribute("userId") Long userId) {
+        return Result.success(materialApplicationService.queryDrafts(userId, qry.getPageNum(), qry.getPageSize()));
     }
 
     @ApiOperation("查询我的申请单")
-    @GetMapping("/my")
+    @PostMapping("/getMyApplications")
     public Result<PageResult<MaterialApplicationDTO>> queryMyApplications(
-            @RequestAttribute("userId") Long userId,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return Result.success(materialApplicationService.queryMyApplications(userId, pageNum, pageSize));
+            @Valid @RequestBody MaterialApplicationGetMyApplicationsQry qry,
+            @RequestAttribute("userId") Long userId) {
+        return Result.success(materialApplicationService.queryMyApplications(userId, qry.getPageNum(), qry.getPageSize()));
     }
 
     @ApiOperation("复制申请单")

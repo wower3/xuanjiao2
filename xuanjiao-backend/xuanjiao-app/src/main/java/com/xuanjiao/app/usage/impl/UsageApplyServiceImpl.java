@@ -36,6 +36,9 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     private UsageApplyAssetRepository usageApplyAssetRepository;
 
     @Autowired
+    private com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper usageApplyAssetMapper;
+
+    @Autowired
     private WorkflowEngineService workflowEngineService;
 
     @Autowired
@@ -326,6 +329,51 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         }
         usageApply.setStatus(status);
         usageApplyRepository.update(usageApply);
+    }
+
+    @Override
+    @Transactional
+    public Long copyApplication(Long id, Long userId) {
+        // 1. 获取原申请单
+        UsageApply original = usageApplyRepository.findById(id);
+        if (original == null) {
+            throw new RuntimeException("原申请单不存在");
+        }
+
+        // 2. 创建新申请单（草稿状态）
+        UsageApply newApplication = new UsageApply();
+        newApplication.setTitle(original.getTitle() + " - 副本");
+        newApplication.setUserId(userId);
+        UserDO currentUser = userMapper.selectById(userId);
+        if (currentUser != null) {
+            newApplication.setDeptId(currentUser.getDeptId());
+        }
+        newApplication.setStatus("DRAFT");
+        newApplication.setDraft(1);
+        newApplication.setCreateTime(LocalDateTime.now());
+
+        usageApplyRepository.save(newApplication);
+
+        // 3. 复制素材关联配置（只复制引用，不复制文件）
+        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO> wrapper =
+            new LambdaQueryWrapper<>();
+        wrapper.eq(com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO::getUsageApplyId, id);
+        List<com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO> originalAssets =
+            usageApplyAssetMapper.selectList(wrapper);
+
+        for (com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO originalAsset : originalAssets) {
+            com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO newAsset =
+                new com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO();
+            newAsset.setUsageApplyId(newApplication.getId());
+            newAsset.setAssetId(originalAsset.getAssetId());
+            newAsset.setUsageDescription(originalAsset.getUsageDescription());
+            newAsset.setUsagePublishChannel(originalAsset.getUsagePublishChannel());
+            newAsset.setUsageIsSecondaryCreation(originalAsset.getUsageIsSecondaryCreation());
+            newAsset.setUsageAttachmentPath(originalAsset.getUsageAttachmentPath());
+            usageApplyAssetMapper.insert(newAsset);
+        }
+
+        return newApplication.getId();
     }
 
     private UsageApplyDTO convert(UsageApply usageApply) {

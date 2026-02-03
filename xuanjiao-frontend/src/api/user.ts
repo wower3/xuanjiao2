@@ -5,7 +5,7 @@ export function getCurrentUser() {
 }
 
 export function getUserList() {
-  return request.get('/user/list')
+  return request.post('/user/getList', {})
 }
 
 export function getUserListWithFilter(params: {
@@ -13,33 +13,21 @@ export function getUserListWithFilter(params: {
   deptId?: number
   includeSubDept?: boolean
 }) {
-  // 手动构建查询参数，将数组转换为逗号分隔的字符串
-  const queryParams: Record<string, any> = {}
-  if (params.deptId !== undefined) {
-    queryParams.deptId = params.deptId
-  }
-  if (params.includeSubDept !== undefined) {
-    queryParams.includeSubDept = params.includeSubDept
-  }
-  // 将 roleIds 数组转换为逗号分隔的字符串
-  if (params.roleIds && params.roleIds.length > 0) {
-    queryParams.roleIds = params.roleIds.join(',')
-  }
-  return request.get('/user/listWithFilter', { params: queryParams })
+  return request.post('/user/getListWithFilter', params)
 }
 
 export function getDefaultFilterDept() {
-  return request.get('/user/defaultFilterDept')
+  return request.post('/user/getDefaultFilterDept', {})
 }
 
 export function createUser(data: any) {
-  return request.post('/user', data)
+  return request.post('/user/create', data)
 }
 
 export function updateUser(data: any) {
-  return request.put('/user', data)
+  return request.post('/user/update', data)
 }
 
 export function deleteUser(id: number) {
-  return request.delete(`/user/${id}`)
+  return request.post('/user/delete', { id })
 }

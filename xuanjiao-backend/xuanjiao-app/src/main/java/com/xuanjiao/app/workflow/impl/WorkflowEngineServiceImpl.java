@@ -282,7 +282,57 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 4.8 重置上一层的所有任务状态为 PENDING（恢复到刚接到任务时的状态）
         resetPreviousStageTasks(instance.getId(), previousStage.getId());
 
+        // 4.9 重新创建上一层的子流程（因为退回时已取消）
+        recreateSubWorkflowForStage(instance.getId(), previousStage, instance);
+
         logger.info("主流程退回上一层完成: instanceId={}, previousStageId={}", instance.getId(), previousStage.getId());
+    }
+
+    /**
+     * 重新创建指定层的子流程（退回时调用）
+     */
+    private void recreateSubWorkflowForStage(Long instanceId, WorkflowStageDO stage, ApprovalInstanceDO instance) {
+        Map<Long, List<Long>> subWorkflowApproverIds = null;
+
+        if (stage.getStageOrder() == 1) {
+            // 第一层：从实例获取子流程审批人选择
+            // parentTaskId 为 null，因为发起时启动子流程还没有审批人完成
+            if (instance.getSubWorkflowApproverIds() != null) {
+                try {
+                    subWorkflowApproverIds = objectMapper.readValue(
+                        instance.getSubWorkflowApproverIds(),
+                        new TypeReference<Map<Long, List<Long>>>() {}
+                    );
+                } catch (Exception e) {
+                    logger.error("解析子流程审批人选择失败: {}", e.getMessage(), e);
+                }
+            }
+        } else {
+            // 非第一层：从该层的任务获取子流程审批人选择
+            LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
+            taskWrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
+                       .eq(ApprovalTaskDO::getStageId, stage.getId())
+                       .isNotNull(ApprovalTaskDO::getSubWorkflowApproverIds);
+            ApprovalTaskDO taskWithSubWorkflow = taskMapper.selectOne(taskWrapper);
+
+            if (taskWithSubWorkflow != null && taskWithSubWorkflow.getSubWorkflowApproverIds() != null) {
+                try {
+                    subWorkflowApproverIds = objectMapper.readValue(
+                        taskWithSubWorkflow.getSubWorkflowApproverIds(),
+                        new TypeReference<Map<Long, List<Long>>>() {}
+                    );
+                } catch (Exception e) {
+                    logger.error("解析子流程审批人选择失败: {}", e.getMessage(), e);
+                }
+            }
+        }
+
+        // 创建子流程
+        if (subWorkflowApproverIds != null && !subWorkflowApproverIds.isEmpty()) {
+            logger.info("退回到第{}层，重新创建子流程: instanceId={}, subWorkflowApproverIds={}",
+                stage.getStageOrder(), instanceId, subWorkflowApproverIds);
+            startSubProcessesForStage(instanceId, stage.getId(), null, subWorkflowApproverIds);
+        }
     }
 
     /**
@@ -310,9 +360,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
     /**
      * 处理子流程第一层退回：创建"重新发起子流程"任务
+     * 根据 parentTaskId 判断子流程属于哪一层，从而决定给谁创建重新发起任务
      */
     private void handleFirstLayerSubWorkflowReturn(ApprovalTaskDO task, ApprovalInstanceDO subInstance, String comment) {
-        logger.info("子流程第一层退回，创建重新发起任务: subInstanceId={}", subInstance.getId());
+        logger.info("子流程第一层退回，创建重新发起任务: subInstanceId={}, parentTaskId={}",
+            subInstance.getId(), subInstance.getParentTaskId());
 
         // 1. 子流程实例状态 → CANCELLED（废弃）
         subInstance.setStatus("CANCELLED");
@@ -330,7 +382,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         }
         logger.info("已取消子流程待办任务: count={}", pendingTasks.size());
 
-        // 3. 获取主流程实例和选择子流程的审批人
+        // 3. 获取主流程实例
         Long parentInstanceId = subInstance.getRootInstanceId();
         ApprovalInstanceDO parentInstance = instanceMapper.selectById(parentInstanceId);
         if (parentInstance == null) {
@@ -338,17 +390,21 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         }
 
         Long parentTaskId = subInstance.getParentTaskId();
+
+        // 4. 根据 parentTaskId 判断给谁创建重新发起任务
         if (parentTaskId == null) {
-            throw new RuntimeException("无法找到子流程对应的父任务，无法创建重新发起任务");
+            // 子流程属于主流程第一层（发起时启动）：给发起人创建任务
+            logger.info("子流程属于主流程第一层，给发起人创建重新发起任务");
+            createRestartSubWorkflowTaskForApplicant(parentInstance, subInstance.getWorkflowId(), comment);
+        } else {
+            // 子流程属于主流程非第一层（上一层审批通过后启动）：给上一层第一个审批人创建任务
+            logger.info("子流程属于主流程非第一层，给上一层审批人创建重新发起任务");
+            ApprovalTaskDO parentTask = taskMapper.selectById(parentTaskId);
+            if (parentTask == null) {
+                throw new RuntimeException("父任务不存在，无法创建重新发起任务");
+            }
+            createRestartSubWorkflowTask(parentInstance, parentTask, subInstance.getWorkflowId(), comment);
         }
-
-        ApprovalTaskDO parentTask = taskMapper.selectById(parentTaskId);
-        if (parentTask == null) {
-            throw new RuntimeException("父任务不存在，无法创建重新发起任务");
-        }
-
-        // 4. 创建"重新发起子流程"任务
-        createRestartSubWorkflowTask(parentInstance, parentTask, subInstance.getWorkflowId(), comment);
 
         logger.info("已创建重新发起子流程任务: parentInstanceId={}, parentTaskId={}, subWorkflowId={}",
             parentInstance.getId(), parentTaskId, subInstance.getWorkflowId());
@@ -369,7 +425,8 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 创建"重新发起子流程"任务
         ApprovalTaskDO restartTask = new ApprovalTaskDO();
         restartTask.setInstanceId(parentInstance.getId());
-        restartTask.setStageId(parentTask.getStageId());
+        // RESTART_SUB_WORKFLOW 任务不属于任何阶段，设为 0
+        restartTask.setStageId(0L);
         restartTask.setApproverId(approverId);
         restartTask.setStatus("PENDING");
         restartTask.setTaskType("RESTART_SUB_WORKFLOW");
@@ -390,54 +447,52 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     /**
-     * 处理子流程中间层退回：触发主流程退回上一层
+     * 创建"重新发起子流程"任务（给发起人）
+     * 用于子流程属于主流程第一层时退回的场景
+     */
+    private void createRestartSubWorkflowTaskForApplicant(ApprovalInstanceDO parentInstance, Long subWorkflowId, String comment) {
+        // 给发起人创建"重新发起子流程"任务
+        Long applicantId = parentInstance.getApplicantId();
+
+        // 创建"重新发起子流程"任务，分配给发起人
+        ApprovalTaskDO restartTask = new ApprovalTaskDO();
+        restartTask.setInstanceId(parentInstance.getId());
+        // RESTART_SUB_WORKFLOW 任务不属于任何阶段，设为 0
+        restartTask.setStageId(0L);
+        restartTask.setApproverId(applicantId);
+        restartTask.setStatus("PENDING");
+        restartTask.setTaskType("RESTART_SUB_WORKFLOW");
+        restartTask.setIsFirstApprover(0);
+        restartTask.setSelectedByUserId(applicantId);
+        // 保存子流程ID，用于前端显示哪个子流程需要重新发起
+        try {
+            Map<String, Long> subWorkflowInfo = new HashMap<>();
+            subWorkflowInfo.put("subWorkflowId", subWorkflowId);
+            subWorkflowInfo.put("isForApplicant", 1L); // 标记这是给发起人的任务
+            restartTask.setSubWorkflowApproverIds(objectMapper.writeValueAsString(subWorkflowInfo));
+        } catch (Exception e) {
+            logger.warn("保存子流程信息失败: {}", e.getMessage());
+        }
+        taskMapper.insert(restartTask);
+
+        logger.info("已创建重新发起子流程任务（给发起人）: taskId={}, applicantId={}, subWorkflowId={}",
+            restartTask.getId(), applicantId, subWorkflowId);
+    }
+
+    /**
+     * 处理子流程中间层退回：在子流程内部退回到上一层，不影响主流程
+     * 复用主流程的退回逻辑，保持与主流程退回一致的行为
      */
     private void handleSubWorkflowMiddleLayerReturn(ApprovalTaskDO task, ApprovalInstanceDO subInstance,
                                                       WorkflowStageDO currentStage, String comment) {
-        logger.info("子流程中间层退回，触发主流程退回: subInstanceId={}, currentStageOrder={}",
+        logger.info("子流程中间层退回，在子流程内部退回到上一层: subInstanceId={}, currentStageOrder={}",
             subInstance.getId(), currentStage.getStageOrder());
 
-        // 1. 子流程实例状态 → CANCELLED
-        subInstance.setStatus("CANCELLED");
-        instanceMapper.updateById(subInstance);
+        // 直接在子流程内部退回到上一层，复用主流程的退回逻辑
+        // 子流程独立处理，不影响主流程的进度
+        handleReturnToPreviousStage(task, subInstance, currentStage, comment);
 
-        // 2. 取消子流程所有待办任务
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
-               .eq(ApprovalTaskDO::getStatus, "PENDING");
-        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(wrapper);
-        for (ApprovalTaskDO t : pendingTasks) {
-            t.setStatus("CANCELLED");
-            t.setComment(comment);
-            taskMapper.updateById(t);
-        }
-        logger.info("已取消子流程待办任务: count={}", pendingTasks.size());
-
-        // 3. 对主流程执行退回上一层逻辑
-        Long parentInstanceId = subInstance.getRootInstanceId();
-        ApprovalInstanceDO parentInstance = instanceMapper.selectById(parentInstanceId);
-        if (parentInstance == null) {
-            throw new RuntimeException("主流程实例不存在，无法退回");
-        }
-
-        Long parentTaskId = subInstance.getParentTaskId();
-        if (parentTaskId == null) {
-            throw new RuntimeException("无法找到子流程对应的父任务，无法退回");
-        }
-
-        ApprovalTaskDO parentTask = taskMapper.selectById(parentTaskId);
-        if (parentTask == null) {
-            throw new RuntimeException("父任务不存在，无法退回");
-        }
-
-        // 4. 调用主流程的退回逻辑
-        try {
-            handleReturnToPreviousStage(parentTask, parentInstance, currentStage, comment);
-        } catch (Exception e) {
-            logger.error("主流程退回失败: {}", e.getMessage(), e);
-            // 如果主流程已经是第一层，则执行驳回逻辑
-            completeTask(parentTaskId, parentTask.getApproverId(), false, comment);
-        }
+        logger.info("子流程退回上一层完成: subInstanceId={}", subInstance.getId());
     }
 
     /**
@@ -466,40 +521,100 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     /**
-     * 取消指定层的所有子流程待办任务
+     * 取消指定层及前一层的所有子流程（包括已流转到其他层或已完成的）
+     * N层退回时，需要取消N层和N-1层的子流程，因为会重新创建
+     * @param instanceId 主流程实例ID
+     * @param currentStageId 当前被退回的层ID
      */
-    private void cancelSubWorkflowTasksForStage(Long instanceId, Long stageId) {
-        // 查询该阶段的所有子流程实例
-        LambdaQueryWrapper<ApprovalInstanceDO> subInstanceWrapper = new LambdaQueryWrapper<>();
-        subInstanceWrapper.eq(ApprovalInstanceDO::getParentInstanceId, instanceId)
-                       .eq(ApprovalInstanceDO::getStatus, "PENDING");
+    private void cancelSubWorkflowTasksForStage(Long instanceId, Long currentStageId) {
+        // 获取当前层和前一层的所有任务ID
+        List<Long> taskIdsToCancel = new ArrayList<>();
 
-        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(subInstanceWrapper);
-        for (ApprovalInstanceDO subInstance : subInstances) {
-            // 检查子流程是否由当前阶段的某个任务触发
-            LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
-            taskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
-                       .eq(ApprovalTaskDO::getStatus, "PENDING")
-                       .eq(ApprovalTaskDO::getStageId, stageId);
-            List<ApprovalTaskDO> subTasks = taskMapper.selectList(taskWrapper);
+        // 1. 获取当前层的所有任务
+        LambdaQueryWrapper<ApprovalTaskDO> currentTasksWrapper = new LambdaQueryWrapper<>();
+        currentTasksWrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
+                           .eq(ApprovalTaskDO::getStageId, currentStageId);
+        List<ApprovalTaskDO> currentTasks = taskMapper.selectList(currentTasksWrapper);
+        List<Long> currentTaskIds = currentTasks.stream()
+            .map(ApprovalTaskDO::getId)
+            .collect(Collectors.toList());
+        taskIdsToCancel.addAll(currentTaskIds);
 
-            if (!subTasks.isEmpty()) {
-                // 这些子流程是由当前阶段触发的，需要取消
-                subInstance.setStatus("CANCELLED");
-                instanceMapper.updateById(subInstance);
+        // 2. 获取前一层的所有任务
+        WorkflowStageDO currentStage = stageMapper.selectById(currentStageId);
+        if (currentStage != null && currentStage.getStageOrder() > 1) {
+            // 查询主流程实例以获取workflow_id
+            ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
+            if (instance != null) {
+                LambdaQueryWrapper<WorkflowStageDO> prevStageWrapper = new LambdaQueryWrapper<>();
+                prevStageWrapper.eq(WorkflowStageDO::getWorkflowId, instance.getWorkflowId())
+                               .eq(WorkflowStageDO::getStageOrder, currentStage.getStageOrder() - 1);
+                WorkflowStageDO previousStage = stageMapper.selectOne(prevStageWrapper);
 
-                // 取消子流程的所有待办任务
-                LambdaQueryWrapper<ApprovalTaskDO> allSubTaskWrapper = new LambdaQueryWrapper<>();
-                allSubTaskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
-                              .eq(ApprovalTaskDO::getStatus, "PENDING");
-                List<ApprovalTaskDO> allSubTasks = taskMapper.selectList(allSubTaskWrapper);
-                for (ApprovalTaskDO t : allSubTasks) {
-                    t.setStatus("CANCELLED");
-                    taskMapper.updateById(t);
+                if (previousStage != null) {
+                    LambdaQueryWrapper<ApprovalTaskDO> prevTasksWrapper = new LambdaQueryWrapper<>();
+                    prevTasksWrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
+                                   .eq(ApprovalTaskDO::getStageId, previousStage.getId());
+                    List<ApprovalTaskDO> prevTasks = taskMapper.selectList(prevTasksWrapper);
+                    List<Long> prevTaskIds = prevTasks.stream()
+                        .map(ApprovalTaskDO::getId)
+                        .collect(Collectors.toList());
+                    taskIdsToCancel.addAll(prevTaskIds);
                 }
-                logger.info("已取消子流程及其待办任务: subInstanceId={}", subInstance.getId());
             }
         }
+
+        if (taskIdsToCancel.isEmpty()) {
+            logger.info("没有找到需要取消子流程的任务: instanceId={}, currentStageId={}", instanceId, currentStageId);
+            return;
+        }
+
+        logger.info("退回时取消子流程: instanceId={}, currentStageId={}, 取消任务IDs={}",
+            instanceId, currentStageId, taskIdsToCancel);
+
+        // 3. 查询由这些任务触发的所有子流程实例（通过 parentTaskId 匹配）
+        // 只有退回到第一层时，才取消 parent_task_id IS NULL 的子流程（发起时创建的）
+        LambdaQueryWrapper<ApprovalInstanceDO> subInstanceWrapper = new LambdaQueryWrapper<>();
+        subInstanceWrapper.eq(ApprovalInstanceDO::getParentInstanceId, instanceId)
+                       .in(ApprovalInstanceDO::getParentTaskId, taskIdsToCancel);
+
+        // 只有退回到第一层时，才同时取消 parent_task_id IS NULL 的子流程
+        if (currentStage != null && currentStage.getStageOrder() == 2) {
+            subInstanceWrapper.or(wrapper -> wrapper
+                .eq(ApprovalInstanceDO::getParentInstanceId, instanceId)
+                .isNull(ApprovalInstanceDO::getParentTaskId)
+            );
+        }
+
+        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(subInstanceWrapper);
+
+        logger.info("找到需要取消的子流程实例数量: {}", subInstances.size());
+
+        // 4. 取消所有子流程实例及其所有任务（无论状态如何）
+        for (ApprovalInstanceDO subInstance : subInstances) {
+            // 子流程实例设置为CANCELLED
+            subInstance.setStatus("CANCELLED");
+            instanceMapper.updateById(subInstance);
+
+            // 取消子流程的所有任务（所有状态）
+            LambdaQueryWrapper<ApprovalTaskDO> allSubTaskWrapper = new LambdaQueryWrapper<>();
+            allSubTaskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId());
+            List<ApprovalTaskDO> allSubTasks = taskMapper.selectList(allSubTaskWrapper);
+            int cancelledCount = 0;
+            for (ApprovalTaskDO t : allSubTasks) {
+                if ("PENDING".equals(t.getStatus()) || "APPROVED".equals(t.getStatus())) {
+                    t.setStatus("CANCELLED");
+                    taskMapper.updateById(t);
+                    cancelledCount++;
+                }
+                // REJECTED/CANCELLED状态的任务保持不变
+            }
+            logger.info("已取消子流程实例及其任务: subInstanceId={}, parentTaskId={}, 总任务数={}, 取消任务数={}",
+                subInstance.getId(), subInstance.getParentTaskId(), allSubTasks.size(), cancelledCount);
+        }
+
+        logger.info("取消子流程完成: instanceId={}, currentStageId={}, cancelledSubInstanceCount={}",
+            instanceId, currentStageId, subInstances.size());
     }
 
     /**
@@ -512,10 +627,15 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalProgressDO progress = progressMapper.selectOne(wrapper);
 
         if (progress != null) {
-            progress.setStatus("PENDING");
-            progress.setApprovers(null); // 清空审批人信息
-            progress.setApproveTime(null);
-            progressMapper.updateById(progress);
+            // 使用 LambdaUpdateWrapper 强制更新字段为 null
+            // updateById 默认会忽略 null 值，无法清空字段
+            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalProgressDO> updateWrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+            updateWrapper.eq(ApprovalProgressDO::getId, progress.getId())
+                    .set(ApprovalProgressDO::getStatus, "PENDING")
+                    .set(ApprovalProgressDO::getApprovers, null)  // 清空审批人信息
+                    .set(ApprovalProgressDO::getApproveTime, null);
+            progressMapper.update(null, updateWrapper);
             logger.info("已重置进度记录: instanceId={}, stageId={}", instanceId, stageId);
         }
     }
@@ -616,15 +736,20 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 logger.info("已取消同层其他待办任务: instanceId={}, stageId={}", instanceId, currentStageId);
             }
         } else {
-            // 会签：全部通过
-            stageCompleted = tasks.stream().allMatch(t -> "APPROVED".equals(t.getStatus()));
+            // 会签：全部通过（CANCELLED的任务不阻塞完成）
+            stageCompleted = tasks.stream()
+                .noneMatch(t -> "PENDING".equals(t.getStatus()) || "RETURNED".equals(t.getStatus()));
             if (stageCompleted) {
                 firstCompletedTask = tasks.stream()
                     .filter(t -> "APPROVED".equals(t.getStatus()))
                     .findFirst()
                     .orElse(null);
             }
-            logger.info("会签检查: stageCompleted={}", stageCompleted);
+            logger.info("会签检查: stageCompleted={}, taskCount={}, approvedCount={}, cancelledCount={}",
+                stageCompleted,
+                tasks.size(),
+                tasks.stream().filter(t -> "APPROVED".equals(t.getStatus())).count(),
+                tasks.stream().filter(t -> "CANCELLED".equals(t.getStatus())).count());
         }
 
         if (stageCompleted) {
@@ -653,12 +778,12 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             if (firstCompletedTask != null && firstCompletedTask.getNextStageApproverIds() != null) {
                 // 第一个审批人已选择了下一层审批人，直接创建下一层任务
                 logger.info("使用已选择的下一层审批人移动到下一阶段");
-                moveToNextStage(instanceId, currentStageId, firstCompletedTask.getNextStageApproverIds(), nextSubWorkflowApproverIds);
+                moveToNextStage(instanceId, currentStageId, firstCompletedTask.getNextStageApproverIds(), nextSubWorkflowApproverIds, firstCompletedTask.getId());
             } else {
                 // 需要等待第一个审批人选择下一层审批人
                 // 在新流程中，审批人在审批时选择下一层审批人
                 logger.info("未选择下一层审批人，移动到下一阶段");
-                moveToNextStage(instanceId, currentStageId, null, null);
+                moveToNextStage(instanceId, currentStageId, null, null, null);
             }
         } else {
             logger.info("阶段未完成，无需移动到下一阶段: instanceId={}, stageId={}", instanceId, currentStageId);
@@ -667,8 +792,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
     /**
      * 移动到下一阶段
+     * @param parentTaskId 触发阶段转换的父任务ID（用于关联子流程）
      */
-    private void moveToNextStage(Long instanceId, Long currentStageId, String nextStageApproverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
+    private void moveToNextStage(Long instanceId, Long currentStageId, String nextStageApproverIds, Map<Long, List<Long>> subWorkflowApproverIds, Long parentTaskId) {
         logger.info("移动到下一阶段: instanceId={}, currentStageId={}, nextStageApproverIds={}",
             instanceId, currentStageId, nextStageApproverIds);
 
@@ -720,8 +846,8 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
             // 启动下一层的所有子流程（子流程独立运行，不阻塞主流程）
             if (subWorkflowApproverIds != null && !subWorkflowApproverIds.isEmpty()) {
-                logger.info("启动下一层的子流程: instanceId={}, nextStageId={}", instanceId, nextStage.getId());
-                startSubProcessesForStage(instanceId, nextStage.getId(), null, subWorkflowApproverIds);
+                logger.info("启动下一层的子流程: instanceId={}, nextStageId={}, parentTaskId={}", instanceId, nextStage.getId(), parentTaskId);
+                startSubProcessesForStage(instanceId, nextStage.getId(), parentTaskId, subWorkflowApproverIds);
             }
         } else {
             // 没有下一阶段，流程结束
@@ -786,8 +912,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
     /**
      * 检查指定实例的所有子流程是否都已完成
+     * 只看APPROVED状态的子流程，REJECTED和CANCELED的子流程不参与判断
      * @param parentInstanceId 父实例ID
-     * @return true-所有子流程都已完成，false-还有子流程未完成或不存在子流程
+     * @return true-所有有效的子流程都已完成，false-还有子流程未完成或不存在子流程
      */
     private boolean areAllSubWorkflowsComplete(Long parentInstanceId) {
         // 查找所有子流程实例
@@ -800,14 +927,45 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             return true;
         }
 
-        // 检查所有子流程是否都已完成（APPROVED 或 REJECTED）
+        // 统计有效的子流程（排除REJECTED和CANCELED）
+        // 包括：PENDING、MAIN_COMPLETED、APPROVED等状态
+        List<ApprovalInstanceDO> activeSubInstances = new ArrayList<>();
         for (ApprovalInstanceDO subInstance : subInstances) {
-            if (!"APPROVED".equals(subInstance.getStatus()) && !"REJECTED".equals(subInstance.getStatus())) {
+            String status = subInstance.getStatus();
+            if (!"REJECTED".equals(status) && !"CANCELLED".equals(status)) {
+                activeSubInstances.add(subInstance);
+            }
+        }
+
+        // 如果没有有效的子流程，返回true
+        if (activeSubInstances.isEmpty()) {
+            logger.info("所有子流程都已被取消或拒绝，无需等待: parentInstanceId={}, 总子流程数={}, APPROVED数={}, REJECTED数={}, CANCELLED数={}",
+                parentInstanceId,
+                subInstances.size(),
+                subInstances.stream().filter(s -> "APPROVED".equals(s.getStatus())).count(),
+                subInstances.stream().filter(s -> "REJECTED".equals(s.getStatus())).count(),
+                subInstances.stream().filter(s -> "CANCELLED".equals(s.getStatus())).count());
+            return true;
+        }
+
+        // 检查所有有效的子流程是否都已完成
+        for (ApprovalInstanceDO subInstance : activeSubInstances) {
+            // 子流程可能已经流转到其他层，需要检查其内部是否有PENDING任务
+            LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
+            taskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
+                       .eq(ApprovalTaskDO::getStatus, "PENDING");
+            long pendingTaskCount = taskMapper.selectCount(taskWrapper);
+
+            if (pendingTaskCount > 0) {
+                logger.info("子流程还有待办任务未完成: subInstanceId={}, pendingTaskCount={}",
+                    subInstance.getId(), pendingTaskCount);
                 return false; // 还有子流程未完成
             }
         }
 
-        return true; // 所有子流程都已完成
+        logger.info("子流程完成检查通过: parentInstanceId={}, 有效子流程数={}",
+            parentInstanceId, activeSubInstances.size());
+        return true; // 所有有效子流程都已完成
     }
 
     /**
@@ -1199,13 +1357,29 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                     .set(ApprovalTaskDO::getStatus, "PENDING")
                     .set(ApprovalTaskDO::getIsFirstApprover, 0)
                     .set(ApprovalTaskDO::getNextStageApproverIds, null)  // 强制清空下一层审批人选择
-                    .set(ApprovalTaskDO::getSubWorkflowApproverIds, null)  // 强制清空子流程审批人选择
+                    // 保留 subWorkflowApproverIds，以便重新审批通过后能重新创建子流程
                     .set(ApprovalTaskDO::getComment, null)
                     .set(ApprovalTaskDO::getApproveTime, null);
             taskMapper.update(null, updateWrapper);
         }
 
-        logger.info("已重置上一层任务状态: instanceId={}, previousStageId={}, count={}",
+        // 同时重置进度记录中的审批人状态，确保与任务状态一致
+        LambdaQueryWrapper<ApprovalProgressDO> progressWrapper = new LambdaQueryWrapper<>();
+        progressWrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
+                      .eq(ApprovalProgressDO::getStageId, previousStageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(progressWrapper);
+
+        if (progress != null) {
+            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalProgressDO> progressUpdateWrapper =
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+            progressUpdateWrapper.eq(ApprovalProgressDO::getId, progress.getId())
+                    .set(ApprovalProgressDO::getStatus, "PENDING")
+                    .set(ApprovalProgressDO::getApprovers, null)  // 清空审批人信息
+                    .set(ApprovalProgressDO::getApproveTime, null);
+            progressMapper.update(null, progressUpdateWrapper);
+        }
+
+        logger.info("已重置上一层任务和进度状态: instanceId={}, previousStageId={}, count={}",
             instanceId, previousStageId, tasksToReset.size());
     }
 
@@ -1488,15 +1662,22 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         newSubInstance.setStatus("PENDING");
         instanceMapper.insert(newSubInstance);
 
-        logger.info("已创建新子流程实例: subInstanceId={}, subWorkflowId={}, parentInstanceId={}",
-            newSubInstance.getId(), subWorkflowId, parentInstance.getId());
-
-        // 5. 创建子流程第一层审批任务
+        // 5. 获取子流程的第一阶段并设置当前阶段ID
         WorkflowStageDO firstStage = getFirstStage(subWorkflowId);
         if (firstStage == null) {
             throw new RuntimeException("子流程未配置阶段");
         }
+        newSubInstance.setCurrentStageId(firstStage.getId());
+        instanceMapper.updateById(newSubInstance);
 
+        logger.info("已创建新子流程实例: subInstanceId={}, subWorkflowId={}, parentInstanceId={}",
+            newSubInstance.getId(), subWorkflowId, parentInstance.getId());
+
+        // 6. 创建子流程第一层进度记录
+        createProgressRecordForSubWorkflow(newSubInstance.getId(), firstStage,
+            newSubInstance.getRootInstanceId(), originalParentTaskId, "PENDING");
+
+        // 7. 创建子流程第一层审批任务
         boolean isFirst = true;
         for (Long approverId : approverIds) {
             ApprovalTaskDO newTask = new ApprovalTaskDO();
@@ -1510,7 +1691,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             isFirst = false;
         }
 
-        // 6. 更新进度记录
+        // 8. 更新进度记录（添加审批人信息）
         updateProgressRecordWithApprovers(newSubInstance.getId(), firstStage.getId(),
             new ArrayList<>(approverIds));
 
