@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c:*)",
+      "Bash(python:*)",
+      "Bash(./venv/Scripts/pip install:*)",
+      "Bash(./venv/Scripts/python -c \"import akshare; print\\('akshare version:', akshare.__version__\\)\":*)",
+      "Bash(./venv/Scripts/python:*)",
+      "Bash(D:/python_project/stock/venv/Scripts/python.exe:*)",
+      "Bash(set)",
+      "Bash(conda config:*)",
+      "Bash(env:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}
