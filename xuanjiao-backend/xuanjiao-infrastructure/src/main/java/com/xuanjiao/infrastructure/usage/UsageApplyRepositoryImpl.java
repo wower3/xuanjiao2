@@ -1,6 +1,5 @@
 package com.xuanjiao.infrastructure.usage;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.domain.usage.entity.UsageApply;
 import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
@@ -36,14 +35,15 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public List<UsageApply> findByCondition(String status, int offset, int limit) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(status)) {
-            wrapper.eq(UsageApplyDO::getStatus, status);
-        }
-        wrapper.orderByDesc(UsageApplyDO::getCreateTime);
-        Page<UsageApplyDO> page = new Page<>(offset / limit + 1, limit);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, wrapper);
-        return result.getRecords().stream()
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setStatus(status);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset(offset);
+        query.setLimit(limit);
+
+        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
+        return list.stream()
                 .map(this::convert)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
@@ -51,21 +51,24 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public long countByCondition(String status) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
+        UsageApplyQuery query = new UsageApplyQuery();
         if (StringUtils.hasText(status)) {
-            wrapper.eq(UsageApplyDO::getStatus, status);
+            query.setStatus(status);
         }
-        return usageApplyMapper.selectCount(wrapper);
+        return usageApplyMapper.selectCount(query);
     }
 
     @Override
     public List<UsageApply> findByUserId(Long userId, int offset, int limit) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId)
-                .orderByDesc(UsageApplyDO::getCreateTime);
-        Page<UsageApplyDO> page = new Page<>(offset / limit + 1, limit);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, wrapper);
-        return result.getRecords().stream()
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset(offset);
+        query.setLimit(limit);
+
+        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
+        return list.stream()
                 .map(this::convert)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
@@ -73,13 +76,16 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public List<UsageApply> findDraftsByUserId(Long userId, int offset, int limit) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId)
-                .eq(UsageApplyDO::getDraft, 1)
-                .orderByDesc(UsageApplyDO::getCreateTime);
-        Page<UsageApplyDO> page = new Page<>(offset / limit + 1, limit);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, wrapper);
-        return result.getRecords().stream()
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setDraft(1);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset(offset);
+        query.setLimit(limit);
+
+        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
+        return list.stream()
                 .map(this::convert)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
@@ -87,17 +93,17 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public long countByUserId(Long userId) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId);
-        return usageApplyMapper.selectCount(wrapper);
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        return usageApplyMapper.selectCount(query);
     }
 
     @Override
     public long countDraftsByUserId(Long userId) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId)
-                .eq(UsageApplyDO::getDraft, 1);
-        return usageApplyMapper.selectCount(wrapper);
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setDraft(1);
+        return usageApplyMapper.selectCount(query);
     }
 
     @Override

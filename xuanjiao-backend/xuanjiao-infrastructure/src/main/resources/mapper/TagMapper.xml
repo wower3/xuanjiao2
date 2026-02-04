@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.asset.TagMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.TagDO">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="category" property="category"/>
+        <result column="create_time" property="createTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        id, name, category, create_time, deleted
+    </sql>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tag
+        WHERE id = #{id}
+        AND deleted = 0
+    </select>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tag
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="name != null and name != ''">AND name = #{name}</if>
+            <if test="category != null and category != ''">AND category = #{category}</if>
+            <if test="deleted != null">AND deleted = #{deleted}</if>
+            <if test="deleted == null">AND deleted = 0</if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="orderByField == null or orderByField == ''">
+            ORDER BY category ASC, name ASC
+        </if>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM tag
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="name != null and name != ''">AND name = #{name}</if>
+            <if test="category != null and category != ''">AND category = #{category}</if>
+            <if test="deleted != null">AND deleted = #{deleted}</if>
+            <if test="deleted == null">AND deleted = 0</if>
+        </where>
+    </select>
+
+    <!-- Select Batch IDs -->
+    <select id="selectBatchIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tag
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND deleted = 0
+        ORDER BY category ASC, name ASC
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.TagDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO tag (name, category, create_time, deleted)
+        VALUES (#{name}, #{category}, #{createTime}, 0)
+    </insert>
+
+    <!-- Update By ID -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.TagDO">
+        UPDATE tag
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="category != null and category != ''">category = #{category},</if>
+        </set>
+        WHERE id = #{id}
+        AND deleted = 0
+    </update>
+
+    <!-- Delete By ID (Soft Delete) -->
+    <update id="deleteById">
+        UPDATE tag
+        SET deleted = 1
+        WHERE id = #{id}
+        AND deleted = 0
+    </update>
+
+</mapper>

@@ -22,6 +22,7 @@ public class Asset {
     private String description;
     private String publishChannel;
     private List<Long> tagIds;
+    private Integer deleted;
 
     private LocalDateTime createTime;
     private LocalDateTime updateTime;

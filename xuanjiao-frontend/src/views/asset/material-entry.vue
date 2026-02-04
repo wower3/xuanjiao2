@@ -583,6 +583,10 @@ async function loadApplication() {
   try {
     const res = await getMaterialApplicationById(applicationId.value)
     const app = res.data
+    console.log('loadApplication - 原始响应:', res)
+    console.log('loadApplication - app.assets:', app.assets)
+    console.log('loadApplication - assets数量:', (app.assets || []).length)
+
     form.title = app.title
     form.maintainerId = app.maintainerId
     form.deptId = app.deptId
@@ -590,7 +594,10 @@ async function loadApplication() {
     applicationStatus.value = app.status || 'DRAFT'
     // reactive 数组需要清空后重新填充
     fileList.splice(0, fileList.length)
+    console.log('loadApplication - 清空后fileList:', fileList)
     fileList.push(...(app.assets || []))
+    console.log('loadApplication - 填充后fileList:', fileList)
+
     // 记录初始状态
     initialForm.value = {
       title: app.title,
@@ -599,6 +606,7 @@ async function loadApplication() {
     initialFileCount.value = (app.assets || []).length
     hasUnsavedChanges.value = false
   } catch (e: any) {
+    console.error('loadApplication 错误:', e)
     ElMessage.error(e.message || '加载申请单失败')
   }
 }
@@ -902,16 +910,25 @@ async function handleAddFile() {
 
   addingFile.value = true
   try {
-    await uploadAsset(uploadFile.value, {
+    console.log('handleAddFile - applicationId:', applicationId.value)
+    console.log('handleAddFile - 上传数据:', {
       ...fileForm,
       applicationId: applicationId.value
     })
+    const uploadRes = await uploadAsset(uploadFile.value, {
+      ...fileForm,
+      applicationId: applicationId.value
+    })
+    console.log('handleAddFile - 上传响应:', uploadRes)
     ElMessage.success('添加成功')
     showAddFile.value = false
     resetFileForm()
     // 重新加载文件列表
+    console.log('handleAddFile - 准备重新加载...')
     await loadApplication()
+    console.log('handleAddFile - 重新加载完成, fileList.length:', fileList.length)
   } catch (e: any) {
+    console.error('handleAddFile - 上传失败:', e)
     ElMessage.error(e.message || '添加失败')
   } finally {
     addingFile.value = false

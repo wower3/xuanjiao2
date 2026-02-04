@@ -2,6 +2,7 @@ package com.xuanjiao.app.asset.impl;
 
 import cn.hutool.crypto.digest.DigestUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.xuanjiao.infrastructure.asset.AssetTagQuery;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.schedule.AssetDeletionCleanupTask;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
@@ -13,6 +14,7 @@ import com.xuanjiao.infrastructure.dataobject.TagDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
+import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.asset.AssetTagMapper;
 import com.xuanjiao.infrastructure.asset.TagMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
@@ -84,6 +86,8 @@ public class AssetServiceImpl implements AssetService {
     @Transactional
     public AssetDTO upload(MultipartFile file, AssetUploadCmd cmd, Long userId) {
         try {
+            logger.info("Asset.upload - 开始上传，applicationId: {}, tagIds: {}", cmd.getApplicationId(), cmd.getTagIds());
+
             String md5 = DigestUtil.md5Hex(file.getInputStream());
             String originalName = file.getOriginalFilename();
             String ext = originalName.substring(originalName.lastIndexOf("."));
@@ -103,6 +107,8 @@ public class AssetServiceImpl implements AssetService {
             asset.setCopyright(cmd.getCopyright());
             asset.setUploadUserId(userId);
             asset.setCreateTime(LocalDateTime.now());
+            asset.setUpdateTime(LocalDateTime.now());
+            asset.setDeleted(0);
 
             // New fields for material entry
             asset.setApplicationId(cmd.getApplicationId());
@@ -111,6 +117,8 @@ public class AssetServiceImpl implements AssetService {
             asset.setDescription(cmd.getDescription());
             asset.setPublishChannel(cmd.getPublishChannel());
             asset.setTagIds(cmd.getTagIds());
+
+            logger.info("Asset.upload - asset设置完成，applicationId: {}, tagIds: {}", asset.getApplicationId(), asset.getTagIds());
 
             // For draft applications, status is DRAFT, otherwise follow workflow logic
             if (cmd.getApplicationId() != null) {
@@ -227,14 +235,8 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional
     public void updateStatusByApplicationId(Long applicationId, String status) {
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getApplicationId, applicationId);
-        List<com.xuanjiao.infrastructure.dataobject.AssetDO> assets = assetMapper.selectList(wrapper);
-
-        for (com.xuanjiao.infrastructure.dataobject.AssetDO assetDO : assets) {
-            assetDO.setStatus(status);
-            assetMapper.updateById(assetDO);
-        }
+        // 使用 AssetMapper 的批量更新方法
+        assetMapper.updateStatusByApplicationId(applicationId, status);
     }
 
     private AssetDTO convert(Asset asset) {
@@ -251,9 +253,9 @@ public class AssetServiceImpl implements AssetService {
 
         // Load tags
         if (asset.getId() != null) {
-            LambdaQueryWrapper<AssetTagDO> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AssetTagDO::getAssetId, asset.getId());
-            List<AssetTagDO> assetTags = assetTagMapper.selectList(wrapper);
+            AssetTagQuery query = new AssetTagQuery();
+            query.setAssetId(asset.getId());
+            List<AssetTagDO> assetTags = assetTagMapper.selectList(query);
 
             if (!assetTags.isEmpty()) {
                 List<Long> tagIds = assetTags.stream()
@@ -301,15 +303,8 @@ public class AssetServiceImpl implements AssetService {
             throw new RuntimeException("用户不存在");
         }
 
-        // 使用 LambdaUpdateWrapper 绕过 MyBatis Plus 的逻辑删除限制
-        // 直接更新 deleted 字段为 1
-        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> updateWrapper =
-            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-        updateWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getId, assetId)
-                   .set(com.xuanjiao.infrastructure.dataobject.AssetDO::getDeleted, 1)
-                   .set(com.xuanjiao.infrastructure.dataobject.AssetDO::getUpdateTime, java.time.LocalDateTime.now());
-
-        int updateResult = assetMapper.update(null, updateWrapper);
+        // 使用 AssetMapper 的方法直接更新 deleted 字段为 1
+        int updateResult = assetMapper.updateDeletedById(assetId);
         logger.info("软删除更新结果：影响行数={}", updateResult);
 
         // 记录操作日志
@@ -364,23 +359,18 @@ public class AssetServiceImpl implements AssetService {
     @Override
     public PageResult<AssetDTO> getMyApprovedAssets(String name, String type, Integer pageNum, Integer pageSize, Long userId) {
         // 查询当前用户申请录入的素材，状态为APPROVED
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getUploadUserId, userId);
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getStatus, "APPROVED");
-
-        if (name != null && !name.trim().isEmpty()) {
-            wrapper.like(com.xuanjiao.infrastructure.dataobject.AssetDO::getName, name);
-        }
-        if (type != null && !type.trim().isEmpty()) {
-            wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getType, type);
-        }
-
-        wrapper.orderByDesc(com.xuanjiao.infrastructure.dataobject.AssetDO::getCreateTime);
+        AssetQuery query = new AssetQuery();
+        query.setUploadUserId(userId);
+        query.setStatus("APPROVED");
+        query.setName(name);
+        query.setType(type);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
 
         // 分页查询
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xuanjiao.infrastructure.dataobject.AssetDO> page =
             new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize);
-        assetMapper.selectPage(page, wrapper);
+        assetMapper.selectPage(page, query);
 
         List<AssetDTO> dtoList = page.getRecords().stream()
             .map(this::convertDOToDTO)

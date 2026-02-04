@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO">
+        <id column="id" property="id"/>
+        <result column="usage_apply_id" property="usageApplyId"/>
+        <result column="asset_id" property="assetId"/>
+        <result column="usage_description" property="usageDescription"/>
+        <result column="usage_publish_channel" property="usagePublishChannel"/>
+        <result column="usage_is_secondary_creation" property="usageIsSecondaryCreation"/>
+        <result column="usage_attachment_path" property="usageAttachmentPath"/>
+        <result column="create_time" property="createTime"/>
+        <!-- 非数据库字段，用于关联查询 -->
+        <result column="asset_name" property="assetName"/>
+        <result column="asset_type" property="assetType"/>
+        <result column="asset_file_path" property="assetFilePath"/>
+        <result column="asset_thumbnail_path" property="assetThumbnailPath"/>
+        <result column="asset_status" property="assetStatus"/>
+    </resultMap>
+
+    <!-- Base Column List (不含关联字段) -->
+    <sql id="Base_Column_List">
+        id, usage_apply_id, asset_id, usage_description, usage_publish_channel,
+        usage_is_secondary_creation, usage_attachment_path, create_time
+    </sql>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM usage_apply_asset
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="usageApplyId != null">AND usage_apply_id = #{usageApplyId}</if>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+        </where>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM usage_apply_asset
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="usageApplyId != null">AND usage_apply_id = #{usageApplyId}</if>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+        </where>
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO usage_apply_asset (usage_apply_id, asset_id, usage_description, usage_publish_channel, usage_is_secondary_creation, usage_attachment_path)
+        VALUES (#{usageApplyId}, #{assetId}, #{usageDescription}, #{usagePublishChannel}, #{usageIsSecondaryCreation}, #{usageAttachmentPath})
+    </insert>
+
+    <!-- Update By ID -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO">
+        UPDATE usage_apply_asset
+        <set>
+            <if test="usageDescription != null">usage_description = #{usageDescription},</if>
+            <if test="usagePublishChannel != null and usagePublishChannel != ''">usage_publish_channel = #{usagePublishChannel},</if>
+            <if test="usageIsSecondaryCreation != null">usage_is_secondary_creation = #{usageIsSecondaryCreation},</if>
+            <if test="usageAttachmentPath != null">usage_attachment_path = #{usageAttachmentPath},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By ID (Hard Delete) -->
+    <delete id="deleteById">
+        DELETE FROM usage_apply_asset WHERE id = #{id}
+    </delete>
+
+    <!-- Delete By UsageApplyId (Hard Delete) -->
+    <delete id="deleteByUsageApplyId">
+        DELETE FROM usage_apply_asset WHERE usage_apply_id = #{usageApplyId}
+    </delete>
+
+    <!-- Delete By Query (Hard Delete) -->
+    <delete id="delete" parameterType="com.xuanjiao.infrastructure.usage.UsageApplyAssetQuery">
+        DELETE FROM usage_apply_asset
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="usageApplyId != null">AND usage_apply_id = #{usageApplyId}</if>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+        </where>
+    </delete>
+
+    <!-- ========== 自定义查询方法（保留原有功能）========== -->
+
+    <!-- 根据申请单ID查询关联的素材（包含素材详情） -->
+    <select id="findByUsageApplyIdWithAsset" resultMap="BaseResultMap">
+        SELECT ua.*, a.name as asset_name, a.type as asset_type, a.file_path as asset_file_path,
+               a.thumbnail_path as asset_thumbnail_path, a.status as asset_status
+        FROM usage_apply_asset ua
+        LEFT JOIN asset a ON ua.asset_id = a.id
+        WHERE ua.usage_apply_id = #{usageApplyId}
+    </select>
+
+    <!-- 根据素材ID查询所有关联的申请单 -->
+    <select id="findByAssetId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM usage_apply_asset
+        WHERE asset_id = #{assetId}
+    </select>
+
+    <!-- 根据申请单ID和素材ID查询 -->
+    <select id="findByUsageApplyIdAndAssetId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM usage_apply_asset
+        WHERE usage_apply_id = #{usageApplyId} AND asset_id = #{assetId}
+    </select>
+
+</mapper>

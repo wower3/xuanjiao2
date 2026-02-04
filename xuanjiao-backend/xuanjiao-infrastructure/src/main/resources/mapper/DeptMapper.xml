@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.dept.DeptMapper">
+
+    <!-- 结果映射：column是数据库字段（下划线），property是Java属性（驼峰） -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.DeptDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="code" property="code" jdbcType="VARCHAR"/>
+        <result column="level" property="level" jdbcType="INTEGER"/>
+        <result column="full_code" property="fullCode" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="parent_id" property="parentId" jdbcType="BIGINT"/>
+        <result column="leader_id" property="leaderId" jdbcType="BIGINT"/>
+        <result column="sort" property="sort" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段列表（数据库字段，下划线命名） - 禁止 SELECT * -->
+    <sql id="Base_Column_List">
+        id, code, level, full_code, name, parent_id, leader_id,
+        sort, status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 根据主键查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_dept
+        <where>
+            id = #{id}
+            AND deleted = 0
+        </where>
+        LIMIT 1
+    </select>
+
+    <!-- 根据编码查询 -->
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_dept
+        <where>
+            code = #{code}
+            AND deleted = 0
+        </where>
+        LIMIT 1
+    </select>
+
+    <!-- 根据父部门ID查询子部门 -->
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_dept
+        <where>
+            parent_id = #{parentId}
+            AND deleted = 0
+        </where>
+        ORDER BY sort
+    </select>
+
+    <!-- 查询所有部门（按级别和排序） -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_dept
+        <where>
+            deleted = 0
+        </where>
+        ORDER BY level, sort
+    </select>
+
+    <!-- 动态条件查询 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_dept
+        <where>
+            <!-- deleted 参数处理 -->
+            <if test="deleted != null">
+                deleted = #{deleted}
+            </if>
+            <if test="deleted == null">
+                deleted = 0
+            </if>
+
+            <!-- 单值参数 -->
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="code != null and code != ''">
+                AND code = #{code}
+            </if>
+            <if test="level != null">
+                AND level = #{level}
+            </if>
+            <if test="parentId != null">
+                AND parent_id = #{parentId}
+            </if>
+            <if test="leaderId != null">
+                AND leader_id = #{leaderId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+
+            <!-- 字符串模糊查询 -->
+            <if test="nameKeyword != null and nameKeyword != ''">
+                AND name LIKE CONCAT('%', #{nameKeyword}, '%')
+            </if>
+        </where>
+
+        <!-- 动态排序 -->
+        <choose>
+            <when test="orderByField != null and orderByField != ''">
+                ORDER BY ${orderByField}
+                <if test="orderByDirection != null and orderByDirection != ''">
+                    ${orderByDirection}
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY level, sort
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.DeptDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_dept (
+            code, level, full_code, name, parent_id, leader_id,
+            sort, status, create_time, update_time, deleted
+        ) VALUES (
+            #{code}, #{level}, #{fullCode}, #{name}, #{parentId}, #{leaderId},
+            #{sort}, #{status}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新 -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.DeptDO">
+        UPDATE sys_dept
+        <set>
+            <if test="code != null and code != ''">code = #{code},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="fullCode != null">full_code = #{fullCode},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="leaderId != null">leader_id = #{leaderId},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        <where>
+            id = #{id}
+        </where>
+    </update>
+
+    <!-- 删除（逻辑删除） -->
+    <update id="deleteById">
+        UPDATE sys_dept
+        <set>
+            deleted = 1
+        </set>
+        <where>
+            id = #{id}
+        </where>
+    </update>
+</mapper>

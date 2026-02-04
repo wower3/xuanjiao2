@@ -1,10 +1,10 @@
 package com.xuanjiao.app.dept.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.dept.DeptService;
 import com.xuanjiao.client.dto.DeptDTO;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
+import com.xuanjiao.infrastructure.dept.DeptQuery;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
@@ -24,9 +24,10 @@ public class DeptServiceImpl implements DeptService {
 
     @Override
     public List<DeptDTO> list() {
-        List<DeptDO> list = deptMapper.selectList(new LambdaQueryWrapper<DeptDO>()
-                .eq(DeptDO::getDeleted, 0)
-                .orderByAsc(DeptDO::getLevel, DeptDO::getSort));
+        // 使用 DeptQuery 替代 LambdaQueryWrapper
+        DeptQuery query = new DeptQuery();
+        // XML 中默认按 level, sort 排序，无需指定 orderBy
+        List<DeptDO> list = deptMapper.selectList(query);
         return list.stream().map(this::convert).collect(Collectors.toList());
     }
 

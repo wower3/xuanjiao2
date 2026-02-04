@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.asset.AssetMapper">
+
+    <!-- 结果映射：column是数据库字段（下划线），property是Java属性（驼峰） -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.AssetDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="type" property="type" jdbcType="VARCHAR"/>
+        <result column="file_path" property="filePath" jdbcType="VARCHAR"/>
+        <result column="thumbnail_path" property="thumbnailPath" jdbcType="VARCHAR"/>
+        <result column="file_size" property="fileSize" jdbcType="BIGINT"/>
+        <result column="md5" property="md5" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="copyright" property="copyright" jdbcType="VARCHAR"/>
+        <result column="upload_user_id" property="uploadUserId" jdbcType="BIGINT"/>
+        <result column="application_id" property="applicationId" jdbcType="BIGINT"/>
+        <result column="copyright_file_path" property="copyrightFilePath" jdbcType="VARCHAR"/>
+        <result column="copyright_text" property="copyrightText" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="publish_channel" property="publishChannel" jdbcType="VARCHAR"/>
+        <result column="deletion_approve_time" property="deletionApproveTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段列表（数据库字段，下划线命名） - 禁止 SELECT * -->
+    <sql id="Base_Column_List">
+        id, name, type, file_path, thumbnail_path, file_size, md5, status, copyright,
+        upload_user_id, application_id, copyright_file_path, copyright_text,
+        description, publish_channel, deletion_approve_time,
+        create_time, update_time, deleted
+    </sql>
+
+    <!-- 根据主键查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset
+        <where>
+            id = #{id}
+            AND COALESCE(deleted, 0) = 0
+        </where>
+        LIMIT 1
+    </select>
+
+    <!-- 根据MD5查询（包含已删除记录，用于去重校验） -->
+    <select id="selectByMd5IncludeDeleted" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset
+        <where>
+            md5 = #{md5}
+        </where>
+        LIMIT 1
+    </select>
+
+    <!-- 根据申请ID查询 -->
+    <select id="selectByApplicationId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset
+        <where>
+            application_id = #{applicationId}
+            AND COALESCE(deleted, 0) = 0
+        </where>
+    </select>
+
+    <!-- 动态条件查询 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset
+        <where>
+            <!-- deleted 参数处理：使用COALESCE处理NULL值 -->
+            <if test="deleted != null">
+                deleted = #{deleted}
+            </if>
+            <if test="deleted == null">
+                AND COALESCE(deleted, 0) = 0
+            </if>
+
+            <!-- 单值参数 -->
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="md5 != null and md5 != ''">
+                AND md5 = #{md5}
+            </if>
+            <if test="applicationId != null">
+                AND application_id = #{applicationId}
+            </if>
+            <if test="uploadUserId != null">
+                AND upload_user_id = #{uploadUserId}
+            </if>
+
+            <!-- IN 查询 -->
+            <if test="statusList != null and statusList.size() > 0">
+                AND status IN
+                <foreach collection="statusList" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <!-- 时间范围查询 -->
+            <if test="deletionApproveTimeBefore != null">
+                AND deletion_approve_time &lt; #{deletionApproveTimeBefore}
+            </if>
+
+            <!-- 字符串模糊查询 -->
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+        </where>
+
+        <!-- 动态排序 -->
+        <choose>
+            <when test="orderByField != null and orderByField != ''">
+                ORDER BY ${orderByField}
+                <if test="orderByDirection != null and orderByDirection != ''">
+                    ${orderByDirection}
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY create_time DESC
+            </otherwise>
+        </choose>
+
+        <!-- 分页限制 -->
+        <if test="limit != null">
+            LIMIT #{limit}
+            <if test="offset != null">
+                OFFSET #{offset}
+            </if>
+        </if>
+    </select>
+
+    <!-- 分页查询（返回总数） -->
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*)
+        FROM asset
+        <where>
+            <!-- deleted 参数处理：使用COALESCE处理NULL值 -->
+            <if test="deleted != null">
+                deleted = #{deleted}
+            </if>
+            <if test="deleted == null">
+                AND COALESCE(deleted, 0) = 0
+            </if>
+
+            <!-- 单值参数 -->
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="applicationId != null">
+                AND application_id = #{applicationId}
+            </if>
+            <if test="uploadUserId != null">
+                AND upload_user_id = #{uploadUserId}
+            </if>
+
+            <!-- IN 查询 -->
+            <if test="statusList != null and statusList.size() > 0">
+                AND status IN
+                <foreach collection="statusList" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <!-- 时间范围查询 -->
+            <if test="deletionApproveTimeBefore != null">
+                AND deletion_approve_time &lt; #{deletionApproveTimeBefore}
+            </if>
+
+            <!-- 字符串模糊查询 -->
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+        </where>
+    </select>
+
+    <!-- 分页查询（返回记录） -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset
+        <where>
+            <!-- deleted 参数处理：使用COALESCE处理NULL值 -->
+            <if test="query.deleted != null">
+                deleted = #{query.deleted}
+            </if>
+            <if test="query.deleted == null">
+                AND COALESCE(deleted, 0) = 0
+            </if>
+
+            <!-- 单值参数 -->
+            <if test="query.id != null">
+                AND id = #{query.id}
+            </if>
+            <if test="query.type != null and query.type != ''">
+                AND type = #{query.type}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND status = #{query.status}
+            </if>
+            <if test="query.applicationId != null">
+                AND application_id = #{query.applicationId}
+            </if>
+            <if test="query.uploadUserId != null">
+                AND upload_user_id = #{query.uploadUserId}
+            </if>
+
+            <!-- IN 查询 -->
+            <if test="query.statusList != null and query.statusList.size() > 0">
+                AND status IN
+                <foreach collection="query.statusList" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <!-- 字符串模糊查询 -->
+            <if test="query.name != null and query.name != ''">
+                AND name LIKE CONCAT('%', #{query.name}, '%')
+            </if>
+        </where>
+
+        <!-- 动态排序 -->
+        <choose>
+            <when test="query.orderByField != null and query.orderByField != ''">
+                ORDER BY ${query.orderByField}
+                <if test="query.orderByDirection != null and query.orderByDirection != ''">
+                    ${query.orderByDirection}
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY create_time DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO asset (
+            name, type, file_path, thumbnail_path, file_size, md5, status, copyright,
+            upload_user_id, application_id, copyright_file_path, copyright_text,
+            description, publish_channel, deletion_approve_time,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{name}, #{type}, #{filePath}, #{thumbnailPath}, #{fileSize}, #{md5}, #{status}, #{copyright},
+            #{uploadUserId}, #{applicationId}, #{copyrightFilePath}, #{copyrightText},
+            #{description}, #{publishChannel}, #{deletionApproveTime},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新 -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDO">
+        UPDATE asset
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="filePath != null">file_path = #{filePath},</if>
+            <if test="thumbnailPath != null">thumbnail_path = #{thumbnailPath},</if>
+            <if test="fileSize != null">file_size = #{fileSize},</if>
+            <if test="md5 != null">md5 = #{md5},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="copyright != null">copyright = #{copyright},</if>
+            <if test="uploadUserId != null">upload_user_id = #{uploadUserId},</if>
+            <if test="applicationId != null">application_id = #{applicationId},</if>
+            <if test="copyrightFilePath != null">copyright_file_path = #{copyrightFilePath},</if>
+            <if test="copyrightText != null">copyright_text = #{copyrightText},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="publishChannel != null">publish_channel = #{publishChannel},</if>
+            <if test="deletionApproveTime != null">deletion_approve_time = #{deletionApproveTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        <where>
+            id = #{id}
+            AND COALESCE(deleted, 0) = 0
+        </where>
+    </update>
+
+    <!-- 批量更新（通过 application_id 更新状态） -->
+    <update id="updateStatusByApplicationId">
+        UPDATE asset
+        <set>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        <where>
+            application_id = #{applicationId}
+        </where>
+    </update>
+
+    <!-- 更新素材为已删除状态（管理员彻底删除） -->
+    <update id="updateDeletedById">
+        UPDATE asset
+        <set>
+            deleted = 1,
+            update_time = NOW()
+        </set>
+        <where>
+            id = #{id}
+        </where>
+    </update>
+
+    <!-- 批量更新deleted字段（用于定时清理任务） -->
+    <update id="cleanupDeletedAssets">
+        UPDATE asset
+        <set>
+            deleted = 1,
+            update_time = NOW()
+        </set>
+        <where>
+            status = 'DELETED'
+            AND COALESCE(deleted, 0) = 0
+            AND deletion_approve_time &lt; #{beforeTime}
+        </where>
+    </update>
+
+    <!-- 删除（逻辑删除） -->
+    <update id="deleteById">
+        UPDATE asset
+        <set>
+            deleted = 1
+        </set>
+        <where>
+            id = #{id}
+            AND COALESCE(deleted, 0) = 0
+        </where>
+    </update>
+</mapper>

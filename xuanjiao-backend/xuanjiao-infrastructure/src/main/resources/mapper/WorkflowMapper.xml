@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.workflow.WorkflowMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.WorkflowDO">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="version" property="version"/>
+        <result column="status" property="status"/>
+        <result column="bound_role_id" property="boundRoleId"/>
+        <result column="workflow_type" property="workflowType"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        id, name, description, version, status, bound_role_id, workflow_type, create_time, update_time, deleted
+    </sql>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM workflow
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM workflow
+        <where>
+            <if test="deleted == null">deleted = 0</if>
+            <if test="deleted != null">deleted = #{deleted}</if>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="name != null and name != ''">AND name = #{name}</if>
+            <if test="version != null">AND version = #{version}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="boundRoleId != null">AND bound_role_id = #{boundRoleId}</if>
+            <if test="workflowType != null and workflowType != ''">AND workflow_type = #{workflowType}</if>
+            <if test="excludeIds != null and excludeIds.size() > 0">
+                AND id NOT IN
+                <foreach collection="excludeIds" item="excludeId" open="(" separator="," close=")">
+                    #{excludeId}
+                </foreach>
+            </if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="orderByField == null or orderByField == ''">
+            ORDER BY id DESC
+        </if>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM workflow
+        <where>
+            <if test="deleted == null">deleted = 0</if>
+            <if test="deleted != null">deleted = #{deleted}</if>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="name != null and name != ''">AND name = #{name}</if>
+            <if test="version != null">AND version = #{version}</if>
+            <if test="status != null">AND status = #{status}</if>
+            <if test="boundRoleId != null">AND bound_role_id = #{boundRoleId}</if>
+            <if test="workflowType != null and workflowType != ''">AND workflow_type = #{workflowType}</if>
+            <if test="excludeIds != null and excludeIds.size() > 0">
+                AND id NOT IN
+                <foreach collection="excludeIds" item="excludeId" open="(" separator="," close=")">
+                    #{excludeId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.WorkflowDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO workflow (name, description, version, status, bound_role_id, workflow_type, deleted)
+        VALUES (#{name}, #{description}, #{version}, #{status}, #{boundRoleId}, #{workflowType}, 0)
+    </insert>
+
+    <!-- Update By ID -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.WorkflowDO">
+        UPDATE workflow
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="version != null">version = #{version},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="boundRoleId != null">bound_role_id = #{boundRoleId},</if>
+            <if test="workflowType != null">workflow_type = #{workflowType},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By ID (Soft Delete using @TableLogic) -->
+    <update id="deleteById">
+        UPDATE workflow SET deleted = 1 WHERE id = #{id}
+    </update>
+
+</mapper>

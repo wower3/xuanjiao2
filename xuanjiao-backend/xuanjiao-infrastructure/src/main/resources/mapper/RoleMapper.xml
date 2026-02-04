@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.role.RoleMapper">
+
+    <!-- 结果映射：column是数据库字段（下划线），property是Java属性（驼峰） -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.RoleDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="role_type" property="roleType" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="dept_scope" property="deptScope" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- 基础字段列表（数据库字段，下划线命名） -->
+    <sql id="Base_Column_List">
+        id, name, role_type, description, dept_scope, status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 根据主键查询角色 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_role
+        <where>
+            id = #{id}
+            AND deleted = 0
+        </where>
+        LIMIT 1
+    </select>
+
+    <!-- 条件查询角色列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_role
+        <where>
+            <if test="deleted != null">
+                deleted = #{deleted}
+            </if>
+            <if test="deleted == null">
+                deleted = 0
+            </if>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="roleType != null and roleType != ''">
+                AND role_type = #{roleType}
+            </if>
+            <if test="roleTypes != null and roleTypes.size() > 0">
+                AND role_type IN
+                <foreach collection="roleTypes" item="roleType" open="(" separator="," close=")">
+                    #{roleType}
+                </foreach>
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="nameKeyword != null and nameKeyword != ''">
+                AND name LIKE CONCAT('%', #{nameKeyword}, '%')
+            </if>
+            <if test="excludeId != null">
+                AND id != #{excludeId}
+            </if>
+        </where>
+        ORDER BY ${orderByField} ${orderByDirection}
+    </select>
+
+    <!-- 查询数量（用于唯一性检查） -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_role
+        <where>
+            <if test="deleted != null">
+                deleted = #{deleted}
+            </if>
+            <if test="deleted == null">
+                deleted = 0
+            </if>
+            <if test="roleType != null and roleType != ''">
+                AND role_type = #{roleType}
+            </if>
+            <if test="excludeId != null">
+                AND id != #{excludeId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 插入角色 -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.RoleDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_role (
+            name, role_type, description, dept_scope, status,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{name}, #{roleType}, #{description}, #{deptScope}, #{status},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 根据主键更新角色 -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.RoleDO">
+        UPDATE sys_role
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="roleType != null">role_type = #{roleType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="deptScope != null">dept_scope = #{deptScope},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        <where>
+            id = #{id}
+        </where>
+    </update>
+
+    <!-- 根据主键删除角色（逻辑删除） -->
+    <update id="deleteById">
+        UPDATE sys_role
+        <set>
+            deleted = 1
+        </set>
+        <where>
+            id = #{id}
+        </where>
+    </update>
+
+</mapper>

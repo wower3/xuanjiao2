@@ -1,11 +1,11 @@
 package com.xuanjiao.app.role.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.menu.MenuService;
 import com.xuanjiao.app.role.RoleService;
 import com.xuanjiao.client.dto.RoleDTO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
+import com.xuanjiao.infrastructure.role.RoleQuery;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
@@ -24,8 +24,10 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public List<RoleDTO> list() {
-        List<RoleDO> list = roleMapper.selectList(new LambdaQueryWrapper<RoleDO>()
-                .orderByDesc(RoleDO::getId));
+        RoleQuery query = new RoleQuery();
+        query.setOrderByField("id");
+        query.setOrderByDirection("DESC");
+        List<RoleDO> list = roleMapper.selectList(query);
         return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
@@ -106,12 +108,12 @@ public class RoleServiceImpl implements RoleService {
         }
 
         // 校验唯一性
-        LambdaQueryWrapper<RoleDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(RoleDO::getRoleType, roleType);
+        RoleQuery query = new RoleQuery();
+        query.setRoleType(roleType);
         if (excludeId != null) {
-            wrapper.ne(RoleDO::getId, excludeId);
+            query.setExcludeId(excludeId);
         }
-        Long count = roleMapper.selectCount(wrapper);
+        Long count = roleMapper.selectCount(query);
         if (count > 0) {
             throw new RuntimeException("角色类型已存在：" + roleType);
         }

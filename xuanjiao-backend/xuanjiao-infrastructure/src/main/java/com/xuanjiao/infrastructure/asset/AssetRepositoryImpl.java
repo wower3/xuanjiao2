@@ -1,6 +1,5 @@
 package com.xuanjiao.infrastructure.asset;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.domain.asset.entity.Asset;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
@@ -10,7 +9,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,10 +33,17 @@ public class AssetRepositoryImpl implements AssetRepository {
 
     @Override
     public List<Asset> findByCondition(String name, String type, String status, int offset, int limit) {
-        LambdaQueryWrapper<AssetDO> wrapper = buildQueryWrapper(name, type, status);
-        Page<AssetDO> page = new Page<>(offset / limit + 1, limit);
-        Page<AssetDO> result = assetMapper.selectPage(page, wrapper);
-        return result.getRecords().stream().map(this::convert).collect(Collectors.toList());
+        AssetQuery query = new AssetQuery();
+        query.setName(name);
+        query.setType(type);
+        query.setStatus(status);
+        query.setOffset(offset);
+        query.setLimit(limit);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+
+        List<AssetDO> list = assetMapper.selectList(query);
+        return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
     @Override
@@ -49,22 +54,37 @@ public class AssetRepositoryImpl implements AssetRepository {
 
     @Override
     public List<Asset> findByStatusList(String name, String type, List<String> statusList, int offset, int limit) {
-        LambdaQueryWrapper<AssetDO> wrapper = buildQueryWrapperWithStatusList(name, type, statusList);
-        Page<AssetDO> page = new Page<>(offset / limit + 1, limit);
-        Page<AssetDO> result = assetMapper.selectPage(page, wrapper);
-        return result.getRecords().stream().map(this::convert).collect(Collectors.toList());
+        AssetQuery query = new AssetQuery();
+        query.setName(name);
+        query.setType(type);
+        query.setStatusList(statusList);
+        query.setOffset(offset);
+        query.setLimit(limit);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+
+        List<AssetDO> list = assetMapper.selectList(query);
+        return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
     @Override
     public long countByStatusList(String name, String type, List<String> statusList) {
-        LambdaQueryWrapper<AssetDO> wrapper = buildQueryWrapperWithStatusList(name, type, statusList);
-        return assetMapper.selectCount(wrapper);
+        AssetQuery query = new AssetQuery();
+        query.setName(name);
+        query.setType(type);
+        query.setStatusList(statusList);
+
+        return assetMapper.selectCount(query);
     }
 
     @Override
     public long countByCondition(String name, String type, String status) {
-        LambdaQueryWrapper<AssetDO> wrapper = buildQueryWrapper(name, type, status);
-        return assetMapper.selectCount(wrapper);
+        AssetQuery query = new AssetQuery();
+        query.setName(name);
+        query.setType(type);
+        query.setStatus(status);
+
+        return assetMapper.selectCount(query);
     }
 
     @Override
@@ -85,36 +105,6 @@ public class AssetRepositoryImpl implements AssetRepository {
     @Override
     public void deleteById(Long id) {
         assetMapper.deleteById(id);
-    }
-
-    private LambdaQueryWrapper<AssetDO> buildQueryWrapper(String name, String type, String status) {
-        LambdaQueryWrapper<AssetDO> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(name)) {
-            wrapper.like(AssetDO::getName, name);
-        }
-        if (StringUtils.hasText(type)) {
-            wrapper.eq(AssetDO::getType, type);
-        }
-        if (StringUtils.hasText(status)) {
-            wrapper.eq(AssetDO::getStatus, status);
-        }
-        wrapper.orderByDesc(AssetDO::getCreateTime);
-        return wrapper;
-    }
-
-    private LambdaQueryWrapper<AssetDO> buildQueryWrapperWithStatusList(String name, String type, List<String> statusList) {
-        LambdaQueryWrapper<AssetDO> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(name)) {
-            wrapper.like(AssetDO::getName, name);
-        }
-        if (StringUtils.hasText(type)) {
-            wrapper.eq(AssetDO::getType, type);
-        }
-        if (statusList != null && !statusList.isEmpty()) {
-            wrapper.in(AssetDO::getStatus, statusList);
-        }
-        wrapper.orderByDesc(AssetDO::getCreateTime);
-        return wrapper;
     }
 
     private Asset convert(AssetDO assetDO) {

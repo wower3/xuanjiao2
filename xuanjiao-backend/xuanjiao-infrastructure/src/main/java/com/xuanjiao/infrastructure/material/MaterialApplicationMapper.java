@@ -1,9 +1,46 @@
 package com.xuanjiao.infrastructure.material;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
+/**
+ * 素材申请Mapper
+ * 重构说明：不再继承BaseMapper，所有SQL在MaterialApplicationMapper.xml中定义
+ */
 @Mapper
-public interface MaterialApplicationMapper extends BaseMapper<MaterialApplicationDO> {
+public interface MaterialApplicationMapper {
+
+    /**
+     * 根据主键查询素材申请
+     */
+    MaterialApplicationDO selectById(@Param("id") Long id);
+
+    /**
+     * 条件查询素材申请列表
+     * 使用MaterialApplicationQuery对象封装查询条件，支持动态条件组合
+     */
+    List<MaterialApplicationDO> selectList(MaterialApplicationQuery query);
+
+    /**
+     * 条件统计素材申请数量
+     */
+    long selectCount(MaterialApplicationQuery query);
+
+    /**
+     * 插入素材申请
+     */
+    int insert(MaterialApplicationDO application);
+
+    /**
+     * 根据主键更新素材申请
+     */
+    int updateById(MaterialApplicationDO application);
+
+    /**
+     * 根据主键删除素材申请（逻辑删除）
+     */
+    int deleteById(@Param("id") Long id);
 }

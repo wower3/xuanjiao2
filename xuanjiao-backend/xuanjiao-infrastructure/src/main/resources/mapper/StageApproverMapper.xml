@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.workflow.StageApproverMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.StageApproverDO">
+        <id column="id" property="id"/>
+        <result column="stage_id" property="stageId"/>
+        <result column="approver_type" property="approverType"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="check_secondary_dept" property="checkSecondaryDept"/>
+        <result column="sub_workflow_id" property="subWorkflowId"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        id, stage_id, approver_type, approver_id, check_secondary_dept, sub_workflow_id
+    </sql>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM stage_approver
+        WHERE id = #{id}
+    </select>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM stage_approver
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="stageId != null">AND stage_id = #{stageId}</if>
+            <if test="approverType != null and approverType != ''">AND approver_type = #{approverType}</if>
+            <if test="approverId != null">AND approver_id = #{approverId}</if>
+            <if test="checkSecondaryDept != null">AND check_secondary_dept = #{checkSecondaryDept}</if>
+            <if test="subWorkflowId != null">AND sub_workflow_id = #{subWorkflowId}</if>
+            <if test="subWorkflowIdNull != null and subWorkflowIdNull == true">AND sub_workflow_id IS NULL</if>
+            <if test="subWorkflowIdNotNull != null and subWorkflowIdNotNull == true">AND sub_workflow_id IS NOT NULL</if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="orderByField == null or orderByField == ''">
+            ORDER BY id ASC
+        </if>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM stage_approver
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="stageId != null">AND stage_id = #{stageId}</if>
+            <if test="approverType != null and approverType != ''">AND approver_type = #{approverType}</if>
+            <if test="approverId != null">AND approver_id = #{approverId}</if>
+            <if test="checkSecondaryDept != null">AND check_secondary_dept = #{checkSecondaryDept}</if>
+            <if test="subWorkflowId != null">AND sub_workflow_id = #{subWorkflowId}</if>
+            <if test="subWorkflowIdNull != null and subWorkflowIdNull == true">AND sub_workflow_id IS NULL</if>
+            <if test="subWorkflowIdNotNull != null and subWorkflowIdNotNull == true">AND sub_workflow_id IS NOT NULL</if>
+        </where>
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.StageApproverDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO stage_approver (stage_id, approver_type, approver_id, check_secondary_dept, sub_workflow_id)
+        VALUES (#{stageId}, #{approverType}, #{approverId}, #{checkSecondaryDept}, #{subWorkflowId})
+    </insert>
+
+    <!-- Update By ID -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.StageApproverDO">
+        UPDATE stage_approver
+        <set>
+            <if test="stageId != null">stage_id = #{stageId},</if>
+            <if test="approverType != null and approverType != ''">approver_type = #{approverType},</if>
+            <if test="approverId != null">approver_id = #{approverId},</if>
+            <if test="checkSecondaryDept != null">check_secondary_dept = #{checkSecondaryDept},</if>
+            <if test="subWorkflowId != null">sub_workflow_id = #{subWorkflowId},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By ID (Hard Delete) -->
+    <delete id="deleteById">
+        DELETE FROM stage_approver WHERE id = #{id}
+    </delete>
+
+    <!-- Delete By Query (Hard Delete) -->
+    <delete id="delete" parameterType="com.xuanjiao.infrastructure.workflow.StageApproverQuery">
+        DELETE FROM stage_approver
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="stageId != null">AND stage_id = #{stageId}</if>
+            <if test="approverType != null and approverType != ''">AND approver_type = #{approverType}</if>
+            <if test="approverId != null">AND approver_id = #{approverId}</if>
+            <if test="checkSecondaryDept != null">AND check_secondary_dept = #{checkSecondaryDept}</if>
+            <if test="subWorkflowId != null">AND sub_workflow_id = #{subWorkflowId}</if>
+            <if test="subWorkflowIdNull != null and subWorkflowIdNull == true">AND sub_workflow_id IS NULL</if>
+            <if test="subWorkflowIdNotNull != null and subWorkflowIdNotNull == true">AND sub_workflow_id IS NOT NULL</if>
+        </where>
+    </delete>
+
+</mapper>

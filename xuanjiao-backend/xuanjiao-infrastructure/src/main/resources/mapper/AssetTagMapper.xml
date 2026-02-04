@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.asset.AssetTagMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.AssetTagDO">
+        <result column="asset_id" property="assetId"/>
+        <result column="tag_id" property="tagId"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        asset_id, tag_id
+    </sql>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset_tag
+        <where>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+            <if test="tagId != null">AND tag_id = #{tagId}</if>
+        </where>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM asset_tag
+        <where>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+            <if test="tagId != null">AND tag_id = #{tagId}</if>
+        </where>
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.AssetTagDO">
+        INSERT INTO asset_tag (asset_id, tag_id)
+        VALUES (#{assetId}, #{tagId})
+    </insert>
+
+    <!-- Delete By Query (Hard Delete) -->
+    <delete id="delete" parameterType="com.xuanjiao.infrastructure.asset.AssetTagQuery">
+        DELETE FROM asset_tag
+        <where>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+            <if test="tagId != null">AND tag_id = #{tagId}</if>
+        </where>
+    </delete>
+
+</mapper>

@@ -7,8 +7,10 @@ import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
+import com.xuanjiao.infrastructure.dept.DeptQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
+import com.xuanjiao.infrastructure.user.UserQuery;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -38,7 +40,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDTO> list() {
-        List<UserDO> list = userMapper.selectList(null);
+        List<UserDO> list = userMapper.selectList(new UserQuery());
         return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
@@ -53,7 +55,7 @@ public class UserServiceImpl implements UserService {
         Set<Long> deptIds = getAllSubDeptIds(secondaryDeptId);
         deptIds.add(secondaryDeptId);
 
-        List<UserDO> allUsers = userMapper.selectList(null);
+        List<UserDO> allUsers = userMapper.selectList(new UserQuery());
         return allUsers.stream()
                 .filter(user -> user.getDeptId() != null && deptIds.contains(user.getDeptId()))
                 .map(this::convert)
@@ -95,7 +97,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 获取所有用户并筛选
-        List<UserDO> allUsers = userMapper.selectList(null);
+        List<UserDO> allUsers = userMapper.selectList(new UserQuery());
         return allUsers.stream()
                 .filter(user -> {
                     // 部门筛选
@@ -194,7 +196,7 @@ public class UserServiceImpl implements UserService {
         if (currentRole != null) {
             if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) ||
                 "GENERAL_MGMT".equals(currentRole.getRoleType())) {
-                List<DeptDO> allDepts = deptMapper.selectList(null);
+                List<DeptDO> allDepts = deptMapper.selectList(new DeptQuery());
                 return allDepts.stream()
                         .map(DeptDO::getId)
                         .collect(Collectors.toSet());

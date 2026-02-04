@@ -1,18 +1,79 @@
 package com.xuanjiao.infrastructure.asset;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+
 import java.util.List;
 
+/**
+ * 素材 Mapper
+ * 重构为 XML Mapper 方式，移除 BaseMapper 继承
+ */
 @Mapper
-public interface AssetMapper extends BaseMapper<AssetDO> {
+public interface AssetMapper {
 
-    @Select("SELECT * FROM asset WHERE md5 = #{md5} LIMIT 1")
+    /**
+     * 根据主键查询
+     */
+    AssetDO selectById(@Param("id") Long id);
+
+    /**
+     * 根据MD5查询（包含已删除记录，用于去重校验）
+     */
     AssetDO selectByMd5IncludeDeleted(@Param("md5") String md5);
 
-    @Select("SELECT * FROM asset WHERE application_id = #{applicationId} AND deleted = 0")
+    /**
+     * 根据申请ID查询
+     */
     List<AssetDO> selectByApplicationId(@Param("applicationId") Long applicationId);
+
+    /**
+     * 动态条件查询
+     */
+    List<AssetDO> selectList(AssetQuery query);
+
+    /**
+     * 查询总数
+     */
+    Long selectCount(AssetQuery query);
+
+    /**
+     * 分页查询
+     */
+    IPage<AssetDO> selectPage(Page<AssetDO> page, @Param("query") AssetQuery query);
+
+    /**
+     * 插入
+     */
+    int insert(AssetDO asset);
+
+    /**
+     * 更新
+     */
+    int updateById(AssetDO asset);
+
+    /**
+     * 批量更新（通过 application_id 更新状态）
+     */
+    int updateStatusByApplicationId(@Param("applicationId") Long applicationId, @Param("status") String status);
+
+    /**
+     * 更新素材为已删除状态（管理员彻底删除）
+     * 直接更新 deleted 字段为 1，绕过 @TableLogic 限制
+     */
+    int updateDeletedById(@Param("id") Long id);
+
+    /**
+     * 批量更新deleted字段（用于定时清理任务）
+     * 将状态为DELETED且删除审批时间早于指定时间的素材彻底软删除
+     */
+    int cleanupDeletedAssets(@Param("beforeTime") java.time.LocalDateTime beforeTime);
+
+    /**
+     * 删除（逻辑删除）
+     */
+    int deleteById(@Param("id") Long id);
 }

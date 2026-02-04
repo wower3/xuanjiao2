@@ -1,23 +1,56 @@
 package com.xuanjiao.infrastructure.dept;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
+/**
+ * 部门 Mapper
+ * 重构为 XML Mapper 方式，移除 BaseMapper 继承
+ */
 @Mapper
-public interface DeptMapper extends BaseMapper<DeptDO> {
+public interface DeptMapper {
 
-    @Select("SELECT * FROM sys_dept WHERE deleted = 0 ORDER BY level, sort")
-    List<DeptDO> selectAll();
+    /**
+     * 根据主键查询
+     */
+    DeptDO selectById(@Param("id") Long id);
 
-    @Select("SELECT * FROM sys_dept WHERE parent_id = #{parentId} AND deleted = 0 ORDER BY sort")
+    /**
+     * 根据编码查询
+     */
+    DeptDO selectByCode(@Param("code") String code);
+
+    /**
+     * 根据父部门ID查询子部门
+     */
     List<DeptDO> selectByParentId(@Param("parentId") Long parentId);
 
-    @Select("SELECT * FROM sys_dept WHERE code = #{code} AND deleted = 0 LIMIT 1")
-    DeptDO selectByCode(@Param("code") String code);
+    /**
+     * 查询所有部门（按级别和排序）
+     */
+    List<DeptDO> selectAll();
+
+    /**
+     * 动态条件查询
+     */
+    List<DeptDO> selectList(DeptQuery query);
+
+    /**
+     * 插入
+     */
+    int insert(DeptDO dept);
+
+    /**
+     * 更新
+     */
+    int updateById(DeptDO dept);
+
+    /**
+     * 删除（逻辑删除）
+     */
+    int deleteById(@Param("id") Long id);
 }
 

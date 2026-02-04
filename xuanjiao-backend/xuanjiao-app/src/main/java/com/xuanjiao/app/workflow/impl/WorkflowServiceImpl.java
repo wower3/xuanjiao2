@@ -11,8 +11,11 @@ import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;
+import com.xuanjiao.infrastructure.workflow.WorkflowQuery;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
+import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
+import com.xuanjiao.infrastructure.workflow.StageApproverQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
@@ -22,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +52,10 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     @Override
     public List<WorkflowDTO> list() {
-        List<WorkflowDO> list = workflowMapper.selectList(null);
+        WorkflowQuery query = new WorkflowQuery();
+        query.setOrderByField("id");
+        query.setOrderByDirection("DESC");
+        List<WorkflowDO> list = workflowMapper.selectList(query);
         return list.stream().map(workflow -> {
             WorkflowDTO dto = convert(workflow);
             // 加载绑定的角色名称
@@ -59,16 +66,18 @@ public class WorkflowServiceImpl implements WorkflowService {
                 }
             }
             // 加载阶段和审批人信息（包括子流程配置）
-            LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(WorkflowStageDO::getWorkflowId, workflow.getId()).orderByAsc(WorkflowStageDO::getStageOrder);
-            List<WorkflowStageDO> stages = stageMapper.selectList(wrapper);
+            WorkflowStageQuery stageQuery = new WorkflowStageQuery();
+            stageQuery.setWorkflowId(workflow.getId());
+            stageQuery.setOrderByField("stage_order");
+            stageQuery.setOrderByDirection("ASC");
+            List<WorkflowStageDO> stages = stageMapper.selectList(stageQuery);
             List<WorkflowStageDTO> stageDTOs = new ArrayList<>();
             for (WorkflowStageDO stage : stages) {
                 WorkflowStageDTO stageDTO = convertStage(stage);
                 // 查询该阶段的所有审批人（包括普通审批人和子流程）
-                LambdaQueryWrapper<StageApproverDO> approverWrapper = new LambdaQueryWrapper<>();
-                approverWrapper.eq(StageApproverDO::getStageId, stage.getId());
-                List<StageApproverDO> approvers = approverMapper.selectList(approverWrapper);
+                StageApproverQuery approverQuery = new StageApproverQuery();
+                approverQuery.setStageId(stage.getId());
+                List<StageApproverDO> approvers = approverMapper.selectList(approverQuery);
                 stageDTO.setApprovers(approvers.stream().map(this::convertApprover).collect(Collectors.toList()));
                 stageDTOs.add(stageDTO);
             }
@@ -89,16 +98,18 @@ public class WorkflowServiceImpl implements WorkflowService {
                 dto.setRoleName(role.getName());
             }
         }
-        LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowStageDO::getWorkflowId, id).orderByAsc(WorkflowStageDO::getStageOrder);
-        List<WorkflowStageDO> stages = stageMapper.selectList(wrapper);
+        WorkflowStageQuery stageQuery = new WorkflowStageQuery();
+        stageQuery.setWorkflowId(id);
+        stageQuery.setOrderByField("stage_order");
+        stageQuery.setOrderByDirection("ASC");
+        List<WorkflowStageDO> stages = stageMapper.selectList(stageQuery);
         List<WorkflowStageDTO> stageDTOs = new ArrayList<>();
         for (WorkflowStageDO stage : stages) {
             WorkflowStageDTO stageDTO = convertStage(stage);
             // 查询该阶段的所有审批人（包括普通审批人和子流程）
-            LambdaQueryWrapper<StageApproverDO> approverWrapper = new LambdaQueryWrapper<>();
-            approverWrapper.eq(StageApproverDO::getStageId, stage.getId());
-            List<StageApproverDO> approvers = approverMapper.selectList(approverWrapper);
+            StageApproverQuery approverQuery = new StageApproverQuery();
+            approverQuery.setStageId(stage.getId());
+            List<StageApproverDO> approvers = approverMapper.selectList(approverQuery);
             stageDTO.setApprovers(approvers.stream().map(this::convertApprover).collect(Collectors.toList()));
             stageDTOs.add(stageDTO);
         }
@@ -124,17 +135,19 @@ public class WorkflowServiceImpl implements WorkflowService {
         BeanUtils.copyProperties(dto, workflow);
         workflowMapper.updateById(workflow);
         // 先查询旧的阶段ID
-        LambdaQueryWrapper<WorkflowStageDO> stageWrapper = new LambdaQueryWrapper<>();
-        stageWrapper.eq(WorkflowStageDO::getWorkflowId, dto.getId());
-        List<WorkflowStageDO> oldStages = stageMapper.selectList(stageWrapper);
+        WorkflowStageQuery stageQuery = new WorkflowStageQuery();
+        stageQuery.setWorkflowId(dto.getId());
+        List<WorkflowStageDO> oldStages = stageMapper.selectList(stageQuery);
         // 删除旧的审批人
         for (WorkflowStageDO oldStage : oldStages) {
-            LambdaQueryWrapper<StageApproverDO> approverWrapper = new LambdaQueryWrapper<>();
-            approverWrapper.eq(StageApproverDO::getStageId, oldStage.getId());
-            approverMapper.delete(approverWrapper);
+            StageApproverQuery approverQuery = new StageApproverQuery();
+            approverQuery.setStageId(oldStage.getId());
+            approverMapper.delete(approverQuery);
         }
         // 删除旧的阶段
-        stageMapper.delete(stageWrapper);
+        LambdaQueryWrapper<WorkflowStageDO> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(WorkflowStageDO::getWorkflowId, dto.getId());
+        stageMapper.delete(deleteWrapper);
         // 保存新的阶段和审批人
         saveStages(dto.getId(), dto.getStages());
     }
@@ -143,17 +156,19 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional
     public void delete(Long id) {
         // 先删除阶段和审批人
-        LambdaQueryWrapper<WorkflowStageDO> stageWrapper = new LambdaQueryWrapper<>();
-        stageWrapper.eq(WorkflowStageDO::getWorkflowId, id);
-        List<WorkflowStageDO> stages = stageMapper.selectList(stageWrapper);
+        WorkflowStageQuery stageQuery = new WorkflowStageQuery();
+        stageQuery.setWorkflowId(id);
+        List<WorkflowStageDO> stages = stageMapper.selectList(stageQuery);
         for (WorkflowStageDO stage : stages) {
             // 删除该阶段的审批人
-            LambdaQueryWrapper<StageApproverDO> approverWrapper = new LambdaQueryWrapper<>();
-            approverWrapper.eq(StageApproverDO::getStageId, stage.getId());
-            approverMapper.delete(approverWrapper);
+            StageApproverQuery approverQuery = new StageApproverQuery();
+            approverQuery.setStageId(stage.getId());
+            approverMapper.delete(approverQuery);
         }
         // 删除所有阶段
-        stageMapper.delete(stageWrapper);
+        LambdaQueryWrapper<WorkflowStageDO> deleteWrapper = new LambdaQueryWrapper<>();
+        deleteWrapper.eq(WorkflowStageDO::getWorkflowId, id);
+        stageMapper.delete(deleteWrapper);
         // 最后删除流程
         workflowMapper.deleteById(id);
     }
@@ -171,14 +186,14 @@ public class WorkflowServiceImpl implements WorkflowService {
         if (status == 1) {
             // 检查是否有其他同角色+流程类型的已启用流程
             if (currentWorkflow.getBoundRoleId() != null && currentWorkflow.getWorkflowType() != null) {
-                LambdaQueryWrapper<WorkflowDO> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(WorkflowDO::getBoundRoleId, currentWorkflow.getBoundRoleId())
-                       .eq(WorkflowDO::getWorkflowType, currentWorkflow.getWorkflowType())
-                       .eq(WorkflowDO::getStatus, 1)
-                       .eq(WorkflowDO::getDeleted, 0)
-                       .ne(WorkflowDO::getId, id);
+                WorkflowQuery query = new WorkflowQuery();
+                query.setBoundRoleId(currentWorkflow.getBoundRoleId());
+                query.setWorkflowType(currentWorkflow.getWorkflowType());
+                query.setStatus(1);
+                query.setDeleted(0);
+                query.setExcludeIds(Arrays.asList(id));
 
-                List<WorkflowDO> conflictingWorkflows = workflowMapper.selectList(wrapper);
+                List<WorkflowDO> conflictingWorkflows = workflowMapper.selectList(query);
                 if (!conflictingWorkflows.isEmpty()) {
                     // 获取角色名称
                     RoleDO role = roleMapper.selectById(currentWorkflow.getBoundRoleId());
@@ -224,14 +239,14 @@ public class WorkflowServiceImpl implements WorkflowService {
         }
 
         // 检查是否有其他同角色+流程类型的已启用流程
-        LambdaQueryWrapper<WorkflowDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowDO::getBoundRoleId, roleId)
-               .eq(WorkflowDO::getWorkflowType, workflowType)
-               .eq(WorkflowDO::getStatus, 1)
-               .eq(WorkflowDO::getDeleted, 0)
-               .ne(WorkflowDO::getId, id);
+        WorkflowQuery query = new WorkflowQuery();
+        query.setBoundRoleId(roleId);
+        query.setWorkflowType(workflowType);
+        query.setStatus(1);
+        query.setDeleted(0);
+        query.setExcludeIds(Arrays.asList(id));
 
-        List<WorkflowDO> conflictingWorkflows = workflowMapper.selectList(wrapper);
+        List<WorkflowDO> conflictingWorkflows = workflowMapper.selectList(query);
         if (!conflictingWorkflows.isEmpty()) {
             // 获取角色名称
             RoleDO role = roleMapper.selectById(roleId);
@@ -275,9 +290,11 @@ public class WorkflowServiceImpl implements WorkflowService {
         }
 
         // 获取原流程的所有阶段
-        LambdaQueryWrapper<WorkflowStageDO> stageWrapper = new LambdaQueryWrapper<>();
-        stageWrapper.eq(WorkflowStageDO::getWorkflowId, id).orderByAsc(WorkflowStageDO::getStageOrder);
-        List<WorkflowStageDO> originalStages = stageMapper.selectList(stageWrapper);
+        WorkflowStageQuery stageQuery = new WorkflowStageQuery();
+        stageQuery.setWorkflowId(id);
+        stageQuery.setOrderByField("stage_order");
+        stageQuery.setOrderByDirection("ASC");
+        List<WorkflowStageDO> originalStages = stageMapper.selectList(stageQuery);
 
         // 创建新流程
         WorkflowDO newWorkflow = new WorkflowDO();
@@ -307,9 +324,9 @@ public class WorkflowServiceImpl implements WorkflowService {
             Long newStageId = stageIdMap.get(originalStage.getId());
             if (newStageId == null) continue;
 
-            LambdaQueryWrapper<StageApproverDO> approverWrapper = new LambdaQueryWrapper<>();
-            approverWrapper.eq(StageApproverDO::getStageId, originalStage.getId());
-            List<StageApproverDO> originalApprovers = approverMapper.selectList(approverWrapper);
+            StageApproverQuery approverQuery = new StageApproverQuery();
+            approverQuery.setStageId(originalStage.getId());
+            List<StageApproverDO> originalApprovers = approverMapper.selectList(approverQuery);
 
             for (StageApproverDO originalApprover : originalApprovers) {
                 StageApproverDO newApprover = new StageApproverDO();

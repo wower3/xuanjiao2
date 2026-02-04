@@ -1,7 +1,7 @@
 package com.xuanjiao.app.usage.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.usage.UsageApplyService;
+import com.xuanjiao.infrastructure.usage.UsageApplyAssetQuery;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.dto.*;
 import com.xuanjiao.domain.usage.entity.UsageApply;
@@ -355,11 +355,10 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         usageApplyRepository.save(newApplication);
 
         // 3. 复制素材关联配置（只复制引用，不复制文件）
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO> wrapper =
-            new LambdaQueryWrapper<>();
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO::getUsageApplyId, id);
+        UsageApplyAssetQuery query = new UsageApplyAssetQuery();
+        query.setUsageApplyId(id);
         List<com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO> originalAssets =
-            usageApplyAssetMapper.selectList(wrapper);
+            usageApplyAssetMapper.selectList(query);
 
         for (com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO originalAsset : originalAssets) {
             com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO newAsset =

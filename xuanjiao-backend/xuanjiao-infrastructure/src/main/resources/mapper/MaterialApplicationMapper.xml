@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.material.MaterialApplicationMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="applicant_id" property="applicantId" jdbcType="BIGINT"/>
+        <result column="maintainer_id" property="maintainerId" jdbcType="BIGINT"/>
+        <result column="dept_id" property="deptId" jdbcType="BIGINT"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="guarantee_declaration" property="guaranteeDeclaration" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        id, title, applicant_id, maintainer_id, dept_id, workflow_id, status,
+        guarantee_declaration, create_time, update_time, deleted
+    </sql>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM material_application
+        WHERE id = #{id}
+        AND COALESCE(deleted, 0) = 0
+        LIMIT 1
+    </select>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM material_application
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="applicantId != null">AND applicant_id = #{applicantId}</if>
+            <if test="maintainerId != null">AND maintainer_id = #{maintainerId}</if>
+            <if test="deptId != null">AND dept_id = #{deptId}</if>
+            <if test="workflowId != null">AND workflow_id = #{workflowId}</if>
+            <if test="status != null and status != ''">AND status = #{status}</if>
+            <if test="deleted != null">AND deleted = #{deleted}</if>
+            <if test="deleted == null">AND COALESCE(deleted, 0) = 0</if>
+
+            <!-- IN 查询 -->
+            <if test="applicantIds != null and applicantIds.size() > 0">
+                AND applicant_id IN
+                <foreach collection="applicantIds" item="applicantId" open="(" separator="," close=")">
+                    #{applicantId}
+                </foreach>
+            </if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM material_application
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="applicantId != null">AND applicant_id = #{applicantId}</if>
+            <if test="maintainerId != null">AND maintainer_id = #{maintainerId}</if>
+            <if test="deptId != null">AND dept_id = #{deptId}</if>
+            <if test="workflowId != null">AND workflow_id = #{workflowId}</if>
+            <if test="status != null and status != ''">AND status = #{status}</if>
+            <if test="deleted != null">AND deleted = #{deleted}</if>
+            <if test="deleted == null">AND COALESCE(deleted, 0) = 0</if>
+
+            <!-- IN 查询 -->
+            <if test="applicantIds != null and applicantIds.size() > 0">
+                AND applicant_id IN
+                <foreach collection="applicantIds" item="applicantId" open="(" separator="," close=")">
+                    #{applicantId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO material_application (
+            title, applicant_id, maintainer_id, dept_id, workflow_id, status,
+            guarantee_declaration, create_time, update_time, deleted
+        ) VALUES (
+            #{title}, #{applicantId}, #{maintainerId}, #{deptId}, #{workflowId}, #{status},
+            #{guaranteeDeclaration}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- Update By ID -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO">
+        UPDATE material_application
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="maintainerId != null">maintainer_id = #{maintainerId},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="workflowId != null">workflow_id = #{workflowId},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="guaranteeDeclaration != null">guarantee_declaration = #{guaranteeDeclaration},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id}
+        AND COALESCE(deleted, 0) = 0
+    </update>
+
+    <!-- Delete By ID (Soft Delete) -->
+    <update id="deleteById">
+        UPDATE material_application
+        SET deleted = 1
+        WHERE id = #{id}
+        AND COALESCE(deleted, 0) = 0
+    </update>
+
+</mapper>

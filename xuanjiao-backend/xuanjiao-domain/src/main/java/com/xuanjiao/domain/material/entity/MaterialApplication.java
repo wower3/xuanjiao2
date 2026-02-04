@@ -13,6 +13,7 @@ public class MaterialApplication {
     private Long workflowId;
     private String status;
     private Integer guaranteeDeclaration;
+    private Integer deleted;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
