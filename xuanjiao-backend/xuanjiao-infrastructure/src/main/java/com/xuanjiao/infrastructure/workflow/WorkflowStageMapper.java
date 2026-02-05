@@ -1,6 +1,5 @@
 package com.xuanjiao.infrastructure.workflow;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -45,8 +44,7 @@ public interface WorkflowStageMapper {
     int deleteById(@Param("id") Long id);
 
     /**
-     * Batch delete workflow stages by query (soft delete)
-     * Note: This method maintains compatibility with existing delete(wrapper) calls
+     * Batch delete workflow stages by WorkflowStageQuery (soft delete)
      */
-    int delete(LambdaQueryWrapper<WorkflowStageDO> wrapper);
+    int delete(WorkflowStageQuery query);
 }

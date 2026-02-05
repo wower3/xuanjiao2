@@ -60,4 +60,10 @@ public interface ApprovalProgressMapper {
      * 根据父实例ID查询所有子流程进度
      */
     List<ApprovalProgressDO> selectByParentInstanceId(@Param("parentInstanceId") Long parentInstanceId);
+
+    /**
+     * 重置进度记录为重新提交状态（status=PENDING, approvers=null, approve_time=null）
+     * 用于工作流退回后重新提交场景
+     */
+    int resetForResubmit(@Param("id") Long id);
 }

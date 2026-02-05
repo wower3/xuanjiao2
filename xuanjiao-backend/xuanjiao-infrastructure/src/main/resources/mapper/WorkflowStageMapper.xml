@@ -86,11 +86,12 @@
         UPDATE workflow_stage SET deleted = 1 WHERE id = #{id}
     </update>
 
-    <!-- Delete (Batch Soft Delete) -->
-    <delete id="delete" parameterType="com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper">
+    <!-- Delete (Batch Soft Delete using WorkflowStageQuery) -->
+    <delete id="delete" parameterType="com.xuanjiao.infrastructure.workflow.WorkflowStageQuery">
         UPDATE workflow_stage SET deleted = 1
         <where>
-            <if test="entity != null and entity.workflowId != null">AND workflow_id = #{entity.workflowId}</if>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="workflowId != null">AND workflow_id = #{workflowId}</if>
         </where>
     </delete>
 

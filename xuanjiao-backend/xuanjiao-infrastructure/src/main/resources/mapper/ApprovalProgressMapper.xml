@@ -189,6 +189,15 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 重置进度记录为重新提交状态（status=PENDING, approvers=null, approve_time=null） -->
+    <update id="resetForResubmit" parameterType="java.lang.Long">
+        UPDATE approval_progress
+        SET status = 'PENDING',
+            approvers = NULL,
+            approve_time = NULL
+        WHERE id = #{id}
+    </update>
+
     <!-- ==================== 自定义查询方法 ==================== -->
 
     <select id="selectByInstanceId" resultMap="BaseResultMap" parameterType="java.lang.Long">

@@ -1,6 +1,5 @@
 package com.xuanjiao.app.workflow.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
@@ -624,15 +623,8 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalProgressDO progress = progressMapper.selectOne(query);
 
         if (progress != null) {
-            // 使用 LambdaUpdateWrapper 强制更新字段为 null
-            // updateById 默认会忽略 null 值，无法清空字段
-            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalProgressDO> updateWrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-            updateWrapper.eq(ApprovalProgressDO::getId, progress.getId())
-                    .set(ApprovalProgressDO::getStatus, "PENDING")
-                    .set(ApprovalProgressDO::getApprovers, null)  // 清空审批人信息
-                    .set(ApprovalProgressDO::getApproveTime, null);
-            progressMapper.update(null, updateWrapper);
+            // 使用 XML Mapper 显式更新，将字段设置为 null
+            progressMapper.resetForResubmit(progress.getId());
             logger.info("已重置进度记录: instanceId={}, stageId={}", instanceId, stageId);
         }
     }
@@ -1354,17 +1346,8 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         List<ApprovalTaskDO> tasksToReset = taskMapper.selectList(query);
 
         for (ApprovalTaskDO task : tasksToReset) {
-            // 使用 UpdateWrapper 显式设置字段为 null（MyBatis Plus 默认忽略 null 值）
-            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalTaskDO> updateWrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-            updateWrapper.eq(ApprovalTaskDO::getId, task.getId())
-                    .set(ApprovalTaskDO::getStatus, "PENDING")
-                    .set(ApprovalTaskDO::getIsFirstApprover, 0)
-                    .set(ApprovalTaskDO::getNextStageApproverIds, null)  // 强制清空下一层审批人选择
-                    // 保留 subWorkflowApproverIds，以便重新审批通过后能重新创建子流程
-                    .set(ApprovalTaskDO::getComment, null)
-                    .set(ApprovalTaskDO::getApproveTime, null);
-            taskMapper.update(null, updateWrapper);
+            // 使用 XML Mapper 显式更新，将字段设置为 null
+            taskMapper.resetForResubmit(task.getId());
         }
 
         // 同时重置进度记录中的审批人状态，确保与任务状态一致
@@ -1374,13 +1357,8 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalProgressDO progress = progressMapper.selectOne(progressQuery);
 
         if (progress != null) {
-            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalProgressDO> progressUpdateWrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-            progressUpdateWrapper.eq(ApprovalProgressDO::getId, progress.getId())
-                    .set(ApprovalProgressDO::getStatus, "PENDING")
-                    .set(ApprovalProgressDO::getApprovers, null)  // 清空审批人信息
-                    .set(ApprovalProgressDO::getApproveTime, null);
-            progressMapper.update(null, progressUpdateWrapper);
+            // 使用 XML Mapper 显式更新，将字段设置为 null
+            progressMapper.resetForResubmit(progress.getId());
         }
 
         logger.info("已重置上一层任务和进度状态: instanceId={}, previousStageId={}, count={}",

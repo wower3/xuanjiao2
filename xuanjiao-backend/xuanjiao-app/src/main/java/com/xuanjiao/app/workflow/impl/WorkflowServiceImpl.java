@@ -19,7 +19,6 @@ import com.xuanjiao.infrastructure.workflow.StageApproverQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -145,9 +144,9 @@ public class WorkflowServiceImpl implements WorkflowService {
             approverMapper.delete(approverQuery);
         }
         // 删除旧的阶段
-        LambdaQueryWrapper<WorkflowStageDO> deleteWrapper = new LambdaQueryWrapper<>();
-        deleteWrapper.eq(WorkflowStageDO::getWorkflowId, dto.getId());
-        stageMapper.delete(deleteWrapper);
+        WorkflowStageQuery deleteQuery = new WorkflowStageQuery();
+        deleteQuery.setWorkflowId(dto.getId());
+        stageMapper.delete(deleteQuery);
         // 保存新的阶段和审批人
         saveStages(dto.getId(), dto.getStages());
     }
@@ -166,9 +165,9 @@ public class WorkflowServiceImpl implements WorkflowService {
             approverMapper.delete(approverQuery);
         }
         // 删除所有阶段
-        LambdaQueryWrapper<WorkflowStageDO> deleteWrapper = new LambdaQueryWrapper<>();
-        deleteWrapper.eq(WorkflowStageDO::getWorkflowId, id);
-        stageMapper.delete(deleteWrapper);
+        WorkflowStageQuery deleteQuery = new WorkflowStageQuery();
+        deleteQuery.setWorkflowId(id);
+        stageMapper.delete(deleteQuery);
         // 最后删除流程
         workflowMapper.deleteById(id);
     }

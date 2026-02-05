@@ -46,6 +46,20 @@
       style="margin-top: 20px"
     >
       <el-table-column type="selection" width="55" />
+      <el-table-column label="预览" width="100">
+        <template #default="{ row }">
+          <el-image
+            v-if="row.type === 'IMAGE'"
+            :src="getPreviewUrl(row.id)"
+            style="width: 70px; height: 50px"
+            fit="cover"
+            :preview-src-list="[getPreviewUrl(row.id)]"
+            :preview-teleported="true"
+          />
+          <el-icon v-else-if="row.type === 'VIDEO'" :size="30"><VideoCamera /></el-icon>
+          <el-icon v-else :size="30"><Document /></el-icon>
+        </template>
+      </el-table-column>
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="name" label="素材名称" min-width="200" />
       <el-table-column prop="type" label="类型" width="100">
@@ -78,7 +92,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { Search } from '@element-plus/icons-vue'
+import { Search, VideoCamera, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getAssetList } from '@/api/asset'
 
@@ -174,6 +188,10 @@ function getStatusColor(status: string) {
     REJECTED: 'danger'
   }
   return colorMap[status] || ''
+}
+
+function getPreviewUrl(assetId: number) {
+  return `/api/asset/preview/${assetId}`
 }
 
 onMounted(() => {

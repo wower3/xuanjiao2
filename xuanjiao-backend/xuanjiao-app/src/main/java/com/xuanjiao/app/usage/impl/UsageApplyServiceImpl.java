@@ -167,8 +167,14 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     @Override
     @Transactional
     public Long submit(Long id, Long workflowId, Long userId) {
+        logger.info("UsageApply.submit - 开始提交，id: {}, workflowId: {}, userId: {}", id, workflowId, userId);
+
         UsageApply usageApply = usageApplyRepository.findById(id);
+
+        logger.info("UsageApply.submit - 查询结果: {}", usageApply != null ? usageApply.getId() : "null");
+
         if (usageApply == null) {
+            logger.error("UsageApply.submit - 申请单不存在，id: {}", id);
             throw new RuntimeException("申请单不存在");
         }
 
@@ -182,6 +188,8 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
         // 检查是否有至少一个素材
         List<UsageApplyAsset> assets = usageApplyAssetRepository.findByUsageApplyId(id);
+        logger.info("UsageApply.submit - 关联素材数量: {}", assets.size());
+
         if (assets.isEmpty()) {
             throw new RuntimeException("请至少选择一个素材并配置使用信息");
         }
@@ -193,6 +201,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
         // 启动审批流程
         Long instanceId = workflowEngineService.startProcess(workflowId, "ASSET_USAGE", id, userId);
+        logger.info("UsageApply.submit - 提交成功，instanceId: {}", instanceId);
         return instanceId;
     }
 

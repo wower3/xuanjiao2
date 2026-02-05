@@ -6,6 +6,8 @@ import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
 import com.xuanjiao.domain.usage.repository.UsageApplyRepository;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 @Repository
 public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
+    private static final Logger logger = LoggerFactory.getLogger(UsageApplyRepositoryImpl.class);
+
     @Resource
     private UsageApplyMapper usageApplyMapper;
 
@@ -25,7 +29,9 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public UsageApply findById(Long id) {
+        logger.info("UsageApplyRepository.findById - 查询id: {}", id);
         UsageApplyDO usageApplyDO = usageApplyMapper.selectById(id);
+        logger.info("UsageApplyRepository.findById - 查询结果: {}", usageApplyDO != null ? "id=" + usageApplyDO.getId() + ", title=" + usageApplyDO.getTitle() + ", deleted=" + usageApplyDO.getDeleted() : "null");
         UsageApply usageApply = convert(usageApplyDO);
         if (usageApply != null) {
             loadAssets(usageApply);
@@ -110,6 +116,8 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
     public void save(UsageApply usageApply) {
         UsageApplyDO usageApplyDO = new UsageApplyDO();
         BeanUtils.copyProperties(usageApply, usageApplyDO);
+        // 显式设置deleted字段，确保不为NULL
+        usageApplyDO.setDeleted(0);
         usageApplyMapper.insert(usageApplyDO);
         usageApply.setId(usageApplyDO.getId());
     }

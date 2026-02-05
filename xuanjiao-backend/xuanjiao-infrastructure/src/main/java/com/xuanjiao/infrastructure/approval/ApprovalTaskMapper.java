@@ -56,4 +56,10 @@ public interface ApprovalTaskMapper {
      * 保留此方法用于LambdaUpdateWrapper场景（如强制设置字段为null）
      */
     int update(@Param("entity") ApprovalTaskDO entity, @Param("ew") com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalTaskDO> wrapper);
+
+    /**
+     * 重置任务为重新提交状态（status=PENDING, is_first_approver=0, next_stage_approver_ids=null, comment=null, approve_time=null）
+     * 用于工作流退回后重新提交场景
+     */
+    int resetForResubmit(@Param("id") Long id);
 }

@@ -1,7 +1,6 @@
 package com.xuanjiao.app.asset.impl;
 
 import cn.hutool.crypto.digest.DigestUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.infrastructure.asset.AssetTagQuery;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.schedule.AssetDeletionCleanupTask;

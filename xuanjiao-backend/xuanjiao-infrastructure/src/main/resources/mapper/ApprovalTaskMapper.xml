@@ -244,4 +244,15 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 重置任务为重新提交状态（status=PENDING, is_first_approver=0, next_stage_approver_ids=null, comment=null, approve_time=null） -->
+    <update id="resetForResubmit" parameterType="java.lang.Long">
+        UPDATE approval_task
+        SET status = 'PENDING',
+            is_first_approver = 0,
+            next_stage_approver_ids = NULL,
+            comment = NULL,
+            approve_time = NULL
+        WHERE id = #{id}
+    </update>
+
 </mapper>

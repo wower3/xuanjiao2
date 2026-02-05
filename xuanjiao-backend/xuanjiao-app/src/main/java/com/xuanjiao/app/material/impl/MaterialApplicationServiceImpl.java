@@ -1,6 +1,5 @@
 package com.xuanjiao.app.material.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.asset.AssetService;

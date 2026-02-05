@@ -1,6 +1,5 @@
 package com.xuanjiao.app.approval;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.app.approval.impl.ApprovalServiceImpl;
 import com.xuanjiao.app.workflow.ApproverSelectionService;

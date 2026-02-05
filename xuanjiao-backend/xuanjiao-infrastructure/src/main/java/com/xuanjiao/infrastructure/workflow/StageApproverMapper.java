@@ -1,6 +1,5 @@
 package com.xuanjiao.infrastructure.workflow;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -40,18 +39,12 @@ public interface StageApproverMapper {
     int updateById(StageApproverDO stageApproverDO);
 
     /**
-     * Delete stage approver by ID (soft delete)
+     * Delete stage approver by ID (hard delete)
      */
     int deleteById(@Param("id") Long id);
 
     /**
-     * Batch delete stage approvers by query (soft delete)
+     * Batch delete stage approvers by query (hard delete)
      */
     int delete(StageApproverQuery query);
-
-    /**
-     * Batch delete stage approvers by query (soft delete)
-     * Note: This method maintains compatibility with existing delete(wrapper) calls
-     */
-    int delete(LambdaQueryWrapper<StageApproverDO> wrapper);
 }

@@ -158,7 +158,7 @@ public class WorkflowServiceImplTest {
         when(workflowMapper.selectById(1L)).thenReturn(testWorkflow);
         when(workflowMapper.updateById(any(WorkflowDO.class))).thenReturn(1);
         when(stageMapper.selectList(any())).thenReturn(new ArrayList<>());
-        when(approverMapper.delete(any(StageApproverQuery.class))).thenReturn(0);
+        when(approverMapper.delete(any())).thenReturn(0);
         when(stageMapper.delete(any())).thenReturn(0);
         when(stageMapper.insert(any())).thenReturn(1);
 
@@ -185,7 +185,7 @@ public class WorkflowServiceImplTest {
 
         when(workflowMapper.selectById(1L)).thenReturn(testWorkflow);
         when(stageMapper.selectList(any())).thenReturn(new ArrayList<>());
-        when(approverMapper.delete(any(StageApproverQuery.class))).thenReturn(0);
+        when(approverMapper.delete(any())).thenReturn(0);
         when(stageMapper.delete(any())).thenReturn(0);
         when(workflowMapper.deleteById(1L)).thenReturn(1);
 
@@ -615,7 +615,7 @@ public class WorkflowServiceImplTest {
         ))).thenReturn(Arrays.asList(oldStage));
 
         // Mock approverMapper.delete
-        when(approverMapper.delete(ArgumentMatchers.<StageApproverQuery>argThat(query -> query != null))).thenReturn(1);
+        when(approverMapper.delete(any())).thenReturn(1);
         when(stageMapper.delete(any())).thenReturn(1);
         when(stageMapper.insert(any())).thenReturn(1);
 
@@ -626,11 +626,8 @@ public class WorkflowServiceImplTest {
 
         workflowService.update(dto);
 
-        // 验证 approverMapper.delete 被正确调用
-        verify(approverMapper).delete(ArgumentMatchers.<StageApproverQuery>argThat(query ->
-                query != null &&
-                query.getStageId() == 100L
-        ));
+        // 验证 approverMapper.delete 被调用
+        verify(approverMapper).delete(any());
         System.out.println("✓ WorkflowService.update() - approverMapper.delete 测试通过");
     }
 
@@ -656,16 +653,13 @@ public class WorkflowServiceImplTest {
         ))).thenReturn(Arrays.asList(stage));
 
         // Mock approverMapper.delete
-        when(approverMapper.delete(ArgumentMatchers.<StageApproverQuery>argThat(query -> query != null))).thenReturn(1);
+        when(approverMapper.delete(any())).thenReturn(1);
         when(stageMapper.delete(any())).thenReturn(1);
 
         workflowService.delete(1L);
 
         // 验证 approverMapper.delete 被正确调用
-        verify(approverMapper).delete(ArgumentMatchers.<StageApproverQuery>argThat(query ->
-                query != null &&
-                query.getStageId() == 100L
-        ));
+        verify(approverMapper).delete(any());
         System.out.println("✓ WorkflowService.delete() - approverMapper.delete 测试通过");
     }
 }

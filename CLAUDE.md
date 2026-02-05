@@ -153,7 +153,7 @@ xuanjiao-backend/
 │   ├── workflow/          # Workflow mappers
 │   ├── approval/          # Approval mappers
 │   ├── dataobject/        # DO classes (database-mapped entities)
-│   └── config/            # Infrastructure config (MyBatisPlusConfig)
+│   └── config/            # Infrastructure config (MyBatisConfig)
 ├── xuanjiao-adapter/      # Adapter Layer - REST controllers, external integrations
 │   ├── auth/              # AuthController
 │   ├── user/              # UserController
@@ -216,7 +216,7 @@ The usage application module supports multiple assets per application and multip
 ### Backend
 - Java 8, Spring Boot 2.7.18
 - COLA 4.3.2 (Clean Architecture framework)
-- MyBatis Plus 3.5.3.1 (ORM with BaseMapper)
+- MyBatis (Native XML Mapper approach - no BaseMapper)
 - MySQL 8.0
 - JWT authentication
 - Knife4j 4.1.0 (Swagger UI)
@@ -306,7 +306,7 @@ Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/schedule/AssetDeletionCl
 Scheduled task for asset soft deletion:
 - Runs daily at 2:00 AM (`@Scheduled(cron = "0 0 2 * * ?")`)
 - Finds assets with `status='DELETED'` AND `deletion_approve_time < 7 days ago` AND `deleted=0`
-- Sets `deleted=1` to soft delete (MyBatis Plus @TableLogic hides these from queries)
+- Sets `deleted=1` to soft delete (filtered via WHERE deleted=0 in queries)
 - `cleanupDeletedAssetsManually()` - Public method for manual triggering (used by admin API)
 
 ## Configuration Files
@@ -344,8 +344,8 @@ The system supports a two-stage asset deletion process:
 
 **Stage 2: Soft Delete (deleted=1)**
 - Triggered by scheduled task 7 days after deletion approval
-- Sets `deleted = 1` (MyBatis Plus @TableLogic)
-- Asset completely hidden from all queries (MyBatis Plus automatically filters)
+- Sets `deleted = 1` (soft delete flag)
+- Asset completely hidden from all queries (WHERE deleted=0 filter)
 - Asset is effectively removed from the system
 
 **Scheduled Task:**
@@ -381,13 +381,14 @@ The system supports a two-stage asset deletion process:
 ## Development Notes
 
 - The project uses MapStruct for DTO mapping between layers - look for `*Mapper.java` files with `@Mapper` annotation
-- MyBatis Plus provides `BaseMapper<T>` with CRUD methods - extend it for basic queries
+- MyBatis uses native XML mappers with explicitly defined methods (no BaseMapper inheritance)
 - JWT tokens are stored in localStorage and sent via `Authorization: Bearer <token>` header
 - File uploads are handled by MultipartFile and stored locally with MD5-based filenames
 - The workflow designer saves JSON structure directly to database, parsed when creating approval instances
 - All workflow operations use `@Transactional(rollbackFor = Exception.class)` for data consistency
 - Sub-workflow approver IDs are stored as JSON in `sub_workflow_approver_ids` fields
 - See `WORKFLOW_REFACTOR_SUMMARY.md` for comprehensive workflow system documentation
+- See `DEVELOPMENT_GUIDELINES.md` for detailed MyBatis development standards
 
 ### API Design Conventions
 
@@ -435,59 +436,44 @@ public ResponseEntity<FileSystemResource> preview(@PathVariable Long id) {
 }
 ```
 
-### MyBatis Plus Best Practices
+### MyBatis Development Standards
 
-**Always use LambdaQueryWrapper/LambdaUpdateWrapper instead of QueryWrapper:**
+**Native MyBatis with explicit XML Mapper approach:**
+
+All Mapper methods must be explicitly defined in the interface and implemented in XML files.
 
 ```java
-// ❌ AVOID: String-based field names (error-prone)
-QueryWrapper<AssetDO> wrapper = new QueryWrapper<>();
-wrapper.eq("status", "DELETED")
-       .lt("deletion_approve_time", oneWeekAgo);  // Typo risk!
-
-// ✅ PREFER: Lambda expressions (type-safe)
-LambdaUpdateWrapper<AssetDO> wrapper = new LambdaUpdateWrapper<>();
-wrapper.eq(AssetDO::getStatus, "DELETED")
-       .lt(AssetDO::getDeletionApproveTime, oneWeekAgo)
-       .set(AssetDO::getDeleted, 1);
+@Mapper
+public interface AssetMapper {
+    // Basic CRUD Methods - all explicitly defined
+    AssetDO selectById(@Param("id") Long id);
+    AssetDO selectOne(AssetQuery query);
+    List<AssetDO> selectList(AssetQuery query);
+    Long selectCount(AssetQuery query);
+    IPage<AssetDO> selectPage(Page<AssetDO> page, @Param("query") AssetQuery query);
+    int insert(AssetDO assetDO);
+    int updateById(AssetDO assetDO);
+}
 ```
 
-**Why Lambda is better:**
-- Compile-time checking - typos caught at build time
-- IDE auto-completion support
-- Refactor-friendly (field renames automatically update)
-- No confusion between database column names (underscore) vs Java field names (camelCase)
+**Key Principles:**
+- Use dedicated Query classes instead of dynamic conditions
+- Define explicit ResultMap with column-to-property mappings
+- Always use `<where>` and `<set>` tags for dynamic SQL
+- NEVER use `SELECT *` - always define column list
+- Use `Base_Column_List` SQL fragment for column definitions
 
-**MyBatis Plus @TableLogic Update Limitation:**
-- `updateById()` method cannot directly update fields with `@TableLogic` annotation
-- Use `LambdaUpdateWrapper` with `.set()` to bypass this restriction:
-```java
-// ❌ Does NOT work
-asset.setDeleted(1);
-assetMapper.updateById(asset);
+**Special Query Patterns:**
+- IS NULL queries: Use Boolean field (e.g., `deletedIsNull`)
+- IN queries: Use `List<T>` field with `<foreach>` tag
+- != queries: Use dedicated field (e.g., `idNotEqual`)
+- Force NULL update: Create explicit XML method
 
-// ✅ Works correctly
-LambdaUpdateWrapper<AssetDO> wrapper = new LambdaUpdateWrapper<>();
-wrapper.eq(AssetDO::getId, assetId)
-       .set(AssetDO::getDeleted, 1);
-assetMapper.update(null, wrapper);
-```
+**Field Mapping Standards:**
+- `column`: Database field name (underscore_case, like `role_id`)
+- `property`: Java property name (camelCase, like `roleId`)
 
-**MyBatis Plus updateById() Ignores Null Values:**
-- `updateById()` method, by default, **ignores null values** and will NOT update fields to null
-- This is the default FieldStrategy behavior in MyBatis Plus
-- Use `LambdaUpdateWrapper` with `.set()` to force update a field to null:
-```java
-// ❌ Does NOT work - null value is ignored, approvers keeps original value
-progress.setApprovers(null);
-progressMapper.updateById(progress);
-
-// ✅ Works correctly - forces the field to null
-LambdaUpdateWrapper<ApprovalProgressDO> wrapper = new LambdaUpdateWrapper<>();
-wrapper.eq(ApprovalProgressDO::getId, progressId)
-       .set(ApprovalProgressDO::getApprovers, null);  // Force to null
-progressMapper.update(null, wrapper);
-```
+For detailed MyBatis development standards, see `DEVELOPMENT_GUIDELINES.md`.
 
 ### Important Constraints & Gotchas
 
@@ -512,7 +498,7 @@ progressMapper.update(null, wrapper);
 **Asset Management:**
 - Assets cannot be deleted if they have associated usage records (check `usage_apply_asset`)
 - **Two-stage deletion process**: DELETED status (visible, unusable) → deleted=1 (hidden)
-- MyBatis Plus `@TableLogic` on `deleted` field automatically filters out soft-deleted records
+- Soft delete filtering handled via `WHERE deleted=0` in all queries
 - MD5 deduplication means same file content shares storage
 - DELETED status assets cannot be used in new usage applications or downloaded
 - Only admins (ROLE_ID=1) can trigger manual cleanup or adjust deletion times

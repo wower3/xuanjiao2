@@ -1,6 +1,5 @@
 package com.xuanjiao.app.workflow.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
@@ -414,13 +413,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
 
     @Override
     public WorkflowDTO getWorkflowByRole(Long roleId, String workflowType) {
-        LambdaQueryWrapper<WorkflowDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowDO::getBoundRoleId, roleId)
-               .eq(WorkflowDO::getWorkflowType, workflowType)
-               .eq(WorkflowDO::getStatus, 1)
-               .eq(WorkflowDO::getDeleted, 0);
-
-        // Use WorkflowQuery with selectList to replace selectOne
+        // Use WorkflowQuery to replace LambdaQueryWrapper
         WorkflowQuery query = new WorkflowQuery();
         query.setBoundRoleId(roleId);
         query.setWorkflowType(workflowType);
@@ -569,7 +562,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         // 获取该阶段的审批人配置（排除子流程）
         StageApproverQuery approverQuery = new StageApproverQuery();
         approverQuery.setStageId(firstStage.getId());
-        approverQuery.setSubWorkflowId(null); // null 表示 isNull 查询
+        approverQuery.setSubWorkflowIdNull(true); // 使用 IS NULL 查询，排除子流程配置
         approverQuery.setOrderByField("id");
         approverQuery.setOrderByDirection("ASC");
         List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(approverQuery);
@@ -830,7 +823,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         // 获取该阶段的审批人配置（排除子流程）
         StageApproverQuery approverQuery = new StageApproverQuery();
         approverQuery.setStageId(firstStage.getId());
-        approverQuery.setSubWorkflowId(null); // null 表示 isNull 查询
+        approverQuery.setSubWorkflowIdNull(true); // 使用 IS NULL 查询，排除子流程配置
         List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(approverQuery);
 
         // 为每个配置获取可用用户
