@@ -24,7 +24,7 @@ mybatis-plus:
   type-aliases-package: com.xuanjiao.infrastructure.dataobject
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 测试环境禁用SQL日志
   global-config:
     db-config:
       id-type: auto
@@ -39,7 +39,7 @@ knife4j:
 
 logging:
   level:
-    com.xuanjiao: debug
+    com.xuanjiao: info
 
 # JWT配置
 jwt:

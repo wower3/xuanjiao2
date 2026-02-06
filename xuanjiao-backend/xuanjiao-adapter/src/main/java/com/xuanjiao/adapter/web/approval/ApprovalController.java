@@ -29,7 +29,13 @@ public class ApprovalController {
     public Result<PageResult<Map<String, Object>>> getMyTasks(
             @RequestAttribute("userId") Long userId,
             @Valid @RequestBody ApprovalGetMyTasksQry qry) {
-        return Result.success(approvalService.getMyTasks(userId, qry.getPageNum(), qry.getPageSize()));
+        return Result.success(approvalService.getMyTasks(userId, qry.getPageNum(), qry.getPageSize(), qry.getBusinessType()));
+    }
+
+    @ApiOperation("获取待办任务数量")
+    @PostMapping("/getMyTasksCount")
+    public Result<Long> getMyTasksCount(@RequestAttribute("userId") Long userId) {
+        return Result.success(approvalService.getMyTasksCount(userId));
     }
 
     @ApiOperation("我发起的")
@@ -83,6 +89,15 @@ public class ApprovalController {
             @RequestParam(required = false) String comment) {
         workflowEngineService.withdrawInstance(id, userId, comment);
         return Result.success();
+    }
+
+    @ApiOperation("流经事项")
+    @PostMapping("/getMyFlowItems")
+    public Result<PageResult<Map<String, Object>>> getMyFlowItems(
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody ApprovalGetMyFlowItemsQry qry) {
+        return Result.success(approvalService.getMyFlowItems(userId, qry.getPageNum(), qry.getPageSize(),
+                qry.getBusinessType(), qry.getStatus()));
     }
 
     @ApiOperation("重新发起子流程")

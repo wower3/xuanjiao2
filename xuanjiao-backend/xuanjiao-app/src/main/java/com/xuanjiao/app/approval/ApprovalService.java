@@ -4,7 +4,22 @@ import com.xuanjiao.client.dto.PageResult;
 import java.util.Map;
 
 public interface ApprovalService {
-    PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize);
+    /**
+     * 获取待办任务列表
+     * @param userId 用户ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param businessType 业务类型筛选（可选，如 MATERIAL_ENTRY、ASSET_USAGE、ASSET_DELETION）
+     * @return 分页结果
+     */
+    PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize, String businessType);
+
+    /**
+     * 获取待办任务数量
+     * @param userId 用户ID
+     * @return 待办任务数量（status=PENDING的任务数）
+     */
+    Long getMyTasksCount(Long userId);
 
     /**
      * 获取我发起的审批申请（支持筛选）
@@ -37,4 +52,16 @@ public interface ApprovalService {
      * @param comment 退回原因（可选）
      */
     void returnTask(Long taskId, Long userId, String comment);
+
+    /**
+     * 获取流经事项列表（用户发起或审批过的所有工单）
+     * @param userId 用户ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param businessType 业务类型筛选（可选）
+     * @param status 审批状态筛选（可选）
+     * @return 分页结果
+     */
+    PageResult<Map<String, Object>> getMyFlowItems(Long userId, int pageNum, int pageSize,
+                                                     String businessType, String status);
 }

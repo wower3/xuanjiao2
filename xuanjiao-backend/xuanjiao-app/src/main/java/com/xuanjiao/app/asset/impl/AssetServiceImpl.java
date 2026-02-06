@@ -23,6 +23,7 @@ import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.app.log.OperationLogService;
+import com.xuanjiao.app.usage.UsageApplyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -30,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
 import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
@@ -78,12 +80,18 @@ public class AssetServiceImpl implements AssetService {
     @Resource
     private AssetDeletionCleanupTask assetDeletionCleanupTask;
 
+    @Resource
+    private UsageApplyService usageApplyService;
+
     @Value("${file.upload-path}")
     private String uploadPath;
 
     @Override
     @Transactional
-    public AssetDTO upload(MultipartFile file, AssetUploadCmd cmd, Long userId) {
+    public AssetDTO upload(MultipartFile file, MultipartFile thumbnailFile, AssetUploadCmd cmd, Long userId) {
+        // 文件格式校验
+        validateFileFormat(file, cmd.getType());
+
         try {
             logger.info("Asset.upload - 开始上传，applicationId: {}, tagIds: {}", cmd.getApplicationId(), cmd.getTagIds());
 
@@ -97,10 +105,25 @@ public class AssetServiceImpl implements AssetService {
                 dest.getParentFile().mkdirs();
             }
             file.transferTo(dest);
+
+            // 保存视频缩略图
+            String thumbnailPath = null;
+            if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+                String thumbFileName = UUID.randomUUID().toString() + ".jpg";
+                thumbnailPath = uploadPath + "thumbnail/" + thumbFileName;
+                File thumbDest = new File(thumbnailPath);
+                if (!thumbDest.getParentFile().exists()) {
+                    thumbDest.getParentFile().mkdirs();
+                }
+                thumbnailFile.transferTo(thumbDest);
+                logger.info("视频缩略图已保存: {}", thumbnailPath);
+            }
+
             Asset asset = new Asset();
             asset.setName(cmd.getName());
             asset.setType(cmd.getType());
             asset.setFilePath(filePath);
+            asset.setThumbnailPath(thumbnailPath);
             asset.setFileSize(file.getSize());
             asset.setMd5(md5);
             asset.setCopyright(cmd.getCopyright());
@@ -222,7 +245,17 @@ public class AssetServiceImpl implements AssetService {
             }
         }
 
-        List<AssetDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        // 转换为DTO并填充下载权限
+        List<AssetDTO> dtoList = list.stream().map(asset -> {
+            AssetDTO dto = convert(asset);
+            if (dto != null && "APPROVED".equals(asset.getStatus())) {
+                // 只有 APPROVED 状态的素材需要检查下载权限
+                dto.setCanDownload(usageApplyService.canUseAsset(asset.getId(), userId));
+            } else {
+                dto.setCanDownload(false);
+            }
+            return dto;
+        }).collect(Collectors.toList());
         return PageResult.of(dtoList, total, cmd.getPageNum(), cmd.getPageSize());
     }
 
@@ -383,5 +416,46 @@ public class AssetServiceImpl implements AssetService {
         AssetDTO dto = new AssetDTO();
         BeanUtils.copyProperties(assetDO, dto);
         return dto;
+    }
+
+    /**
+     * 校验文件格式
+     */
+    private void validateFileFormat(MultipartFile file, String type) {
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.isEmpty()) {
+            throw new IllegalArgumentException("文件名不能为空");
+        }
+
+        String lowerName = fileName.toLowerCase();
+        String ext = lowerName.substring(lowerName.lastIndexOf("."));
+
+        // 校验MIME类型
+        String contentType = file.getContentType();
+        if (contentType == null) {
+            throw new IllegalArgumentException("无法识别文件类型");
+        }
+
+        if ("IMAGE".equals(type)) {
+            // 图片允许格式
+            java.util.Set<String> imageFormats = new java.util.HashSet<>(java.util.Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".webp"));
+            if (!imageFormats.contains(ext)) {
+                throw new IllegalArgumentException("图片格式不支持，请选择 jpg, jpeg, png, gif, webp 格式");
+            }
+            // 额外校验MIME类型
+            if (!contentType.startsWith("image/")) {
+                throw new IllegalArgumentException("文件类型不匹配，请上传图片文件");
+            }
+        } else if ("VIDEO".equals(type)) {
+            // 视频允许格式
+            java.util.Set<String> videoFormats = new java.util.HashSet<>(java.util.Arrays.asList(".mp4", ".webm", ".ogg", ".mov", ".avi", ".mkv", ".mpg", ".mpeg", ".3gp"));
+            if (!videoFormats.contains(ext)) {
+                throw new IllegalArgumentException("视频格式不支持，请选择 mp4, webm, ogg, mov, avi, mkv, mpg, mpeg, 3gp 格式");
+            }
+            // 额外校验MIME类型
+            if (!contentType.startsWith("video/")) {
+                throw new IllegalArgumentException("文件类型不匹配，请上传视频文件");
+            }
+        }
     }
 }

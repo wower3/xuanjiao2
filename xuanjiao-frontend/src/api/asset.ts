@@ -12,7 +12,7 @@ export function deleteAsset(id: number) {
   return request.post('/asset/delete', { id })
 }
 
-export function uploadAsset(file: File, data: any) {
+export function uploadAsset(file: File, data: any, thumbnailFile?: File) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('name', data.name)
@@ -40,6 +40,10 @@ export function uploadAsset(file: File, data: any) {
   }
   if (data.publishChannel) {
     formData.append('publishChannel', data.publishChannel)
+  }
+  // 视频缩略图
+  if (thumbnailFile) {
+    formData.append('thumbnailFile', thumbnailFile)
   }
   return request.post('/asset/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

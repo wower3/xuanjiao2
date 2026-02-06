@@ -393,7 +393,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         if (usageApply.getUserId() != null) {
             UserDO user = userMapper.selectById(usageApply.getUserId());
             if (user != null) {
-                dto.setUserName(user.getRealName());
+                dto.setUsername(user.getRealName());
             }
         }
 

@@ -56,8 +56,39 @@
               fit="cover"
               style="width:80px;height:60px"
             />
-            <el-icon v-else-if="row.type === 'VIDEO'" :size="40"><VideoCamera /></el-icon>
-            <el-icon v-else :size="40"><Document /></el-icon>
+            <el-button
+              v-else-if="row.type === 'VIDEO'"
+              link
+              type="primary"
+              @click.stop="preview(row)"
+              class="video-thumbnail"
+            >
+              <el-image
+                v-if="row.thumbnailPath"
+                :src="`/api/asset/thumbnail/${row.id}`"
+                fit="cover"
+                style="width:80px;height:60px"
+              >
+                <template #error>
+                  <div class="video-icon-wrapper">
+                    <el-icon :size="30"><VideoCamera /></el-icon>
+                    <el-icon class="play-icon"><VideoPlay /></el-icon>
+                  </div>
+                </template>
+              </el-image>
+              <div v-else class="video-icon-wrapper">
+                <el-icon :size="40"><VideoCamera /></el-icon>
+                <el-icon class="play-icon"><VideoPlay /></el-icon>
+              </div>
+            </el-button>
+            <el-button
+              v-else
+              link
+              type="primary"
+              @click.stop="preview(row)"
+            >
+              <el-icon :size="40"><Document /></el-icon>
+            </el-button>
           </template>
         </el-table-column>
         <el-table-column v-else label="预览" width="80">
@@ -71,8 +102,18 @@
         <el-table-column prop="createTime" label="上传时间" width="180" />
         <el-table-column label="操作" width="240">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'APPROVED'" link type="primary" @click="handleDownload(row)">下载</el-button>
-            <el-button v-if="row.status === 'APPROVED'" link type="primary" @click="showApplyDialog(row)">申请使用</el-button>
+            <el-button
+              v-if="row.status === 'APPROVED'"
+              link
+              type="primary"
+              :disabled="!row.canDownload"
+              @click="handleDownload(row)">下载</el-button>
+            <el-button
+              v-if="row.status === 'APPROVED'"
+              link
+              type="primary"
+              :disabled="row.canDownload"
+              @click="showApplyDialog(row)">申请使用</el-button>
             <el-button v-if="previewMode === 'image' && row.status === 'APPROVED'" link type="success" @click="showUsageDetails(row)">使用详情</el-button>
             <!-- 管理员功能 -->
             <template v-if="isAdmin">
@@ -93,8 +134,17 @@
     <el-dialog v-model="showPreview" title="素材预览" width="900px">
       <div v-if="previewAsset">
         <div class="preview-content">
-          <img v-if="previewAsset.type === 'IMAGE'" :src="previewUrl" style="max-width:100%" />
-          <video v-else-if="previewAsset.type === 'VIDEO'" :src="previewUrl" controls style="max-width:100%" />
+          <img v-if="previewAsset.type === 'IMAGE'" :src="previewUrl" style="max-width:100%;max-height:500px" />
+          <video
+            v-else-if="previewAsset.type === 'VIDEO'"
+            :src="previewUrl"
+            controls
+            style="max-width:100%;max-height:500px"
+            crossorigin="anonymous"
+            @error="handleVideoError"
+          >
+            您的浏览器不支持视频播放
+          </video>
           <iframe v-else :src="previewUrl" style="width:100%;height:500px" />
         </div>
 
@@ -170,10 +220,10 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAssetList, adminDeleteAsset, adjustAssetDeleteTime, triggerCleanupTask } from '@/api/asset'
-import { downloadAsset, checkCanUseAsset } from '@/api/usageApply'
+import { downloadAsset } from '@/api/usageApply'
 import { getAssetUsageLogs } from '@/api/usageLog'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { View, List, VideoCamera, Document } from '@element-plus/icons-vue'
+import { View, List, VideoCamera, Document, VideoPlay } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -291,35 +341,19 @@ function handleRowClick(row: any) {
 
 async function preview(row: any) {
   previewAsset.value = row
-  previewUrl.value = `/api/asset/preview/${row.id}`
+  previewUrl.value = `/api/asset/preview/${row.id}?t=${Date.now()}`
   showPreview.value = true
   // 重置使用记录分页并加载
   logsQuery.pageNum = 1
   await loadUsageLogs()
 }
 
+function handleVideoError(e: any) {
+  console.error('视频加载失败:', e)
+}
+
 async function handleDownload(row: any) {
   try {
-    // 先检查是否有下载权限
-    const checkRes = await checkCanUseAsset(row.id)
-    if (!checkRes.data) {
-      ElMessageBox.confirm(
-        '您还没有该素材的使用权限，是否前往申请使用？',
-        '需要权限',
-        {
-          confirmButtonText: '前往申请',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      ).then(() => {
-        showApplyDialog(row)
-      }).catch(() => {
-        // 用户取消
-      })
-      return
-    }
-
-    // 有权限则下载
     const blob = await downloadAsset(row.id)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -328,12 +362,8 @@ async function handleDownload(row: any) {
     a.click()
     URL.revokeObjectURL(url)
     ElMessage.success('下载成功')
-  } catch (e: any) {
-    if (e.response?.status === 403) {
-      ElMessage.error('您没有下载此素材的权限，请先申请使用')
-    } else {
-      ElMessage.error('下载失败')
-    }
+  } catch (e) {
+    ElMessage.error('下载失败')
   }
 }
 
@@ -482,5 +512,31 @@ onMounted(() => {
 
 .usage-details-section {
   margin-top: 15px;
+}
+
+.video-thumbnail {
+  padding: 0;
+  border: none;
+  height: auto;
+}
+
+.video-thumbnail:hover {
+  background: transparent;
+}
+
+.video-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 50px;
+}
+
+.play-icon {
+  position: absolute;
+  font-size: 24px;
+  color: #409EFF;
+  opacity: 0.8;
 }
 </style>

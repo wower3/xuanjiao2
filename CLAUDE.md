@@ -72,6 +72,7 @@ mysql -u root -p123456 < init_24_refactor_to_intermediate_table.sql
 mysql -u root -p123456 < init_20_add_material_approval_menu.sql
 mysql -u root -p123456 < init_22_add_returned_status.sql
 mysql -u root -p123456 < init_23_add_task_type.sql
+mysql -u root -p123456 < init_27_rename_pending_menu.sql
 ```
 
 **Note**: Some migration scripts have conflicting numbers (e.g., init_21, init_22, init_23, init_24). Always check the script filename description to determine the correct order. When in doubt, check the creation date in the file or consult the team.
@@ -125,6 +126,7 @@ xuanjiao-backend/
 │   ├── asset/             # Asset module (entity, repository)
 │   ├── material/          # Material application module (entity, repository)
 │   ├── deletion/          # Asset deletion application module (entity, repository)
+│   ├── notification/      # Notification module (entity, repository)
 │   ├── usage/             # Usage application module (entity, repository)
 │   ├── workflow/          # Workflow definition module (entity, repository)
 │   ├── approval/          # Approval execution module (entity, repository)
@@ -138,6 +140,7 @@ xuanjiao-backend/
 │   ├── asset/             # Asset services
 │   ├── deletion/          # Asset deletion application services
 │   ├── material/          # Material application services
+│   ├── notification/      # Notification services
 │   ├── usage/             # Usage application services
 │   ├── workflow/          # Workflow services (WorkflowService, WorkflowEngineService, ApproverSelectionService)
 │   └── approval/          # Approval services
@@ -149,6 +152,7 @@ xuanjiao-backend/
 │   ├── asset/             # Asset mappers and repository impl
 │   ├── deletion/          # Asset deletion application mappers and repository impl
 │   ├── material/          # Material application mappers and repository impl
+│   ├── notification/      # Notification mappers and repository impl
 │   ├── usage/             # Usage application mappers and repository impl
 │   ├── workflow/          # Workflow mappers
 │   ├── approval/          # Approval mappers
@@ -163,6 +167,7 @@ xuanjiao-backend/
 │   ├── asset/             # AssetController, TagController
 │   ├── deletion/          # AssetDeletionController
 │   ├── material/          # MaterialApplicationController
+│   ├── notification/      # NotificationController
 │   ├── usage/             # UsageApplyController, UsageLogController
 │   ├── workflow/          # WorkflowController, ApproverSelectionController
 │   └── approval/          # ApprovalController
@@ -274,8 +279,11 @@ PENDING → MAIN_COMPLETED (waiting for sub-workflows) → APPROVED
 - `material-entry.vue` - Asset submission with main/sub-workflow approver selection
 - `usage-apply.vue` - Usage application creation with asset selector and multi-asset configuration
 - `usage-list.vue` - Usage application list with detail view
-- `approval/index.vue` - Task list, approval actions, progress display, approver selection
+- `pending-approval.vue` - Pending tasks list with business type filter (MATERIAL_ENTRY, ASSET_USAGE, ASSET_DELETION)
+- `notifications.vue` - Notification items (知会事项) with work order detail view and "notify others" feature
+- `MainLayout.vue` - Sidebar menu with "待办事项" badge showing pending task count (red badge with white numbers)
 - `AssetSelector.vue` - Reusable asset selection component with search and multi-select
+- `UserSelector.vue` - Reusable user selection component with role/dept filtering (uses local filtering, not remote search)
 
 ## Key Services (Backend)
 
@@ -300,6 +308,31 @@ Core workflow orchestration:
 - `startSubProcessesForStage()` - Trigger sub-workflows for a stage
 - `areAllSubWorkflowsComplete()` - Check if all sub-workflows finished
 - `checkParentCompletion()` - Check parent completion after sub-workflow ends
+
+### ApprovalService
+Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/approval/ApprovalService.java`
+Handles approval task operations:
+- `getMyTasks(userId, pageNum, pageSize, businessType)` - Get pending tasks with optional business type filter
+  - businessType values: MATERIAL_ENTRY (素材录入), ASSET_USAGE (素材使用), ASSET_DELETION (素材删除), null (all)
+- `getMyTasksCount(userId)` - Get count of pending tasks (status=PENDING) for badge display
+- `getMyApplied(...)` - Get user's submitted applications with filtering options
+- `getTaskDetail(taskId)` - Get task details including approver selection info
+- `getInstanceDetail(instanceId)` - Get approval instance details
+- `approve(taskId, userId, comment, passed)` - Approve/reject a task
+- `returnTask(taskId, userId, comment)` - Return task to previous stage
+
+### NotificationService
+Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/notification/NotificationService.java`
+Handles notification operations:
+- `getNotificationPageDTO(qry)` - Get paginated notifications with filters (recipientId, notificationType, isRead, sourceType)
+- `getNotificationPageWithWorkOrder(qry)` - Get notifications with JOIN to approval_instance for work order info
+- `getByIdDTO(id)` - Get notification detail with type text mappings
+- `getUnreadCount(userId)` - Get count of unread notifications
+- `createNotification(cmd, senderId, senderName)` - Create single notification
+- `batchCreateNotifications(cmd, senderId, senderName)` - Batch create notifications
+- `markAsRead(cmd, userId)` / `batchMarkAsRead(cmd, userId)` / `markAllAsRead(userId)` - Mark as read
+- `deleteNotification(cmd, userId)` / `batchDelete(cmd, userId)` - Delete notifications
+- `notifyUsersAboutInstance(cmd, senderId, senderName)` - Notify users about approval instance (mention feature)
 
 ### AssetDeletionCleanupTask
 Located at `xuanjiao-app/src/main/java/com/xuanjiao/app/schedule/AssetDeletionCleanupTask.java`
@@ -378,9 +411,42 @@ The system supports a two-stage asset deletion process:
 - **Parent-child instances**: Sub-workflows have `parent_instance_id` and `parent_task_id`
 - **Error resilience**: Missing/invalid sub-workflows log warnings and are skipped (don't block flow)
 
+### Pending Tasks Page ("待办事项")
+- **Menu**: Previously "待我审批", renamed to "待办事项" (menu id=12)
+- **Badge Display**: Red circular badge with white numbers showing pending task count
+  - Only shows on "待办事项" menu item when count > 0
+  - Refreshes automatically when switching routes
+  - Uses Element Plus `el-badge` component with `max="99"`
+- **Business Type Filter**: Dropdown filter above table supporting:
+  - 全部类型 (empty value)
+  - 素材录入 (MATERIAL_ENTRY)
+  - 素材使用 (ASSET_USAGE)
+  - 素材删除 (ASSET_DELETION)
+  - Filter change resets pagination to page 1 and reloads data
+
 ## Development Notes
 
 - The project uses MapStruct for DTO mapping between layers - look for `*Mapper.java` files with `@Mapper` annotation
+- **Notification System Enhancements** (February 2025):
+  - `notifications.vue` detail dialog now matches `pending-approval.vue` style with progress icons and main/sub-workflow separation
+  - Added "Notify Others" (知会其他人) feature in notification items, reusing existing `notifyUsers` API
+  - Read status display: "已读"/"未读" shown as non-clickable tags, automatically marks as read when viewing details
+  - Backend: `NotificationMapper.xml` includes JOIN query with `approval_instance`, `workflow`, `sys_user` for complete work order info
+  - Backend: `NotificationServiceImpl.getBusinessTitle()` retrieves application title from material/deletion/usage tables
+  - Backend: `NotificationServiceImpl.buildNotificationTitle()` generates notification title with business type and title
+- **Material Entry Improvements** (February 2025):
+  - Fixed add file dialog not resetting between opens (now clears `el-upload` component state via `clearFiles()`)
+  - Removed premature validation: title/guarantee declaration now checked only on submit, not when adding files
+  - First file addition auto-creates application with default title `素材录入申请-{date}`, user can edit later
+- **UserSelector Component Fix** (January 2025):
+  - Fixed dropdown closing issue when selecting role/dept filters
+  - Changed from remote search to local filtering (pre-load all users, use computed property)
+  - Filter checkboxes moved outside dropdown to prevent premature closing
+- **Pending Tasks Feature** (February 2025):
+  - `POST /approval/getMyTasks` - Get paginated pending tasks with optional business type filter
+  - `POST /approval/getMyTasksCount` - Get count of pending tasks for badge display
+  - Business type filtering requires JOIN between `approval_task` and `approval_instance` tables
+  - Filter dropdown uses Element Plus `el-select` with `clearable` option
 - MyBatis uses native XML mappers with explicitly defined methods (no BaseMapper inheritance)
 - JWT tokens are stored in localStorage and sent via `Authorization: Bearer <token>` header
 - File uploads are handled by MultipartFile and stored locally with MD5-based filenames
@@ -473,6 +539,80 @@ public interface AssetMapper {
 - `column`: Database field name (underscore_case, like `role_id`)
 - `property`: Java property name (camelCase, like `roleId`)
 
+### Mapper Return Type Standards
+
+**IMPORTANT: Always use strongly-typed classes, never use Map/HastMap:**
+
+✅ **Recommended: Use specific DO/DTO classes**
+```java
+// Single table query
+AssetDO selectById(@Param("id") Long id);
+
+// Multi-table JOIN - create dedicated result class
+List<FlowItemDO> selectFlowItemsByUser(@Param("userId") Long userId,
+                                       @Param("businessType") String businessType,
+                                       @Param("status") String status);
+```
+
+❌ **Avoid: Using Map as return type**
+```java
+// DON'T DO THIS - type unsafe, no IDE support
+List<Map<String, Object>> selectSomething();
+```
+
+**DO Class Naming Conventions:**
+| Query Type | Class Name Pattern | Example |
+|------------|-------------------|---------|
+| Single table result | `{Entity}DO` | `AssetDO` |
+| Multi-table JOIN result | `{Module}ItemDO` or `{Module}QueryResultDO` | `FlowItemDO` |
+| Statistics/Aggregation | `{Module}StatisticsDO` | `AssetStatisticsDO` |
+| Summary/Dashboard | `{Module}SummaryDO` | `WorkflowSummaryDO` |
+
+**ResultMap Definition:**
+```xml
+<!-- Good: Use resultMap with explicit mappings -->
+<resultMap id="FlowItemResultMap" type="com.xuanjiao.infrastructure.approval.FlowItemDO">
+    <id column="id" property="id" jdbcType="BIGINT"/>
+    <result column="workflow_name" property="workflowName" jdbcType="VARCHAR"/>
+    <!-- MyBatis auto-handles underscore → camelCase mapping when resultMap is used -->
+</resultMap>
+
+<select id="selectFlowItemsByUser" resultMap="FlowItemResultMap">
+    SELECT ai.id, ai.status, w.name AS workflow_name, ...
+    <!-- No need for manual AS aliases when resultMap is properly defined -->
+</select>
+
+<!-- Bad: Using HashMap -->
+<select id="selectSomething" resultType="java.util.HashMap">
+    <!-- Type unsafe, no IDE support, runtime errors only -->
+</select>
+```
+
+**Why Strong Typing Matters:**
+| Aspect | HashMap | Strongly-typed DO |
+|--------|---------|-------------------|
+| Type Safety | ❌ Runtime errors only | ✅ Compile-time checking |
+| IDE Support | ❌ No autocomplete | ✅ Full autocomplete |
+| Refactoring | ❌ Break silently | ✅ Safe with IDE tools |
+| Code Quality | ❌ Hard to maintain | ✅ Self-documenting |
+| Column Mapping | ❌ Manual AS required | ✅ resultMap handles it |
+
+**COLA Architecture Compliance:**
+- `infrastructure` layer: Use DO classes (infrastructure's own package)
+- `app` layer: Can convert DO to DTO if needed
+- `infrastructure` CANNOT depend on `client` layer DTOs
+
+```java
+// Correct - infrastructure layer
+package com.xuanjiao.infrastructure.approval;
+public class FlowItemDO { ... }
+
+// Correct - app layer (optional conversion)
+List<Map<String, Object>> result = flowItems.stream()
+    .map(this::convertToMap)
+    .collect(Collectors.toList());
+```
+
 For detailed MyBatis development standards, see `DEVELOPMENT_GUIDELINES.md`.
 
 ### Important Constraints & Gotchas
@@ -488,6 +628,14 @@ For detailed MyBatis development standards, see `DEVELOPMENT_GUIDELINES.md`.
 - **Duplicate approvers display**: When showing "other approvers" in the same stage, filter by status=PENDING and deduplicate by approver_id
   - This prevents showing the same approver multiple times after workflow returns
   - Original bug: Queried all tasks without filtering, showing old CANCELLED/APPROVED task approvers
+- **Task Type vs Business Type**: Two distinct type classifications:
+  - **task_type** (审批任务类型): NORMAL (普通审批) vs RESTART_SUB_WORKFLOW (重新发起子流程)
+    - Indicates how the task was created/processed
+    - Most tasks are "普通审批" because they're normal approval tasks
+  - **business_type** (业务类型): MATERIAL_ENTRY (素材录入), ASSET_USAGE (素材使用), ASSET_DELETION (素材删除)
+    - Indicates the business domain of the approval instance
+    - Stored on `approval_instance.business_type`, not on `approval_task`
+    - Used for filtering tasks by business domain in the pending tasks page
 
 **Usage Applications:**
 - Many-to-many relationship via `usage_apply_asset` intermediate table
@@ -557,6 +705,7 @@ As of January 2025, the backend has been refactored to use module-based packagin
 | `menu` | Menu | Menu tree, menu configuration |
 | `asset` | Asset | Asset upload, download, management, tags |
 | `material` | Material Application | Asset entry applications |
+| `notification` | Notification | Notification management, mention/notify features |
 | `usage` | Usage Application | Asset usage applications, usage logs, usage_apply_asset intermediate table |
 | `deletion` | Asset Deletion | Asset deletion applications, two-stage deletion process (DELETED → soft delete) |
 | `workflow` | Workflow Definition | Workflow design, template management, workflow engine, approver selection |
@@ -575,6 +724,10 @@ As of January 2025, the backend has been refactored to use module-based packagin
 **Important**: When adding new features, follow the module-based structure. Place code in the appropriate module subdirectory within each layer.
 
 ### Recent Database Architecture Changes (January 2025)
+
+**Menu Rename (init_27_rename_pending_menu.sql):**
+- Renamed menu id=12 from "待我审批" to "待办事项"
+- SQL: `UPDATE sys_menu SET name = '待办事项' WHERE id = 12;`
 
 **Usage Application Refactoring (init_24_refactor_to_intermediate_table.sql):**
 - Changed from direct `asset_id` foreign key in `usage_apply` table to a many-to-many relationship

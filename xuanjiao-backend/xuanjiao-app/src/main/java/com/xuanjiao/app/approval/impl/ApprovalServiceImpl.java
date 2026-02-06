@@ -9,6 +9,7 @@ import com.xuanjiao.app.approval.ApprovalService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.dto.ApprovalProgressDTO;
 import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.infrastructure.approval.FlowItemDO;
 import com.xuanjiao.infrastructure.dataobject.*;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskQuery;
@@ -81,14 +82,25 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Override
-    public PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize) {
+    public PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize, String businessType) {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setApproverId(userId);
         query.setStatus("PENDING");
+        if (businessType != null && !businessType.isEmpty()) {
+            query.setBusinessType(businessType);
+        }
         IPage<ApprovalTaskDO> page = taskMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<Map<String, Object>> list = page.getRecords().stream()
             .map(this::buildTaskInfo).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
+    }
+
+    @Override
+    public Long getMyTasksCount(Long userId) {
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setApproverId(userId);
+        query.setStatus("PENDING");
+        return taskMapper.selectCount(query);
     }
 
     @Override
@@ -1011,5 +1023,71 @@ public class ApprovalServiceImpl implements ApprovalService {
         query.setOrderByDirection("ASC");
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(query);
         return stages.isEmpty() ? null : stages.get(0);
+    }
+
+    @Override
+    public PageResult<Map<String, Object>> getMyFlowItems(Long userId, int pageNum, int pageSize,
+                                                            String businessType, String status) {
+        // 使用优化的JOIN查询（避免N+1问题，从数百次查询减少到1次）
+        List<FlowItemDO> flowItems = taskMapper.selectFlowItemsByUser(userId, businessType, status);
+
+        // 去重（同一个实例可能既是发起人又是审批人）
+        Map<Long, FlowItemDO> uniqueFlows = new LinkedHashMap<>();
+        for (FlowItemDO flow : flowItems) {
+            if (!uniqueFlows.containsKey(flow.getId())) {
+                uniqueFlows.put(flow.getId(), flow);
+            }
+        }
+
+        // 排序（按创建时间倒序）
+        List<FlowItemDO> sortedFlows = new ArrayList<>(uniqueFlows.values());
+        sortedFlows.sort((a, b) -> {
+            if (a.getCreateTime() == null) return 1;
+            if (b.getCreateTime() == null) return -1;
+            return b.getCreateTime().compareTo(a.getCreateTime());
+        });
+
+        // 分页（在内存中进行，因为需要去重）
+        int start = (pageNum - 1) * pageSize;
+        int end = Math.min(start + pageSize, sortedFlows.size());
+        List<FlowItemDO> pagedFlows = start < sortedFlows.size() ?
+                sortedFlows.subList(start, end) : new ArrayList<>();
+
+        // 转换为 Map 返回（兼容现有API）
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (FlowItemDO item : pagedFlows) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", item.getId());
+            map.put("status", item.getStatus());
+            map.put("businessType", item.getBusinessType());
+            map.put("businessId", item.getBusinessId());
+            map.put("createTime", item.getCreateTime());
+            map.put("applicantId", item.getApplicantId());
+            map.put("workflowId", item.getWorkflowId());
+            map.put("workflowName", item.getWorkflowName());
+            map.put("applicantName", item.getApplicantName());
+            map.put("myRole", item.getMyRole());
+            map.put("applicationId", item.getApplicationId());
+            map.put("applicationTitle", item.getApplicationTitle());
+            map.put("deletionApplicationId", item.getDeletionApplicationId());
+            map.put("deletionTitle", item.getDeletionTitle());
+            map.put("usageApplicationId", item.getUsageApplicationId());
+            map.put("usageTitle", item.getUsageTitle());
+            // 添加统一的 title 字段（根据业务类型返回对应的标题）
+            String title = null;
+            if ("MATERIAL_ENTRY".equals(item.getBusinessType())) {
+                title = item.getApplicationTitle();
+            } else if ("ASSET_DELETION".equals(item.getBusinessType())) {
+                title = item.getDeletionTitle();
+            } else if ("ASSET_USAGE".equals(item.getBusinessType())) {
+                title = item.getUsageTitle();
+            }
+            map.put("title", title);
+            // 兼容：同时设置 businessName
+            map.put("businessName", title);
+            result.add(map);
+        }
+
+        return PageResult.of(result, (long) sortedFlows.size(), pageNum, pageSize);
     }
 }

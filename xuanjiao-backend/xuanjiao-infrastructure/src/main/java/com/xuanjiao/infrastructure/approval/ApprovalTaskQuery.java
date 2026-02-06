@@ -22,4 +22,5 @@ public class ApprovalTaskQuery {
     private Boolean subWorkflowApproverIdsNotNull; // IS NOT NULL查询：sub_workflow_approver_ids不为空
     private List<String> statusIn; // IN查询：状态列表
     private Long idNotEqual; // != 查询：排除指定ID的任务
+    private String businessType; // 业务类型筛选：MATERIAL_ENTRY, ASSET_USAGE, ASSET_DELETION（需关联approval_instance表）
 }

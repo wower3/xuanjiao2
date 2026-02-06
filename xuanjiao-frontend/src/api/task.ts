@@ -16,6 +16,10 @@ export function getPendingApproval(params: any) {
   return request.post('/approval/getMyTasks', params)
 }
 
+export function getMyTasksCount() {
+  return request.post('/approval/getMyTasksCount')
+}
+
 export function getTaskDetail(id: number) {
   return request.post('/approval/getTaskDetail', { id })
 }

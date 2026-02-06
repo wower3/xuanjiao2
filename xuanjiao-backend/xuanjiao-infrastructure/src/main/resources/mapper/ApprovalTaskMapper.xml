@@ -191,6 +191,12 @@
             <if test="query.idNotEqual != null">
                 AND id != #{query.idNotEqual}
             </if>
+            <!-- 业务类型筛选：需要关联 approval_instance 表 -->
+            <if test="query.businessType != null and query.businessType != ''">
+                AND instance_id IN (
+                    SELECT id FROM approval_instance WHERE business_type = #{query.businessType}
+                )
+            </if>
         </where>
         ORDER BY create_time DESC
     </select>
@@ -254,5 +260,69 @@
             approve_time = NULL
         WHERE id = #{id}
     </update>
+
+    <!-- ==================== 优化查询方法 ==================== -->
+
+    <!-- 流经事项ResultMap -->
+    <!-- column 必须匹配 SQL 返回的实际列名（数据库列名或AS别名） -->
+    <!-- property 是 Java 属性名（驼峰） -->
+    <resultMap id="FlowItemResultMap" type="com.xuanjiao.infrastructure.approval.FlowItemDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="business_id" property="businessId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="applicant_id" property="applicantId" jdbcType="BIGINT"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="workflow_name" property="workflowName" jdbcType="VARCHAR"/>
+        <result column="applicant_name" property="applicantName" jdbcType="VARCHAR"/>
+        <result column="my_role" property="myRole" jdbcType="VARCHAR"/>
+        <result column="application_id" property="applicationId" jdbcType="BIGINT"/>
+        <result column="application_title" property="applicationTitle" jdbcType="VARCHAR"/>
+        <result column="deletion_application_id" property="deletionApplicationId" jdbcType="BIGINT"/>
+        <result column="deletion_title" property="deletionTitle" jdbcType="VARCHAR"/>
+        <result column="usage_application_id" property="usageApplicationId" jdbcType="BIGINT"/>
+        <result column="usage_title" property="usageTitle" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- 查询用户的流经事项（优化的JOIN查询，避免N+1问题） -->
+    <select id="selectFlowItemsByUser" resultMap="FlowItemResultMap">
+        SELECT
+            ai.id,
+            ai.status,
+            ai.business_type,
+            ai.business_id,
+            ai.create_time,
+            ai.applicant_id,
+            ai.workflow_id,
+            w.name AS workflow_name,
+            u.real_name AS applicant_name,
+            CASE WHEN at.id IS NOT NULL THEN 'approver' ELSE 'initiator' END AS my_role,
+            -- 业务类型相关字段
+            ma.id AS application_id,
+            ma.title AS application_title,
+            da.id AS deletion_application_id,
+            da.title AS deletion_title,
+            ua.id AS usage_application_id,
+            ua.title AS usage_title
+        FROM approval_instance ai
+        INNER JOIN sys_user u ON ai.applicant_id = u.id
+        INNER JOIN workflow w ON ai.workflow_id = w.id
+        LEFT JOIN approval_task at ON at.instance_id = ai.id AND at.approver_id = #{userId}
+        LEFT JOIN material_application ma ON ai.business_type = 'MATERIAL_ENTRY' AND ai.business_id = ma.id
+        LEFT JOIN asset_deletion_application da ON ai.business_type = 'ASSET_DELETION' AND ai.business_id = da.id
+        LEFT JOIN usage_apply ua ON ai.business_type = 'ASSET_USAGE' AND ai.business_id = ua.id
+        <where>
+            ai.parent_instance_id IS NULL
+            AND (ai.applicant_id = #{userId} OR at.id IS NOT NULL)
+            <if test="businessType != null and businessType != ''">
+                AND ai.business_type = #{businessType}
+            </if>
+            <if test="status != null and status != ''">
+                AND ai.status = #{status}
+            </if>
+        </where>
+        ORDER BY ai.create_time DESC
+    </select>
 
 </mapper>

@@ -1,5 +1,15 @@
 <template>
   <div class="material-entry-page">
+    <!-- 隐藏的视频元素用于截取缩略图 -->
+    <video
+      ref="videoRef"
+      muted
+      preload="auto"
+      style="display:none"
+      crossorigin="anonymous"
+    />
+    <!-- 隐藏的canvas用于绘制缩略图 -->
+    <canvas ref="canvasRef" style="display:none" />
     <el-card>
       <template #header>
         <span>{{ isEditMode ? '编辑申请单' : '新建申请单' }}</span>
@@ -24,11 +34,29 @@
       <div class="file-section">
         <div class="file-header">
           <span>素材文件 ({{ fileList.length }})</span>
-          <el-button type="primary" size="small" @click="showAddFile = true">
+          <el-button type="primary" size="small" @click="openAddFileDialog">
             添加文件
           </el-button>
         </div>
         <el-table :data="fileList" size="small">
+          <el-table-column label="预览" width="80">
+            <template #default="{ row }">
+              <el-image
+                v-if="row.type === 'IMAGE'"
+                :src="row.filePath ? `/api/asset/preview/${row.id}` : ''"
+                fit="cover"
+                style="width: 60px; height: 40px"
+              />
+              <el-image
+                v-else-if="row.type === 'VIDEO' && row.thumbnailPath"
+                :src="`/api/asset/thumbnail/${row.id}`"
+                fit="cover"
+                style="width: 60px; height: 40px"
+              />
+              <el-icon v-else-if="row.type === 'VIDEO'" :size="24"><VideoCamera /></el-icon>
+              <el-icon v-else :size="24"><Document /></el-icon>
+            </template>
+          </el-table-column>
           <el-table-column prop="name" label="文件名称" />
           <el-table-column prop="type" label="类型" width="80" />
           <el-table-column label="标签" width="150">
@@ -61,7 +89,7 @@
     </el-card>
 
     <!-- 添加文件对话框 -->
-    <el-dialog v-model="showAddFile" title="添加素材文件" width="600px">
+    <el-dialog v-model="showAddFile" title="添加素材文件" width="600px" @closed="handleAddFileDialogClosed">
       <el-form :model="fileForm" :rules="fileRules" ref="fileFormRef" label-width="120px">
         <el-form-item label="文件名称" prop="name">
           <el-input v-model="fileForm.name" placeholder="请输入文件名称" />
@@ -428,6 +456,11 @@ const fileRules = {
 
 const formRef = ref()
 const fileFormRef = ref()
+const fileUploadRef = ref()
+const copyrightUploadRef = ref()
+const videoRef = ref<HTMLVideoElement | null>(null)
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+const thumbnailFile = ref<File | null>(null)
 
 async function loadWorkflows() {
   try {
@@ -682,11 +715,13 @@ async function saveDraftAndNavigate(to: any) {
       guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
     }
 
-    if (isEditMode.value) {
-      await updateMaterialApplication(applicationId.value!, submitData)
+    // 判断是否有申请单ID（编辑模式或已通过添加文件创建了申请单）
+    if (applicationId.value) {
+      await updateMaterialApplication(applicationId.value, submitData)
       ElMessage.success('保存成功')
     } else {
       const res = await createMaterialApplication(submitData)
+      applicationId.value = res.data.id
       ElMessage.success('保存成功')
     }
     hasUnsavedChanges.value = false
@@ -713,8 +748,9 @@ async function handleSaveDraft() {
       guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
     }
 
-    if (isEditMode.value) {
-      await updateMaterialApplication(applicationId.value!, submitData)
+    // 判断是否有申请单ID（编辑模式或已通过添加文件创建了申请单）
+    if (applicationId.value) {
+      await updateMaterialApplication(applicationId.value, submitData)
       ElMessage.success('保存成功')
     } else {
       const res = await createMaterialApplication(submitData)
@@ -874,10 +910,130 @@ function handleFileChange(file: any) {
   if (!fileForm.name) {
     fileForm.name = file.name
   }
+  // 如果是视频，截取缩略图
+  if (fileForm.type === 'VIDEO' && file.raw) {
+    captureVideoThumbnail(file.raw)
+  } else {
+    thumbnailFile.value = null
+  }
+}
+
+// 校验文件格式
+function validateFileFormat(file: File, type: string): { valid: boolean; message?: string } {
+  const fileName = file.name.toLowerCase()
+  const ext = fileName.substring(fileName.lastIndexOf('.'))
+
+  const imageFormats = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+  const videoFormats = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.mpg', '.mpeg', '.3gp']
+
+  if (type === 'IMAGE') {
+    if (!imageFormats.includes(ext)) {
+      return {
+        valid: false,
+        message: `图片格式不支持，请选择 ${imageFormats.join(', ')} 格式`
+      }
+    }
+  } else if (type === 'VIDEO') {
+    if (!videoFormats.includes(ext)) {
+      return {
+        valid: false,
+        message: `视频格式不支持，请选择 ${videoFormats.join(', ')} 格式`
+      }
+    }
+  }
+  return { valid: true }
+}
+
+async function captureVideoThumbnail(file: File) {
+  try {
+    const video = videoRef.value
+    const canvas = canvasRef.value
+    if (!video || !canvas) return
+
+    const fileName = file.name.toLowerCase()
+
+    // GIF格式作为图片处理，不需要截取缩略图
+    if (fileName.endsWith('.gif')) {
+      console.log('GIF格式作为图片，不需要截取缩略图')
+      thumbnailFile.value = null
+      return
+    }
+
+    // 支持的视频格式
+    const supportedFormats = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.mpg', '.mpeg', '.3gp']
+    const isSupported = supportedFormats.some(ext => fileName.endsWith(ext))
+
+    if (!isSupported) {
+      console.log('不支持的视频格式:', fileName)
+      thumbnailFile.value = null
+      return
+    }
+
+    const url = URL.createObjectURL(file)
+    video.src = url
+
+    video.onloadeddata = () => {
+      // 根据视频时长选择截取位置
+      let captureTime = 1 // 默认第1秒
+      if (video.duration <= 0) {
+        thumbnailFile.value = null
+        URL.revokeObjectURL(url)
+        return
+      } else if (video.duration <= 1) {
+        captureTime = video.duration * 0.5 // 视频太短，取中间
+      } else if (video.duration < 2) {
+        captureTime = video.duration - 0.5 // 视频不到2秒，取末尾前0.5秒
+      } else {
+        captureTime = 2 // 正常情况取第2秒
+      }
+      video.currentTime = captureTime
+    }
+
+    video.onseeked = () => {
+      const ctx = canvas.getContext('2d')
+      if (ctx && video.videoWidth > 0) {
+        canvas.width = 160
+        canvas.height = 90
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob((blob) => {
+          if (blob && blob.size > 0) {
+            thumbnailFile.value = new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' })
+          } else {
+            thumbnailFile.value = null
+          }
+          URL.revokeObjectURL(url)
+        }, 'image/jpeg', 0.85)
+      } else {
+        thumbnailFile.value = null
+        URL.revokeObjectURL(url)
+      }
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      thumbnailFile.value = null
+    }
+  } catch (e) {
+    console.error('截取视频缩略图失败:', e)
+    thumbnailFile.value = null
+  }
 }
 
 function handleCopyrightFileChange(file: any) {
   copyrightFile.value = file.raw
+}
+
+// 打开添加文件对话框，重置表单
+function openAddFileDialog() {
+  resetFileForm()
+  // 清除上传组件的内部状态
+  if (fileUploadRef.value) {
+    fileUploadRef.value.clearFiles()
+  }
+  if (copyrightUploadRef.value) {
+    copyrightUploadRef.value.clearFiles()
+  }
+  showAddFile.value = true
 }
 
 async function handleAddFile() {
@@ -888,24 +1044,36 @@ async function handleAddFile() {
     return
   }
 
-  // 确保有申请单ID
+  // 确保有申请单ID（编辑模式已有ID，新建模式需要创建）
   if (!applicationId.value) {
-    await formRef.value?.validate()
-    if (!form.title) {
-      ElMessage.warning('请先输入事项标题')
-      return
-    }
-    if (!form.guaranteeDeclaration) {
-      ElMessage.warning('请先勾选保证声明')
-      return
-    }
-
+    // 新建模式：自动创建申请单，不需要用户预先填写标题和保证声明
+    // 使用默认标题创建申请单
+    const defaultTitle = `素材录入申请-${new Date().toLocaleDateString()}`
     const submitData = {
-      ...form,
-      guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
+      title: defaultTitle,
+      maintainerId: form.maintainerId,
+      deptId: form.deptId,
+      guaranteeDeclaration: 0  // 暂不强制要求保证声明
     }
     const res = await createMaterialApplication(submitData)
     applicationId.value = res.data.id
+    // 更新表单标题为默认值，用户可以后续修改
+    form.title = defaultTitle
+  } else if (applicationStatus.value !== 'DRAFT') {
+    // 只有草稿状态可以添加文件
+    ElMessage.warning('只有草稿状态可以添加文件')
+    return
+  }
+
+  // 前端格式校验
+  if (uploadFile.value) {
+    const validation = validateFileFormat(uploadFile.value, fileForm.type)
+    if (!validation.valid) {
+      ElMessage.warning(validation.message)
+      addingFile.value = false
+      return
+    }
+    console.log('前端截取缩略图:', thumbnailFile.value ? '成功' : '失败或无')
   }
 
   addingFile.value = true
@@ -918,7 +1086,7 @@ async function handleAddFile() {
     const uploadRes = await uploadAsset(uploadFile.value, {
       ...fileForm,
       applicationId: applicationId.value
-    })
+    }, thumbnailFile.value || undefined)
     console.log('handleAddFile - 上传响应:', uploadRes)
     ElMessage.success('添加成功')
     showAddFile.value = false
@@ -946,6 +1114,18 @@ function resetFileForm() {
   uploadFile.value = null
   copyrightFile.value = null
   copyrightType.value = 'none'
+}
+
+// 对话框关闭时的处理
+function handleAddFileDialogClosed() {
+  resetFileForm()
+  // 清除上传组件的内部状态
+  if (fileUploadRef.value) {
+    fileUploadRef.value.clearFiles()
+  }
+  if (copyrightUploadRef.value) {
+    copyrightUploadRef.value.clearFiles()
+  }
 }
 
 async function removeFile(row: any) {

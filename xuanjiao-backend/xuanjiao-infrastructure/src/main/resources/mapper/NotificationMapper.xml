@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.notification.NotificationMapper">
+
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.notification.NotificationDO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="notificationType" column="notification_type"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="sourceId" column="source_id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="senderName" column="sender_name"/>
+        <result property="recipientId" column="recipient_id"/>
+        <result property="isRead" column="is_read"/>
+        <result property="readTime" column="read_time"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="deleted" column="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, title, content, notification_type, source_type, source_id,
+        sender_id, sender_name, recipient_id, is_read, read_time,
+        status, create_time, update_time, deleted
+    </sql>
+
+    <sql id="Query_Where">
+        <where>
+            n.deleted = 0
+            <if test="recipientId != null">
+                AND n.recipient_id = #{recipientId}
+            </if>
+            <if test="notificationType != null and notificationType != ''">
+                AND n.notification_type = #{notificationType}
+            </if>
+            <if test="isRead != null">
+                AND n.is_read = #{isRead}
+            </if>
+            <if test="sourceType != null and sourceType != ''">
+                AND n.source_type = #{sourceType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    n.id LIKE CONCAT('%', #{keyword}, '%')
+                    OR n.sender_name LIKE CONCAT('%', #{keyword}, '%')
+                    OR ma.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR da.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR ua.title LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+    </sql>
+
+    <!-- 知会事项详情ResultMap - 包含工单信息 -->
+    <resultMap id="NotificationWithWorkOrderResultMap" type="com.xuanjiao.infrastructure.notification.NotificationWithWorkOrderDO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="notificationType" column="notification_type"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="sourceId" column="source_id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="senderName" column="sender_name"/>
+        <result property="recipientId" column="recipient_id"/>
+        <result property="isRead" column="is_read"/>
+        <result property="readTime" column="read_time"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="deleted" column="deleted"/>
+        <!-- 工单相关字段 -->
+        <result property="instanceId" column="instance_id"/>
+        <result property="instanceStatus" column="instance_status"/>
+        <result property="businessTitle" column="business_title"/>
+        <result property="workflowName" column="workflow_name"/>
+        <result property="applicantId" column="applicant_id"/>
+        <result property="applicantName" column="applicant_name"/>
+    </resultMap>
+
+    <!-- 查询知会事项列表（JOIN工单信息） -->
+    <select id="selectListWithWorkOrder" resultMap="NotificationWithWorkOrderResultMap">
+        SELECT
+            n.id, n.title, n.content, n.notification_type, n.source_type, n.source_id,
+            n.sender_id, n.sender_name, n.recipient_id, n.is_read, n.read_time,
+            n.status, n.create_time, n.update_time, n.deleted,
+            ai.id AS instance_id,
+            ai.status AS instance_status,
+            ai.workflow_id,
+            w.name AS workflow_name,
+            ai.applicant_id,
+            u.real_name AS applicant_name,
+            <!-- 业务标题 -->
+            CASE
+                WHEN ai.business_type = 'MATERIAL_ENTRY' THEN ma.title
+                WHEN ai.business_type = 'ASSET_DELETION' THEN da.title
+                WHEN ai.business_type = 'ASSET_USAGE' THEN ua.title
+                ELSE NULL
+            END AS business_title
+        FROM sys_notification n
+        LEFT JOIN approval_instance ai ON n.source_id = ai.id
+        LEFT JOIN workflow w ON ai.workflow_id = w.id
+        LEFT JOIN sys_user u ON ai.applicant_id = u.id
+        LEFT JOIN material_application ma ON ai.business_type = 'MATERIAL_ENTRY' AND ai.business_id = ma.id
+        LEFT JOIN asset_deletion_application da ON ai.business_type = 'ASSET_DELETION' AND ai.business_id = da.id
+        LEFT JOIN usage_apply ua ON ai.business_type = 'ASSET_USAGE' AND ai.business_id = ua.id
+        <include refid="Query_Where"/>
+        <if test="orderByField != null and orderByDirection != null">
+            ORDER BY n.${orderByField} ${orderByDirection}
+        </if>
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_notification
+        <where>
+            deleted = 0
+            <if test="recipientId != null">
+                AND recipient_id = #{recipientId}
+            </if>
+            <if test="notificationType != null and notificationType != ''">
+                AND notification_type = #{notificationType}
+            </if>
+            <if test="isRead != null">
+                AND is_read = #{isRead}
+            </if>
+            <if test="sourceType != null and sourceType != ''">
+                AND source_type = #{sourceType}
+            </if>
+        </where>
+        <if test="orderByField != null and orderByDirection != null">
+            ORDER BY ${orderByField} ${orderByDirection}
+        </if>
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*)
+        FROM sys_notification n
+        LEFT JOIN approval_instance ai ON n.source_id = ai.id
+        LEFT JOIN material_application ma ON ai.business_type = 'MATERIAL_ENTRY' AND ai.business_id = ma.id
+        LEFT JOIN asset_deletion_application da ON ai.business_type = 'ASSET_DELETION' AND ai.business_id = da.id
+        LEFT JOIN usage_apply ua ON ai.business_type = 'ASSET_USAGE' AND ai.business_id = ua.id
+        <where>
+            n.deleted = 0
+            <if test="recipientId != null">
+                AND n.recipient_id = #{recipientId}
+            </if>
+            <if test="notificationType != null and notificationType != ''">
+                AND n.notification_type = #{notificationType}
+            </if>
+            <if test="isRead != null">
+                AND n.is_read = #{isRead}
+            </if>
+            <if test="sourceType != null and sourceType != ''">
+                AND n.source_type = #{sourceType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    n.id LIKE CONCAT('%', #{keyword}, '%')
+                    OR n.sender_name LIKE CONCAT('%', #{keyword}, '%')
+                    OR ma.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR da.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR ua.title LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_notification
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.notification.NotificationDO"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_notification (
+            title, content, notification_type, source_type, source_id,
+            sender_id, sender_name, recipient_id, is_read, status,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{title}, #{content}, #{notificationType}, #{sourceType}, #{sourceId},
+            #{senderId}, #{senderName}, #{recipientId}, #{isRead}, #{status},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <update id="markAsRead">
+        UPDATE sys_notification
+        SET is_read = 1,
+            read_time = NOW()
+        WHERE id = #{id}
+          AND recipient_id = #{recipientId}
+          AND deleted = 0
+    </update>
+
+    <update id="batchMarkAsRead">
+        UPDATE sys_notification
+        SET is_read = 1,
+            read_time = NOW()
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND recipient_id = #{recipientId}
+          AND deleted = 0
+    </update>
+
+    <update id="markAllAsRead">
+        UPDATE sys_notification
+        SET is_read = 1,
+            read_time = NOW()
+        WHERE recipient_id = #{recipientId}
+          AND deleted = 0
+          AND is_read = 0
+    </update>
+
+    <update id="deleteById">
+        UPDATE sys_notification
+        SET deleted = 1
+        WHERE id = #{id}
+          AND recipient_id = #{recipientId}
+    </update>
+
+    <update id="batchDelete">
+        UPDATE sys_notification
+        SET deleted = 1
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND recipient_id = #{recipientId}
+    </update>
+
+    <!-- 知会记录ResultMap - 包含发起人和收件人部门信息 -->
+    <resultMap id="NotificationRecordResultMap" type="com.xuanjiao.infrastructure.notification.NotificationRecordDO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="notificationType" column="notification_type"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="sourceId" column="source_id"/>
+        <result property="isRead" column="is_read"/>
+        <result property="createTime" column="create_time"/>
+        <!-- 知会发起人信息 -->
+        <result property="senderId" column="sender_id"/>
+        <result property="senderName" column="sender_name"/>
+        <result property="senderDeptName" column="sender_dept_name"/>
+        <!-- 知会收件人信息 -->
+        <result property="recipientId" column="recipient_id"/>
+        <result property="recipientName" column="recipient_name"/>
+        <result property="recipientDeptName" column="recipient_dept_name"/>
+    </resultMap>
+
+    <!-- 查询工单的知会记录 -->
+    <select id="selectNotificationRecordsByInstanceId" resultMap="NotificationRecordResultMap">
+        SELECT
+            n.id, n.title, n.content, n.notification_type, n.source_type, n.source_id,
+            n.is_read, n.create_time,
+            n.sender_id,
+            sender.real_name AS sender_name,
+            senderDept.name AS sender_dept_name,
+            n.recipient_id,
+            recipient.real_name AS recipient_name,
+            recipientDept.name AS recipient_dept_name
+        FROM sys_notification n
+        INNER JOIN sys_user sender ON n.sender_id = sender.id
+        INNER JOIN sys_user recipient ON n.recipient_id = recipient.id
+        LEFT JOIN sys_dept senderDept ON sender.dept_id = senderDept.id
+        LEFT JOIN sys_dept recipientDept ON recipient.dept_id = recipientDept.id
+        WHERE n.source_id = #{instanceId}
+          AND n.deleted = 0
+          AND n.notification_type = 'MENTION'
+        ORDER BY n.create_time DESC
+    </select>
+
+</mapper>

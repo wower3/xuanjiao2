@@ -154,7 +154,7 @@ public class TaskController {
         resultMap.put("id", dto.getId());
         resultMap.put("title", dto.getTitle());
         resultMap.put("userId", dto.getUserId());
-        resultMap.put("userName", dto.getUserName());
+        resultMap.put("username", dto.getUsername());
         resultMap.put("deptName", dto.getDeptName());
         resultMap.put("deptId", dto.getDeptId());
         resultMap.put("workflowId", dto.getWorkflowId());

@@ -62,4 +62,15 @@ public interface ApprovalTaskMapper {
      * 用于工作流退回后重新提交场景
      */
     int resetForResubmit(@Param("id") Long id);
+
+    /**
+     * 查询用户的流经事项（优化的JOIN查询，避免N+1问题）
+     * @param userId 用户ID
+     * @param businessType 业务类型筛选
+     * @param status 状态筛选
+     * @return 流经事项列表
+     */
+    List<FlowItemDO> selectFlowItemsByUser(@Param("userId") Long userId,
+                                           @Param("businessType") String businessType,
+                                           @Param("status") String status);
 }

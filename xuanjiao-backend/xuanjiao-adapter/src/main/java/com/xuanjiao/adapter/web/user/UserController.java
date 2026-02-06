@@ -1,6 +1,7 @@
 package com.xuanjiao.adapter.web.user;
 
 import com.xuanjiao.app.user.UserService;
+import com.xuanjiao.client.dto.PageResult;
 import com.xuanjiao.client.dto.Result;
 import com.xuanjiao.client.dto.UserDTO;
 import com.xuanjiao.client.dto.user.*;
@@ -11,10 +12,12 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
+
 import javax.annotation.Resource;
 import javax.validation.Valid;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Api(tags = "用户管理")
@@ -59,6 +62,14 @@ public class UserController {
             @RequestAttribute(value = "userId", required = false) Long userId,
             @Valid @RequestBody UserGetListWithFilterQry qry) {
         return Result.success(userService.listWithFilter(userId, qry.getRoleIds(), qry.getDeptId(), qry.getIncludeSubDept()));
+    }
+
+    @ApiOperation("搜索用户（支持角色/部门/姓名筛选，带分页）")
+    @PostMapping("/search")
+    public Result<PageResult<Map<String, Object>>> searchUsers(
+            @RequestAttribute(value = "userId", required = false) Long userId,
+            @Valid @RequestBody UserGetListWithFilterQry qry) {
+        return Result.success(userService.searchUsers(userId, qry));
     }
 
     @ApiOperation("获取当前用户的默认筛选部门")

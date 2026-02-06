@@ -16,6 +16,20 @@ export function getUserListWithFilter(params: {
   return request.post('/user/getListWithFilter', params)
 }
 
+/**
+ * 搜索用户（支持角色/部门/姓名筛选，带分页）
+ */
+export function searchUsers(params: {
+  roleIds?: number[]
+  deptId?: number
+  includeSubDept?: boolean
+  keyword?: string
+  pageNum?: number
+  pageSize?: number
+}) {
+  return request.post('/user/search', params)
+}
+
 export function getDefaultFilterDept() {
   return request.post('/user/getDefaultFilterDept', {})
 }

@@ -56,6 +56,12 @@
             :preview-src-list="[getPreviewUrl(row.id)]"
             :preview-teleported="true"
           />
+          <el-image
+            v-else-if="row.type === 'VIDEO' && row.thumbnailPath"
+            :src="`/api/asset/thumbnail/${row.id}`"
+            fit="cover"
+            style="width: 70px; height: 50px"
+          />
           <el-icon v-else-if="row.type === 'VIDEO'" :size="30"><VideoCamera /></el-icon>
           <el-icon v-else :size="30"><Document /></el-icon>
         </template>

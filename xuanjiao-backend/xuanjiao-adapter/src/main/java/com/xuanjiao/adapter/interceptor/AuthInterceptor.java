@@ -30,7 +30,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
         try {
             Long userId = jwtUtil.getUserId(token);
+            String username = jwtUtil.getUsername(token);
             request.setAttribute("userId", userId);
+            request.setAttribute("username", username);
             return true;
         } catch (Exception e) {
             response.setStatus(401);

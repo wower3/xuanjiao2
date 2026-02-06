@@ -56,9 +56,10 @@ public class AssetController {
     @PostMapping("/upload")
     public Result<AssetDTO> upload(
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
             @ModelAttribute AssetUploadCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        return Result.success(assetService.upload(file, cmd, userId));
+        return Result.success(assetService.upload(file, thumbnailFile, cmd, userId));
     }
 
     @ApiOperation("查询素材详情")
@@ -137,9 +138,33 @@ public class AssetController {
         if (!file.exists()) {
             return ResponseEntity.notFound().build();
         }
-        MediaType mediaType = getMediaType(asset.getType());
+        // 图片和文档使用原有逻辑，视频根据文件路径判断类型
+        MediaType mediaType;
+        if ("VIDEO".equals(asset.getType())) {
+            mediaType = getVideoMediaType(asset.getFilePath());
+        } else {
+            mediaType = getMediaType(asset.getType());
+        }
         return ResponseEntity.ok()
                 .contentType(mediaType)
+                .cacheControl(org.springframework.http.CacheControl.noCache())
+                .body(new FileSystemResource(file));
+    }
+
+    @ApiOperation("查看视频缩略图")
+    @GetMapping("/thumbnail/{id}")
+    public ResponseEntity<FileSystemResource> viewThumbnail(@PathVariable Long id) {
+        AssetDTO asset = assetService.getById(id);
+        if (asset == null || asset.getThumbnailPath() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        File file = new File(asset.getThumbnailPath());
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(org.springframework.http.CacheControl.noCache())
                 .body(new FileSystemResource(file));
     }
 
@@ -224,6 +249,31 @@ public class AssetController {
             case "VIDEO": return MediaType.valueOf("video/mp4");
             case "DOCUMENT": return MediaType.APPLICATION_PDF;
             default: return MediaType.APPLICATION_OCTET_STREAM;
+        }
+    }
+
+    /**
+     * 根据文件路径获取视频的MIME类型
+     */
+    private MediaType getVideoMediaType(String filePath) {
+        if (filePath == null) {
+            return MediaType.valueOf("video/mp4");
+        }
+        String lowerPath = filePath.toLowerCase();
+        if (lowerPath.endsWith(".mp4")) {
+            return MediaType.valueOf("video/mp4");
+        } else if (lowerPath.endsWith(".webm")) {
+            return MediaType.valueOf("video/webm");
+        } else if (lowerPath.endsWith(".ogg")) {
+            return MediaType.valueOf("video/ogg");
+        } else if (lowerPath.endsWith(".mov")) {
+            return MediaType.valueOf("video/quicktime");
+        } else if (lowerPath.endsWith(".avi")) {
+            return MediaType.valueOf("video/x-msvideo");
+        } else if (lowerPath.endsWith(".mkv")) {
+            return MediaType.valueOf("video/x-matroska");
+        } else {
+            return MediaType.valueOf("video/mp4"); // 默认返回mp4
         }
     }
 }

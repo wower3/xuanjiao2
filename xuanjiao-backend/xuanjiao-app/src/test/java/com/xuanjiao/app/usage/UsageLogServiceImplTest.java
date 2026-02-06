@@ -232,7 +232,7 @@ public class UsageLogServiceImplTest {
         assertEquals("技术部", dto.getDeptName());
         assertEquals("测试使用描述", dto.getUsageDescription());
         assertEquals("官网", dto.getUsagePublishChannel());
-        assertEquals("测试用户", dto.getUserName());
+        assertEquals("测试用户", dto.getUsername());
         System.out.println("✓ UsageLogService toDTO() - 字段映射验证通过");
     }
 }

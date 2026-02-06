@@ -99,7 +99,7 @@ public class UsageLogServiceImpl implements UsageLogService {
         if (log.getUserId() != null) {
             UserDO user = userMapper.selectById(log.getUserId());
             if (user != null) {
-                dto.setUserName(user.getRealName());
+                dto.setUsername(user.getRealName());
             }
         }
 
