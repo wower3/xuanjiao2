@@ -14,6 +14,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 标签服务实现类
+ * <p>实现TagService接口，封装标签业务逻辑</p>
+ * <p>核心功能：标签CRUD、按分类查询</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.asset.TagService
+ */
 @Service
 public class TagServiceImpl implements TagService {
 

@@ -3,7 +3,12 @@ package com.xuanjiao.infrastructure.dataobject;
 import com.baomidou.mybatisplus.annotation.*;
 
 /**
- * 素材删除申请-素材关联DO（中间表，不需要逻辑删除）
+ * 素材删除申请-素材关联数据对象
+ * <p>对应数据库表 asset_deletion_asset，存储删除申请与素材的关联关系</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.deletion.entity.AssetDeletionAsset
  */
 @TableName("asset_deletion_asset")
 public class AssetDeletionAssetDO {
@@ -14,7 +19,7 @@ public class AssetDeletionAssetDO {
     private String assetName;
     private String assetType;
 
-    // 以下字段来自asset表的JOIN查询，不属于asset_deletion_asset表
+    /** 以下字段来自asset表的JOIN查询，不属于asset_deletion_asset表 */
     private String assetStatus;
     private String filePath;
     private String thumbnailPath;

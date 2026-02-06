@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 素材申请Mapper
- * 重构说明：不再继承BaseMapper，所有SQL在MaterialApplicationMapper.xml中定义
+ * 素材录入申请数据访问接口
+ * <p>定义素材录入申请的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.material.entity.MaterialApplication
  */
 @Mapper
 public interface MaterialApplicationMapper {

@@ -1,3 +1,13 @@
+<!--
+/**
+ * 知会事项页面
+ * <p>展示当前用户收到的知会通知列表</p>
+ * <p>支持按关键词和阅读状态筛选，标记已读/全部已读</p>
+ * <p>可查看工单详情，并通过"知会其他人"功能转发通知</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="notifications-page">
     <el-card>

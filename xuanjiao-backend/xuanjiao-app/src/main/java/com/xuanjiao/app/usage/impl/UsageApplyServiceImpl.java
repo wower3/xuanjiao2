@@ -24,6 +24,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 素材使用申请服务实现类
+ * <p>实现UsageApplyService接口，封装素材使用申请业务逻辑</p>
+ * <p>核心功能：使用申请CRUD、草稿管理、提交审批、多素材支持</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.usage.UsageApplyService
+ */
 @Service
 public class UsageApplyServiceImpl implements UsageApplyService {
 

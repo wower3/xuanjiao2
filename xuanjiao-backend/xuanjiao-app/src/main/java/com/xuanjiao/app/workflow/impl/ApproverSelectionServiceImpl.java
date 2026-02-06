@@ -37,7 +37,13 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 审批人选择服务实现
+ * 审批人选择服务实现类
+ * <p>实现ApproverSelectionService接口，封装审批人选择逻辑</p>
+ * <p>核心功能：获取可选审批人、选择审批人、审批进度查询</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.workflow.ApproverSelectionService
  */
 @Slf4j
 @Service

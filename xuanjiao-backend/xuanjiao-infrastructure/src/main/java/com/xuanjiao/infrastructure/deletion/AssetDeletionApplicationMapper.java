@@ -7,7 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 素材删除申请Mapper
+ * 素材删除申请数据访问接口
+ * <p>定义素材删除申请的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.deletion.entity.AssetDeletionApplication
  */
 @Mapper
 public interface AssetDeletionApplicationMapper {

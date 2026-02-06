@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 部门 Mapper
- * 重构为 XML Mapper 方式，移除 BaseMapper 继承
+ * 部门数据访问接口
+ * <p>定义部门的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.dept.entity.Dept
  */
 @Mapper
 public interface DeptMapper {

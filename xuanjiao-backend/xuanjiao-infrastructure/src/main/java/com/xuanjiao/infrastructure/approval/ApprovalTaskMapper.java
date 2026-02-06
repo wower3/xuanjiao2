@@ -9,7 +9,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 审批任务Mapper
+ * 审批任务数据访问接口
+ * <p>定义审批任务的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.approval.entity.ApprovalTask
  */
 @Mapper
 public interface ApprovalTaskMapper {

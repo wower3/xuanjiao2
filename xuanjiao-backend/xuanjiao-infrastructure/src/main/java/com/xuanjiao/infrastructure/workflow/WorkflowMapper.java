@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * Workflow Mapper Interface
- * Refactored from BaseMapper to XML Mapper approach
+ * 工作流定义数据访问接口
+ * <p>定义工作流定义的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.workflow.entity.Workflow
  */
 @Mapper
 public interface WorkflowMapper {

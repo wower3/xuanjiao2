@@ -15,6 +15,15 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 素材使用日志服务实现类
+ * <p>实现UsageLogService接口，封装使用日志业务逻辑</p>
+ * <p>核心功能：记录使用日志、下载日志、日志查询</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.usage.UsageLogService
+ */
 @Service
 public class UsageLogServiceImpl implements UsageLogService {
 

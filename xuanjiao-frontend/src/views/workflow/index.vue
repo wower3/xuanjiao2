@@ -1,3 +1,13 @@
+<!--
+/**
+ * 流程管理页面
+ * <p>展示所有审批流程定义列表</p>
+ * <p>支持按类型筛选，查看流程详情、绑定/改绑角色</p>
+ * <p>支持新建、编辑、复制、启用/禁用、删除流程</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="workflow-page">
     <el-card>

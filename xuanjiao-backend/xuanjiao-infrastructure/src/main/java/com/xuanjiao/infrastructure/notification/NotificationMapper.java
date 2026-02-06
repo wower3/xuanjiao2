@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 通知Mapper
- * 遵循项目MyBatis开发规范：不继承BaseMapper，所有方法显式声明
+ * 系统通知数据访问接口
+ * <p>定义系统通知的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.notification.entity.Notification
  */
 @Mapper
 public interface NotificationMapper {

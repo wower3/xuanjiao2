@@ -1,3 +1,13 @@
+<!--
+/**
+ * 知会对话框组件
+ * <p>提供向其他用户发送知会通知的功能</p>
+ * <p>支持选择要知会的用户，附加消息</p>
+ * <p>通过UserSelector组件选择用户</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <el-dialog
     v-model="visible"

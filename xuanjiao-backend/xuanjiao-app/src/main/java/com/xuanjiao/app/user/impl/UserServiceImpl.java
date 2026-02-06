@@ -22,6 +22,15 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
 
+ /**
+ * 用户服务实现类
+ * <p>实现UserService接口，封装用户业务逻辑</p>
+ * <p>核心功能：用户CRUD、权限过滤、用户搜索</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.user.UserService
+ */
 @Service
 public class UserServiceImpl implements UserService {
 

@@ -26,6 +26,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 系统通知服务实现类
+ * <p>实现NotificationService接口，封装通知业务逻辑</p>
+ * <p>核心功能：通知查询、创建、已读管理、知会功能</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.notification.NotificationService
+ */
 @Service
 public class NotificationServiceImpl implements NotificationService {
 

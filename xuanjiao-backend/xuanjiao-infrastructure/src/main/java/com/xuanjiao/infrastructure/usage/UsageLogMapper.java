@@ -8,8 +8,13 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * UsageLog Mapper Interface
- * Refactored from BaseMapper to XML Mapper approach
+ * 素材使用日志数据访问接口
+ * <p>定义素材使用日志的数据库操作方法，对应SQL实现</p>
+ * <p>记录素材的下载、使用等操作行为</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.log.entity.UsageLog
  */
 @Mapper
 public interface UsageLogMapper {

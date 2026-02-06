@@ -9,8 +9,13 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 素材 Mapper
- * 重构为 XML Mapper 方式，移除 BaseMapper 继承
+ * 素材数据访问接口
+ * <p>定义素材的数据库操作方法，对应SQL实现</p>
+ * <p>设计说明：使用原生XML Mapper方式，移除BaseMapper继承</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.asset.entity.Asset
  */
 @Mapper
 public interface AssetMapper {

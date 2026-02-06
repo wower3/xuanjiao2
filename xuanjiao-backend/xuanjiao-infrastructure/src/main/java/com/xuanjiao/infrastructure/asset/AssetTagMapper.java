@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * AssetTag Mapper - 资产标签关联表Mapper
- * 注意：此表为中间表，只有asset_id和tag_id两个字段，无id字段和deleted字段
+ * 素材-标签关联数据访问接口
+ * <p>定义素材标签关联的数据库操作方法，对应SQL实现</p>
+ * <p>注意：此表为中间表，只有asset_id和tag_id两个字段，无id字段和deleted字段</p>
+ *
+ * @author system
+ * @version 1.0
  */
 @Mapper
 public interface AssetTagMapper {

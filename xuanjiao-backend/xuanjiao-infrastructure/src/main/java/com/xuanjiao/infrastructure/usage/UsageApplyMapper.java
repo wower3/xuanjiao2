@@ -7,6 +7,15 @@ import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
+/**
+ * 素材使用申请数据访问接口
+ * <p>定义素材使用申请的数据库操作方法，对应SQL实现</p>
+ * <p>支持多素材关联，通过usage_apply_asset中间表实现多对多关系</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.usage.entity.UsageApply
+ */
 @Mapper
 public interface UsageApplyMapper {
 

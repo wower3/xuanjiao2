@@ -4,7 +4,12 @@ import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
 
 /**
- * 操作日志DO
+ * 操作日志数据对象
+ * <p>对应数据库表 operation_log，存储操作日志的持久化数据</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.log.entity.OperationLog
  */
 @TableName("operation_log")
 public class OperationLogDO {

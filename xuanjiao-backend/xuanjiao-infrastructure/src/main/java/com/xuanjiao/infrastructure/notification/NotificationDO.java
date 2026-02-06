@@ -8,6 +8,14 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 系统通知数据对象
+ * <p>对应数据库表 sys_notification，存储系统通知的持久化数据</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.notification.entity.Notification
+ */
 @Data
 @TableName("sys_notification")
 public class NotificationDO {

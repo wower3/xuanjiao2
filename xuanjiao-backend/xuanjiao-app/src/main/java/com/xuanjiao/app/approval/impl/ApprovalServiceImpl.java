@@ -42,6 +42,15 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 审批服务实现类
+ * <p>实现ApprovalService接口，封装审批业务逻辑</p>
+ * <p>核心功能：待办任务查询、审批操作、任务详情、实例详情</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.approval.ApprovalService
+ */
 @Service
 public class ApprovalServiceImpl implements ApprovalService {
 

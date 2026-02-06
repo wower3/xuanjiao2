@@ -13,6 +13,15 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/**
+ * 角色服务实现类
+ * <p>实现RoleService接口，封装角色业务逻辑</p>
+ * <p>核心功能：角色CRUD、菜单权限分配</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.role.RoleService
+ */
 @Service
 public class RoleServiceImpl implements RoleService {
 

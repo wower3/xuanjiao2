@@ -7,7 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 角色Mapper接口
+ * 角色数据访问接口
+ * <p>定义角色的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.role.entity.Role
  */
 @Mapper
 public interface RoleMapper {

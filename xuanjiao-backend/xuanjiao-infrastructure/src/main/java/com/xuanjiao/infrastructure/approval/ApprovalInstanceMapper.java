@@ -8,7 +8,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 审批实例Mapper
+ * 审批实例数据访问接口
+ * <p>定义审批实例的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.approval.entity.ApprovalInstance
  */
 @Mapper
 public interface ApprovalInstanceMapper {

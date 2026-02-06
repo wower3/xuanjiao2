@@ -32,6 +32,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 素材录入申请服务实现类
+ * <p>实现MaterialApplicationService接口，封装素材录入申请业务逻辑</p>
+ * <p>核心功能：申请单CRUD、草稿管理、提交审批</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.material.MaterialApplicationService
+ */
 @Service
 public class MaterialApplicationServiceImpl implements MaterialApplicationService {
 

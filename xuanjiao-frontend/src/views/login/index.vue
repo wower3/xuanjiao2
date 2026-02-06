@@ -1,3 +1,13 @@
+<!--
+/**
+ * 登录页面
+ * <p>提供用户登录功能，支持用户名/密码认证</p>
+ * <p>登录成功后自动存储Token和用户信息，并跳转到首页</p>
+ *
+ * @author system
+ * @version 1.0
+ */
+-->
 <template>
   <div class="login-container">
     <el-card class="login-card">

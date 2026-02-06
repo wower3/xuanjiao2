@@ -4,7 +4,12 @@ import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
 
 /**
- * 素材删除申请DO
+ * 素材删除申请数据对象
+ * <p>对应数据库表 asset_deletion_application，存储素材删除申请的持久化数据</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.deletion.entity.AssetDeletionApplication
  */
 @TableName("asset_deletion_application")
 public class AssetDeletionApplicationDO {

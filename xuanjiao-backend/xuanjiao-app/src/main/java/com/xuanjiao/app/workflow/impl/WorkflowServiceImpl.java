@@ -31,6 +31,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Objects;
 
+/**
+ * 工作流定义服务实现类
+ * <p>实现WorkflowService接口，封装工作流定义管理逻辑</p>
+ * <p>核心功能：工作流CRUD、状态管理、角色绑定</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.workflow.WorkflowService
+ */
 @Service
 public class WorkflowServiceImpl implements WorkflowService {
 

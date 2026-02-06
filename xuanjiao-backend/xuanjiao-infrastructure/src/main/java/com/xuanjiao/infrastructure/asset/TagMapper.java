@@ -7,7 +7,11 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * Tag Mapper - 标签表Mapper
+ * 标签数据访问接口
+ * <p>定义标签的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
  */
 @Mapper
 public interface TagMapper {

@@ -7,8 +7,13 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * RoleMenu Mapper - 角色菜单关联表Mapper
- * 注意：此表为中间表，没有deleted字段，使用硬删除
+ * 角色-菜单关联数据访问接口
+ * <p>定义角色菜单关联的数据库操作方法，对应SQL实现</p>
+ * <p>注意：此表为中间表，没有deleted字段，使用硬删除</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.role.entity.RoleMenu
  */
 @Mapper
 public interface RoleMenuMapper {

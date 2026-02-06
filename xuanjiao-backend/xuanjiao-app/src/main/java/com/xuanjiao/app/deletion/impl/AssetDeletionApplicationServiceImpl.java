@@ -32,7 +32,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 素材删除申请Service实现
+ * 素材删除申请服务实现类
+ * <p>实现AssetDeletionApplicationService接口，封装素材删除申请业务逻辑</p>
+ * <p>核心功能：删除申请CRUD、提交审批、审批通过后设置素材删除时间</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.deletion.AssetDeletionApplicationService
  */
 @Service
 public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplicationService {

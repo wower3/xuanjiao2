@@ -13,6 +13,15 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+/**
+ * 部门服务实现类
+ * <p>实现DeptService接口，封装部门业务逻辑</p>
+ * <p>核心功能：部门CRUD、树形结构生成、编码生成</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.dept.DeptService
+ */
 @Service
 public class DeptServiceImpl implements DeptService {
 

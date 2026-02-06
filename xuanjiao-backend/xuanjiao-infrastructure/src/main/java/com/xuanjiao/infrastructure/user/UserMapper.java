@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 用户Mapper
- * 重构说明：不再继承BaseMapper，所有SQL在UserMapper.xml中定义
+ * 用户数据访问接口
+ * <p>定义用户的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.user.entity.User
  */
 @Mapper
 public interface UserMapper {

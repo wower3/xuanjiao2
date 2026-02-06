@@ -34,8 +34,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 工作流引擎服务实现（改造版）
- * 支持每层通过后选择下一层审批人、子流程、审批进度记录等新功能
+ * 工作流引擎服务实现类
+ * <p>实现WorkflowEngineService接口，封装工作流核心引擎逻辑</p>
+ * <p>核心功能：流程启动、任务完成、子流程管理、流程推进</p>
+ * <p>设计特点：支持每层通过后选择下一层审批人、支持子流程</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.workflow.WorkflowEngineService
  */
 @Service
 public class WorkflowEngineServiceImpl implements WorkflowEngineService {

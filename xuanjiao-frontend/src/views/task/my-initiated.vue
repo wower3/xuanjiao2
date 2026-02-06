@@ -1,3 +1,13 @@
+<!--
+/**
+ * 我发起的页面
+ * <p>展示当前用户发起的所有审批申请</p>
+ * <p>支持按状态筛选（审批中/已通过/已驳回/已取消）</p>
+ * <p>支持查看详情、追回工单、复制申请单（被驳回的申请）</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="my-initiated-page">
     <el-card>

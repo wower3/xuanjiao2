@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * StageApprover Mapper Interface
- * Refactored from BaseMapper to XML Mapper approach
+ * 阶段审批人数据访问接口
+ * <p>定义阶段审批人的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.workflow.entity.StageApprover
  */
 @Mapper
 public interface StageApproverMapper {

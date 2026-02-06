@@ -1,21 +1,48 @@
+/**
+ * 审批流程API模块
+ * <p>提供流程定义、审批人选择、角色绑定等接口</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 import request from '@/utils/request'
 
+/**
+ * 获取流程定义列表
+ */
 export function getWorkflowList() {
   return request.post('/workflow/getList', {})
 }
 
+/**
+ * 获取流程详情
+ * @param id 流程ID
+ */
 export function getWorkflowById(id: number) {
   return request.post('/workflow/getDetail', { id })
 }
 
+/**
+ * 创建流程
+ * @param data 流程信息
+ */
 export function saveWorkflow(data: any) {
   return request.post('/workflow/create', data)
 }
 
+/**
+ * 更新流程
+ * @param data 流程信息
+ */
 export function updateWorkflow(data: any) {
   return request.post('/workflow/update', data)
 }
 
+/**
+ * 更新流程状态（启用/禁用）
+ * @param id 流程ID
+ * @param status 状态（1启用/0禁用）
+ */
 export function updateWorkflowStatus(id: number, status: number) {
   return request.post('/workflow/updateStatus', { id, status })
 }

@@ -42,6 +42,15 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * 素材服务实现类
+ * <p>实现AssetService接口，封装素材业务逻辑</p>
+ * <p>核心功能：文件上传（MD5去重）、分页查询、标签管理、删除管理</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.asset.AssetService
+ */
 @Service
 public class AssetServiceImpl implements AssetService {
 

@@ -7,8 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * Menu Mapper Interface
- * Refactored from BaseMapper to XML Mapper approach
+ * 菜单数据访问接口
+ * <p>定义菜单的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.menu.entity.Menu
  */
 @Mapper
 public interface MenuMapper {

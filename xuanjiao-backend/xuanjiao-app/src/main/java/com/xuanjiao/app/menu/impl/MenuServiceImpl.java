@@ -19,6 +19,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * 菜单服务实现类
+ * <p>实现MenuService接口，封装菜单业务逻辑</p>
+ * <p>核心功能：菜单CRUD、树形结构生成、角色菜单分配</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.menu.MenuService
+ */
 @Service
 public class MenuServiceImpl implements MenuService {
 
