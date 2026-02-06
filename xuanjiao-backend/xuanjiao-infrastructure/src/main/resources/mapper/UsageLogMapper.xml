@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.usage.UsageLogMapper">
+
+    <!-- Result Map -->
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.UsageLogDO">
+        <id column="id" property="id"/>
+        <result column="asset_id" property="assetId"/>
+        <result column="user_id" property="userId"/>
+        <result column="action" property="action"/>
+        <result column="ip" property="ip"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="usage_description" property="usageDescription"/>
+        <result column="usage_publish_channel" property="usagePublishChannel"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+        id, asset_id, user_id, action, ip, dept_name, usage_description, usage_publish_channel, create_time
+    </sql>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM usage_log
+        WHERE id = #{id}
+    </select>
+
+    <!-- Select List with Dynamic Conditions -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM usage_log
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+            <if test="userId != null">AND user_id = #{userId}</if>
+            <if test="action != null and action != ''">AND action = #{action}</if>
+            <if test="ip != null and ip != ''">AND ip = #{ip}</if>
+            <if test="deptName != null and deptName != ''">AND dept_name = #{deptName}</if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="orderByField == null or orderByField == ''">
+            ORDER BY create_time DESC
+        </if>
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+    <!-- Select Count -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM usage_log
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="assetId != null">AND asset_id = #{assetId}</if>
+            <if test="userId != null">AND user_id = #{userId}</if>
+            <if test="action != null and action != ''">AND action = #{action}</if>
+            <if test="ip != null and ip != ''">AND ip = #{ip}</if>
+            <if test="deptName != null and deptName != ''">AND dept_name = #{deptName}</if>
+        </where>
+    </select>
+
+    <!-- Select Page -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM usage_log
+        <where>
+            <if test="query.id != null">AND id = #{query.id}</if>
+            <if test="query.assetId != null">AND asset_id = #{query.assetId}</if>
+            <if test="query.userId != null">AND user_id = #{query.userId}</if>
+            <if test="query.action != null and query.action != ''">AND action = #{query.action}</if>
+            <if test="query.ip != null and query.ip != ''">AND ip = #{query.ip}</if>
+            <if test="query.deptName != null and query.deptName != ''">AND dept_name = #{query.deptName}</if>
+        </where>
+        <if test="query.orderByField != null and query.orderByField != ''">
+            ORDER BY ${query.orderByField}
+            <if test="query.orderByDirection != null and query.orderByDirection != ''">
+                ${query.orderByDirection}
+            </if>
+        </if>
+        <if test="query.orderByField == null or query.orderByField == ''">
+            ORDER BY create_time DESC
+        </if>
+    </select>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.UsageLogDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO usage_log (asset_id, user_id, action, ip, dept_name, usage_description, usage_publish_channel)
+        VALUES (#{assetId}, #{userId}, #{action}, #{ip}, #{deptName}, #{usageDescription}, #{usagePublishChannel})
+    </insert>
+
+    <!-- Update By ID -->
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.UsageLogDO">
+        UPDATE usage_log
+        <set>
+            <if test="assetId != null">asset_id = #{assetId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="action != null and action != ''">action = #{action},</if>
+            <if test="ip != null and ip != ''">ip = #{ip},</if>
+            <if test="deptName != null">dept_name = #{deptName},</if>
+            <if test="usageDescription != null">usage_description = #{usageDescription},</if>
+            <if test="usagePublishChannel != null">usage_publish_channel = #{usagePublishChannel},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By ID -->
+    <delete id="deleteById">
+        DELETE FROM usage_log WHERE id = #{id}
+    </delete>
+
+</mapper>

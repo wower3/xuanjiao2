@@ -1,3 +1,13 @@
+<!--
+/**
+ * 草稿箱页面
+ * <p>展示当前用户保存的各类申请草稿</p>
+ * <p>支持按类型（素材录入/使用申请/素材删除）和标题筛选</p>
+ * <p>支持继续编辑草稿或删除草稿</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="draft-box-page">
     <el-card>

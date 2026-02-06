@@ -26,4 +26,10 @@ public class AssetDTO {
 
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+
+    /**
+     * 是否有下载权限
+     * 根据用户是否有所需素材的使用申请（APPROVED状态）来判断
+     */
+    private Boolean canDownload;
 }

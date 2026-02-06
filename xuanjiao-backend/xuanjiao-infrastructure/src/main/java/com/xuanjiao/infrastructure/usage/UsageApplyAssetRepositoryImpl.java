@@ -1,6 +1,5 @@
 package com.xuanjiao.infrastructure.usage;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
 import com.xuanjiao.domain.usage.repository.UsageApplyAssetRepository;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
@@ -54,9 +53,9 @@ public class UsageApplyAssetRepositoryImpl implements UsageApplyAssetRepository 
 
     @Override
     public void deleteByUsageApplyId(Long usageApplyId) {
-        LambdaQueryWrapper<UsageApplyAssetDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyAssetDO::getUsageApplyId, usageApplyId);
-        usageApplyAssetMapper.delete(wrapper);
+        UsageApplyAssetQuery query = new UsageApplyAssetQuery();
+        query.setUsageApplyId(usageApplyId);
+        usageApplyAssetMapper.delete(query);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.xuanjiao.app.usage.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.usage.UsageApplyService;
+import com.xuanjiao.infrastructure.usage.UsageApplyAssetQuery;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.dto.*;
 import com.xuanjiao.domain.usage.entity.UsageApply;
@@ -24,6 +24,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 素材使用申请服务实现类
+ * <p>实现UsageApplyService接口，封装素材使用申请业务逻辑</p>
+ * <p>核心功能：使用申请CRUD、草稿管理、提交审批、多素材支持</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.usage.UsageApplyService
+ */
 @Service
 public class UsageApplyServiceImpl implements UsageApplyService {
 
@@ -167,8 +176,14 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     @Override
     @Transactional
     public Long submit(Long id, Long workflowId, Long userId) {
+        logger.info("UsageApply.submit - 开始提交，id: {}, workflowId: {}, userId: {}", id, workflowId, userId);
+
         UsageApply usageApply = usageApplyRepository.findById(id);
+
+        logger.info("UsageApply.submit - 查询结果: {}", usageApply != null ? usageApply.getId() : "null");
+
         if (usageApply == null) {
+            logger.error("UsageApply.submit - 申请单不存在，id: {}", id);
             throw new RuntimeException("申请单不存在");
         }
 
@@ -182,6 +197,8 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
         // 检查是否有至少一个素材
         List<UsageApplyAsset> assets = usageApplyAssetRepository.findByUsageApplyId(id);
+        logger.info("UsageApply.submit - 关联素材数量: {}", assets.size());
+
         if (assets.isEmpty()) {
             throw new RuntimeException("请至少选择一个素材并配置使用信息");
         }
@@ -193,6 +210,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
         // 启动审批流程
         Long instanceId = workflowEngineService.startProcess(workflowId, "ASSET_USAGE", id, userId);
+        logger.info("UsageApply.submit - 提交成功，instanceId: {}", instanceId);
         return instanceId;
     }
 
@@ -355,11 +373,10 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         usageApplyRepository.save(newApplication);
 
         // 3. 复制素材关联配置（只复制引用，不复制文件）
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO> wrapper =
-            new LambdaQueryWrapper<>();
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO::getUsageApplyId, id);
+        UsageApplyAssetQuery query = new UsageApplyAssetQuery();
+        query.setUsageApplyId(id);
         List<com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO> originalAssets =
-            usageApplyAssetMapper.selectList(wrapper);
+            usageApplyAssetMapper.selectList(query);
 
         for (com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO originalAsset : originalAssets) {
             com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO newAsset =
@@ -385,7 +402,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         if (usageApply.getUserId() != null) {
             UserDO user = userMapper.selectById(usageApply.getUserId());
             if (user != null) {
-                dto.setUserName(user.getRealName());
+                dto.setUsername(user.getRealName());
             }
         }
 

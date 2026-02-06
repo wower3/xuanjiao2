@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.approval.ApprovalProgressMapper">
+
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="instance_id" property="instanceId" jdbcType="BIGINT"/>
+        <result column="stage_id" property="stageId" jdbcType="BIGINT"/>
+        <result column="stage_name" property="stageName" jdbcType="VARCHAR"/>
+        <result column="stage_order" property="stageOrder" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="approvers" property="approvers" jdbcType="LONGVARCHAR"/>
+        <result column="is_sub_workflow" property="isSubWorkflow" jdbcType="INTEGER"/>
+        <result column="parent_instance_id" property="parentInstanceId" jdbcType="BIGINT"/>
+        <result column="parent_task_id" property="parentTaskId" jdbcType="BIGINT"/>
+        <result column="approve_time" property="approveTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, instance_id, stage_id, stage_name, stage_order, status, approvers, is_sub_workflow,
+        parent_instance_id, parent_task_id, approve_time, create_time, update_time
+    </sql>
+
+    <!-- ==================== 基础CRUD方法 ==================== -->
+
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_progress
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectOne" resultMap="BaseResultMap" parameterType="com.xuanjiao.infrastructure.approval.ApprovalProgressQuery">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_progress
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="instanceId != null">
+                AND instance_id = #{instanceId}
+            </if>
+            <if test="stageId != null">
+                AND stage_id = #{stageId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isSubWorkflow != null">
+                AND is_sub_workflow = #{isSubWorkflow}
+            </if>
+            <if test="parentInstanceId != null">
+                AND parent_instance_id = #{parentInstanceId}
+            </if>
+            <if test="parentTaskId != null">
+                AND parent_task_id = #{parentTaskId}
+            </if>
+            <if test="parentInstanceIdIsNull != null and parentInstanceIdIsNull">
+                AND parent_instance_id IS NULL
+            </if>
+            <if test="instanceIds != null and instanceIds.size() > 0">
+                AND instance_id IN
+                <foreach collection="instanceIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+        LIMIT 1
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap" parameterType="com.xuanjiao.infrastructure.approval.ApprovalProgressQuery">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_progress
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="instanceId != null">
+                AND instance_id = #{instanceId}
+            </if>
+            <if test="stageId != null">
+                AND stage_id = #{stageId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isSubWorkflow != null">
+                AND is_sub_workflow = #{isSubWorkflow}
+            </if>
+            <if test="parentInstanceId != null">
+                AND parent_instance_id = #{parentInstanceId}
+            </if>
+            <if test="parentTaskId != null">
+                AND parent_task_id = #{parentTaskId}
+            </if>
+            <if test="parentInstanceIdIsNull != null and parentInstanceIdIsNull">
+                AND parent_instance_id IS NULL
+            </if>
+            <if test="instanceIds != null and instanceIds.size() > 0">
+                AND instance_id IN
+                <foreach collection="instanceIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY stage_order ASC
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long" parameterType="com.xuanjiao.infrastructure.approval.ApprovalProgressQuery">
+        SELECT COUNT(*)
+        FROM approval_progress
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="instanceId != null">
+                AND instance_id = #{instanceId}
+            </if>
+            <if test="stageId != null">
+                AND stage_id = #{stageId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isSubWorkflow != null">
+                AND is_sub_workflow = #{isSubWorkflow}
+            </if>
+            <if test="parentInstanceId != null">
+                AND parent_instance_id = #{parentInstanceId}
+            </if>
+            <if test="parentTaskId != null">
+                AND parent_task_id = #{parentTaskId}
+            </if>
+            <if test="parentInstanceIdIsNull != null and parentInstanceIdIsNull">
+                AND parent_instance_id IS NULL
+            </if>
+            <if test="instanceIds != null and instanceIds.size() > 0">
+                AND instance_id IN
+                <foreach collection="instanceIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO approval_progress (instance_id, stage_id, stage_name, stage_order, status, approvers,
+                                      is_sub_workflow, parent_instance_id, parent_task_id, approve_time)
+        VALUES (#{instanceId}, #{stageId}, #{stageName}, #{stageOrder}, #{status}, #{approvers},
+                #{isSubWorkflow}, #{parentInstanceId}, #{parentTaskId}, #{approveTime})
+    </insert>
+
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO">
+        UPDATE approval_progress
+        <set>
+            <if test="instanceId != null">
+                instance_id = #{instanceId},
+            </if>
+            <if test="stageId != null">
+                stage_id = #{stageId},
+            </if>
+            <if test="stageName != null and stageName != ''">
+                stage_name = #{stageName},
+            </if>
+            <if test="stageOrder != null">
+                stage_order = #{stageOrder},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="approvers != null">
+                approvers = #{approvers},
+            </if>
+            <if test="isSubWorkflow != null">
+                is_sub_workflow = #{isSubWorkflow},
+            </if>
+            <if test="parentInstanceId != null">
+                parent_instance_id = #{parentInstanceId},
+            </if>
+            <if test="parentTaskId != null">
+                parent_task_id = #{parentTaskId},
+            </if>
+            <if test="approveTime != null">
+                approve_time = #{approveTime},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 重置进度记录为重新提交状态（status=PENDING, approvers=null, approve_time=null） -->
+    <update id="resetForResubmit" parameterType="java.lang.Long">
+        UPDATE approval_progress
+        SET status = 'PENDING',
+            approvers = NULL,
+            approve_time = NULL
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== 自定义查询方法 ==================== -->
+
+    <select id="selectByInstanceId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_progress
+        WHERE instance_id = #{instanceId}
+        ORDER BY stage_order ASC
+    </select>
+
+    <select id="selectByParentInstanceId" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_progress
+        WHERE parent_instance_id = #{parentInstanceId}
+        ORDER BY instance_id, stage_order ASC
+    </select>
+
+</mapper>

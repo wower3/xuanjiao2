@@ -1,3 +1,13 @@
+<!--
+/**
+ * 用户管理页面
+ * <p>提供系统用户的增删改查功能</p>
+ * <p>支持按角色和部门筛选用户，支持包含子部门</p>
+ * <p>支持用户状态的启用/禁用管理</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="user-page">
     <el-card>

@@ -18,7 +18,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
     "com.xuanjiao.infrastructure.workflow",
     "com.xuanjiao.infrastructure.approval",
     "com.xuanjiao.infrastructure.deletion",
-    "com.xuanjiao.infrastructure.log"
+    "com.xuanjiao.infrastructure.log",
+    "com.xuanjiao.infrastructure.notification"
 })
 public class XuanjiaoApplication {
 

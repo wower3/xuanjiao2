@@ -1,6 +1,6 @@
 package com.xuanjiao.app.approval.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,21 +9,30 @@ import com.xuanjiao.app.approval.ApprovalService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.dto.ApprovalProgressDTO;
 import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.infrastructure.approval.FlowItemDO;
 import com.xuanjiao.infrastructure.dataobject.*;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
+import com.xuanjiao.infrastructure.approval.ApprovalTaskQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
+import com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
+import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
+import com.xuanjiao.infrastructure.workflow.StageApproverQuery;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
+import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
+import com.xuanjiao.infrastructure.user.UserQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
+import com.xuanjiao.infrastructure.role.RoleQuery;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,6 +42,15 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 审批服务实现类
+ * <p>实现ApprovalService接口，封装审批业务逻辑</p>
+ * <p>核心功能：待办任务查询、审批操作、任务详情、实例详情</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.approval.ApprovalService
+ */
 @Service
 public class ApprovalServiceImpl implements ApprovalService {
 
@@ -73,15 +91,25 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Override
-    public PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize) {
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getApproverId, userId)
-               .eq(ApprovalTaskDO::getStatus, "PENDING")
-               .orderByDesc(ApprovalTaskDO::getCreateTime);
-        Page<ApprovalTaskDO> page = taskMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+    public PageResult<Map<String, Object>> getMyTasks(Long userId, int pageNum, int pageSize, String businessType) {
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setApproverId(userId);
+        query.setStatus("PENDING");
+        if (businessType != null && !businessType.isEmpty()) {
+            query.setBusinessType(businessType);
+        }
+        IPage<ApprovalTaskDO> page = taskMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<Map<String, Object>> list = page.getRecords().stream()
             .map(this::buildTaskInfo).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
+    }
+
+    @Override
+    public Long getMyTasksCount(Long userId) {
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setApproverId(userId);
+        query.setStatus("PENDING");
+        return taskMapper.selectCount(query);
     }
 
     @Override
@@ -89,36 +117,37 @@ public class ApprovalServiceImpl implements ApprovalService {
                                                          String businessType, boolean forAllUsers,
                                                          Long applicantId, Long deptId, String roleType,
                                                          String status) {
-        LambdaQueryWrapper<ApprovalInstanceDO> wrapper = new LambdaQueryWrapper<>();
+        ApprovalInstanceQuery query = new ApprovalInstanceQuery();
 
         // 业务类型筛选（如果指定）
         if (businessType != null && !businessType.isEmpty()) {
-            wrapper.eq(ApprovalInstanceDO::getBusinessType, businessType);
+            query.setBusinessType(businessType);
         }
 
         // 审批状态筛选（如果指定）
         if (status != null && !status.isEmpty()) {
-            wrapper.eq(ApprovalInstanceDO::getStatus, status);
+            query.setStatus(status);
         }
 
         // 只查询主流程，排除子流程
-        wrapper.isNull(ApprovalInstanceDO::getParentInstanceId);
+        query.setParentInstanceIdIsNull(true);
 
         if (forAllUsers) {
             // 查询所有用户的工单，支持筛选
 
             // 筛选条件：发起人
             if (applicantId != null) {
-                wrapper.eq(ApprovalInstanceDO::getApplicantId, applicantId);
+                query.setApplicantId(applicantId);
             }
 
             // 筛选条件：发起人所属部门或角色类型
             Set<Long> applicantIds = new HashSet<>();
             if (deptId != null) {
                 // 查询该部门下的所有用户
-                LambdaQueryWrapper<UserDO> userWrapper = new LambdaQueryWrapper<>();
-                userWrapper.eq(UserDO::getDeptId, deptId).eq(UserDO::getStatus, 1);
-                List<UserDO> usersInDept = userMapper.selectList(userWrapper);
+                UserQuery userQuery = new UserQuery();
+                userQuery.setDeptId(deptId);
+                userQuery.setStatus(1);
+                List<UserDO> usersInDept = userMapper.selectList(userQuery);
                 for (UserDO user : usersInDept) {
                     applicantIds.add(user.getId());
                 }
@@ -127,16 +156,18 @@ public class ApprovalServiceImpl implements ApprovalService {
             // 筛选条件：发起人角色类型
             if (roleType != null && !roleType.isEmpty()) {
                 // 根据角色类型查询角色
-                LambdaQueryWrapper<RoleDO> roleWrapper = new LambdaQueryWrapper<>();
-                roleWrapper.eq(RoleDO::getRoleType, roleType).eq(RoleDO::getStatus, 1);
-                List<RoleDO> roles = roleMapper.selectList(roleWrapper);
+                RoleQuery roleQuery = new RoleQuery();
+                roleQuery.setRoleType(roleType);
+                roleQuery.setStatus(1);
+                List<RoleDO> roles = roleMapper.selectList(roleQuery);
 
                 if (!roles.isEmpty()) {
                     List<Long> roleIds = roles.stream().map(RoleDO::getId).collect(Collectors.toList());
                     // 查询拥有这些角色的用户
-                    LambdaQueryWrapper<UserDO> userWrapper = new LambdaQueryWrapper<>();
-                    userWrapper.in(UserDO::getRoleId, roleIds).eq(UserDO::getStatus, 1);
-                    List<UserDO> usersWithRole = userMapper.selectList(userWrapper);
+                    UserQuery userQuery = new UserQuery();
+                    userQuery.setRoleIds(roleIds);
+                    userQuery.setStatus(1);
+                    List<UserDO> usersWithRole = userMapper.selectList(userQuery);
                     for (UserDO user : usersWithRole) {
                         applicantIds.add(user.getId());
                     }
@@ -145,15 +176,14 @@ public class ApprovalServiceImpl implements ApprovalService {
 
             // 应用发起人筛选（如果有部门或角色筛选，且没有指定具体的发起人）
             if (!applicantIds.isEmpty() && applicantId == null) {
-                wrapper.in(ApprovalInstanceDO::getApplicantId, applicantIds);
+                query.setApplicantIds(new ArrayList<>(applicantIds));
             }
         } else {
             // 仅查询当前用户的工单
-            wrapper.eq(ApprovalInstanceDO::getApplicantId, userId);
+            query.setApplicantId(userId);
         }
 
-        wrapper.orderByDesc(ApprovalInstanceDO::getCreateTime);
-        Page<ApprovalInstanceDO> page = instanceMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<ApprovalInstanceDO> page = instanceMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<Map<String, Object>> list = page.getRecords().stream()
             .map(this::buildInstanceInfo).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
@@ -262,9 +292,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                     map.put("businessName", application.getTitle());
 
                     // 获取关联的素材数量和类型
-                    LambdaQueryWrapper<AssetDO> assetWrapper = new LambdaQueryWrapper<>();
-                    assetWrapper.eq(AssetDO::getApplicationId, application.getId());
-                    List<AssetDO> assets = assetMapper.selectList(assetWrapper);
+                    AssetQuery assetQuery = new AssetQuery();
+                    assetQuery.setApplicationId(application.getId());
+                    List<AssetDO> assets = assetMapper.selectList(assetQuery);
                     if (assets != null && !assets.isEmpty()) {
                         map.put("assetType", assets.get(0).getType());
                         map.put("assetCount", assets.size());
@@ -332,9 +362,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                 map.put("businessName", application.getTitle()); // 兼容旧字段
 
                 // 获取关联的素材文件列表（一个申请单可能有多个素材）
-                LambdaQueryWrapper<AssetDO> assetWrapper = new LambdaQueryWrapper<>();
-                assetWrapper.eq(AssetDO::getApplicationId, application.getId());
-                List<AssetDO> assets = assetMapper.selectList(assetWrapper);
+                AssetQuery assetQuery = new AssetQuery();
+                assetQuery.setApplicationId(application.getId());
+                List<AssetDO> assets = assetMapper.selectList(assetQuery);
                 if (assets != null && !assets.isEmpty()) {
                     // 取第一个素材作为主要信息
                     AssetDO firstAsset = assets.get(0);
@@ -397,12 +427,10 @@ public class ApprovalServiceImpl implements ApprovalService {
                 map.put("deleteReason", deletionApplication.getDeleteReason());
 
                 // 获取关联的素材ID列表
-                LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
-                    new LambdaQueryWrapper<>();
-                wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO::getDeletionApplicationId,
-                    instance.getBusinessId());
+                AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
+                query.setDeletionApplicationId(instance.getBusinessId());
                 List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> deletionAssets =
-                    assetDeletionAssetMapper.selectList(wrapper);
+                    assetDeletionAssetMapper.selectList(query);
 
                 if (deletionAssets != null && !deletionAssets.isEmpty()) {
                     map.put("assetCount", deletionAssets.size());
@@ -448,10 +476,10 @@ public class ApprovalServiceImpl implements ApprovalService {
         }
 
         // 获取当前阶段的待审批任务
-        LambdaQueryWrapper<ApprovalTaskDO> pendingTaskWrapper = new LambdaQueryWrapper<>();
-        pendingTaskWrapper.eq(ApprovalTaskDO::getInstanceId, instance.getId())
-                .eq(ApprovalTaskDO::getStatus, "PENDING");
-        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(pendingTaskWrapper);
+        ApprovalTaskQuery pendingTaskQuery = new ApprovalTaskQuery();
+        pendingTaskQuery.setInstanceId(instance.getId());
+        pendingTaskQuery.setStatus("PENDING");
+        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(pendingTaskQuery);
         List<Map<String, Object>> pendingApprovers = new ArrayList<>();
         for (ApprovalTaskDO task : pendingTasks) {
             UserDO approver = userMapper.selectById(task.getApproverId());
@@ -515,23 +543,30 @@ public class ApprovalServiceImpl implements ApprovalService {
                 result.put("approveType", approveType);
 
                 // 查找下一阶段
-                LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-                wrapper.eq(WorkflowStageDO::getWorkflowId, instance.getWorkflowId())
-                       .gt(WorkflowStageDO::getStageOrder, currentStage.getStageOrder())
-                       .orderByAsc(WorkflowStageDO::getStageOrder)
-                       .last("LIMIT 1");
-                WorkflowStageDO nextStage = workflowStageMapper.selectOne(wrapper);
+                WorkflowStageQuery nextStageQuery = new WorkflowStageQuery();
+                nextStageQuery.setWorkflowId(instance.getWorkflowId());
+                nextStageQuery.setOrderByField("stage_order");
+                nextStageQuery.setOrderByDirection("ASC");
+                List<WorkflowStageDO> allNextStages = workflowStageMapper.selectList(nextStageQuery);
+                WorkflowStageDO nextStage = null;
+                for (WorkflowStageDO stage : allNextStages) {
+                    if (stage.getStageOrder() > currentStage.getStageOrder()) {
+                        nextStage = stage;
+                        break;
+                    }
+                }
                 if (nextStage != null) {
                     result.put("nextStageId", nextStage.getId());
                     result.put("nextStageName", nextStage.getName());
                     result.put("nextStageApproveType", nextStage.getApproveType());
 
                     // 获取下一阶段配置的审批人列表（按配置顺序，排除子流程）
-                    LambdaQueryWrapper<StageApproverDO> approverConfigWrapper = new LambdaQueryWrapper<>();
-                    approverConfigWrapper.eq(StageApproverDO::getStageId, nextStage.getId())
-                            .isNull(StageApproverDO::getSubWorkflowId)
-                            .orderByAsc(StageApproverDO::getId);
-                    List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(approverConfigWrapper);
+                    StageApproverQuery approverConfigQuery = new StageApproverQuery();
+                    approverConfigQuery.setStageId(nextStage.getId());
+                    approverConfigQuery.setSubWorkflowIdNull(true);
+                    approverConfigQuery.setOrderByField("id");
+                    approverConfigQuery.setOrderByDirection("ASC");
+                    List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(approverConfigQuery);
 
                     // 构建下一层审批人配置列表（每个配置项包含类型、名称、可选用户）
                     List<Map<String, Object>> nextStageApproverConfigs = new ArrayList<>();
@@ -577,10 +612,10 @@ public class ApprovalServiceImpl implements ApprovalService {
                     result.put("nextStageApproverCount", nextStageApproverConfigs.size());
 
                     // 获取下一阶段配置的子流程列表（当前层的审批人选择下一层的子流程审批人）
-                    LambdaQueryWrapper<StageApproverDO> subWorkflowWrapper = new LambdaQueryWrapper<>();
-                    subWorkflowWrapper.eq(StageApproverDO::getStageId, nextStage.getId())
-                            .isNotNull(StageApproverDO::getSubWorkflowId);
-                    List<StageApproverDO> subWorkflowApprovers = stageApproverMapper.selectList(subWorkflowWrapper);
+                    StageApproverQuery subWorkflowQuery = new StageApproverQuery();
+                    subWorkflowQuery.setStageId(nextStage.getId());
+                    subWorkflowQuery.setSubWorkflowIdNotNull(true);
+                    List<StageApproverDO> subWorkflowApprovers = stageApproverMapper.selectList(subWorkflowQuery);
 
                     // 构建子流程信息列表（包含第一层审批人配置）
                     List<Map<String, Object>> subWorkflows = new ArrayList<>();
@@ -601,11 +636,12 @@ public class ApprovalServiceImpl implements ApprovalService {
                                 subWorkflowInfo.put("approveType", subFirstStage.getApproveType());
 
                                 // 获取第一层的审批人配置（排除子流程）
-                                LambdaQueryWrapper<StageApproverDO> subApproverConfigWrapper = new LambdaQueryWrapper<>();
-                                subApproverConfigWrapper.eq(StageApproverDO::getStageId, subFirstStage.getId())
-                                        .isNull(StageApproverDO::getSubWorkflowId)
-                                        .orderByAsc(StageApproverDO::getId);
-                                List<StageApproverDO> subApproverConfigs = stageApproverMapper.selectList(subApproverConfigWrapper);
+                                StageApproverQuery subApproverConfigQuery = new StageApproverQuery();
+                                subApproverConfigQuery.setStageId(subFirstStage.getId());
+                                subApproverConfigQuery.setSubWorkflowIdNull(true);
+                                subApproverConfigQuery.setOrderByField("id");
+                                subApproverConfigQuery.setOrderByDirection("ASC");
+                                List<StageApproverDO> subApproverConfigs = stageApproverMapper.selectList(subApproverConfigQuery);
 
                                 logger.info("子流程第一层审批人配置: subWorkflowId={}, stageId={}, approveType={}, configCount={}",
                                     subWorkflow.getId(), subFirstStage.getId(), subFirstStage.getApproveType(), subApproverConfigs.size());
@@ -729,11 +765,11 @@ public class ApprovalServiceImpl implements ApprovalService {
             // 或签和会签都使用相同的动态判断逻辑
             // 第一个完成的审批人可以选择下一层审批人
             // 检查当前阶段是否已有已完成的任务
-            LambdaQueryWrapper<ApprovalTaskDO> completedTaskWrapper = new LambdaQueryWrapper<>();
-            completedTaskWrapper.eq(ApprovalTaskDO::getInstanceId, task.getInstanceId())
-                    .eq(ApprovalTaskDO::getStageId, task.getStageId())
-                    .eq(ApprovalTaskDO::getStatus, "APPROVED");
-            List<ApprovalTaskDO> completedTasks = taskMapper.selectList(completedTaskWrapper);
+            ApprovalTaskQuery completedTaskQuery = new ApprovalTaskQuery();
+            completedTaskQuery.setInstanceId(task.getInstanceId());
+            completedTaskQuery.setStageId(task.getStageId());
+            completedTaskQuery.setStatus("APPROVED");
+            List<ApprovalTaskDO> completedTasks = taskMapper.selectList(completedTaskQuery);
 
             // 如果没有已完成的任务，当前任务作为第一个完成的任务，可以选择下一层审批人
             // 无论或签还是会签，第一个完成的审批人都可以选择
@@ -806,12 +842,12 @@ public class ApprovalServiceImpl implements ApprovalService {
 
         // 获取同阶段的其他审批人（用于判断是或签还是会签）
         // 只查询待审批状态的任务，过滤掉已退回、已取消、已完成等无效任务
-        LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
-        taskWrapper.eq(ApprovalTaskDO::getInstanceId, task.getInstanceId())
-                   .eq(ApprovalTaskDO::getStageId, task.getStageId())
-                   .ne(ApprovalTaskDO::getId, task.getId())
-                   .eq(ApprovalTaskDO::getStatus, "PENDING");  // 只查询待审批状态的任务
-        List<ApprovalTaskDO> otherTasks = taskMapper.selectList(taskWrapper);
+        ApprovalTaskQuery taskQuery = new ApprovalTaskQuery();
+        taskQuery.setInstanceId(task.getInstanceId());
+        taskQuery.setStageId(task.getStageId());
+        taskQuery.setIdNotEqual(task.getId());
+        taskQuery.setStatus("PENDING");  // 只查询待审批状态的任务
+        List<ApprovalTaskDO> otherTasks = taskMapper.selectList(taskQuery);
 
         // 使用Set对审批人去重（同一审批人可能有多条任务记录，但只显示一次）
         Set<Long> approverIds = new HashSet<>();
@@ -875,8 +911,9 @@ public class ApprovalServiceImpl implements ApprovalService {
             // 指定角色：根据是否校验二级部门返回用户列表
             boolean checkSecondary = config.getCheckSecondaryDept() != null && config.getCheckSecondaryDept() == 1;
 
-            LambdaQueryWrapper<UserDO> userWrapper = new LambdaQueryWrapper<>();
-            userWrapper.eq(UserDO::getRoleId, approverId).eq(UserDO::getStatus, 1);
+            UserQuery userQuery = new UserQuery();
+            userQuery.setRoleId(approverId);
+            userQuery.setStatus(1);
 
             if (checkSecondary && applicantId != null) {
                 // 获取申请人的二级部门
@@ -885,11 +922,11 @@ public class ApprovalServiceImpl implements ApprovalService {
                     List<Long> deptIds = new ArrayList<>();
                     deptIds.add(applicantSecondaryDeptId);
                     deptIds.addAll(getAllSubDeptIds(applicantSecondaryDeptId));
-                    userWrapper.in(UserDO::getDeptId, deptIds);
+                    userQuery.setDeptIds(deptIds);
                 }
             }
 
-            List<UserDO> users = userMapper.selectList(userWrapper);
+            List<UserDO> users = userMapper.selectList(userQuery);
             for (UserDO user : users) {
                 Map<String, Object> userInfo = new HashMap<>();
                 userInfo.put("id", user.getId());
@@ -912,9 +949,10 @@ public class ApprovalServiceImpl implements ApprovalService {
             }
         } else if ("DEPT".equals(approverType)) {
             // 指定部门：返回该部门的所有用户
-            LambdaQueryWrapper<UserDO> userWrapper = new LambdaQueryWrapper<>();
-            userWrapper.eq(UserDO::getDeptId, approverId).eq(UserDO::getStatus, 1);
-            List<UserDO> users = userMapper.selectList(userWrapper);
+            UserQuery userQuery = new UserQuery();
+            userQuery.setDeptId(approverId);
+            userQuery.setStatus(1);
+            List<UserDO> users = userMapper.selectList(userQuery);
             for (UserDO user : users) {
                 Map<String, Object> userInfo = new HashMap<>();
                 userInfo.put("id", user.getId());
@@ -988,10 +1026,77 @@ public class ApprovalServiceImpl implements ApprovalService {
      * @return 第一阶段，如果没有则返回null
      */
     private WorkflowStageDO getFirstStageOfWorkflow(Long workflowId) {
-        LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowStageDO::getWorkflowId, workflowId)
-               .orderByAsc(WorkflowStageDO::getStageOrder)
-               .last("LIMIT 1");
-        return workflowStageMapper.selectOne(wrapper);
+        WorkflowStageQuery query = new WorkflowStageQuery();
+        query.setWorkflowId(workflowId);
+        query.setOrderByField("stage_order");
+        query.setOrderByDirection("ASC");
+        List<WorkflowStageDO> stages = workflowStageMapper.selectList(query);
+        return stages.isEmpty() ? null : stages.get(0);
+    }
+
+    @Override
+    public PageResult<Map<String, Object>> getMyFlowItems(Long userId, int pageNum, int pageSize,
+                                                            String businessType, String status) {
+        // 使用优化的JOIN查询（避免N+1问题，从数百次查询减少到1次）
+        List<FlowItemDO> flowItems = taskMapper.selectFlowItemsByUser(userId, businessType, status);
+
+        // 去重（同一个实例可能既是发起人又是审批人）
+        Map<Long, FlowItemDO> uniqueFlows = new LinkedHashMap<>();
+        for (FlowItemDO flow : flowItems) {
+            if (!uniqueFlows.containsKey(flow.getId())) {
+                uniqueFlows.put(flow.getId(), flow);
+            }
+        }
+
+        // 排序（按创建时间倒序）
+        List<FlowItemDO> sortedFlows = new ArrayList<>(uniqueFlows.values());
+        sortedFlows.sort((a, b) -> {
+            if (a.getCreateTime() == null) return 1;
+            if (b.getCreateTime() == null) return -1;
+            return b.getCreateTime().compareTo(a.getCreateTime());
+        });
+
+        // 分页（在内存中进行，因为需要去重）
+        int start = (pageNum - 1) * pageSize;
+        int end = Math.min(start + pageSize, sortedFlows.size());
+        List<FlowItemDO> pagedFlows = start < sortedFlows.size() ?
+                sortedFlows.subList(start, end) : new ArrayList<>();
+
+        // 转换为 Map 返回（兼容现有API）
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (FlowItemDO item : pagedFlows) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", item.getId());
+            map.put("status", item.getStatus());
+            map.put("businessType", item.getBusinessType());
+            map.put("businessId", item.getBusinessId());
+            map.put("createTime", item.getCreateTime());
+            map.put("applicantId", item.getApplicantId());
+            map.put("workflowId", item.getWorkflowId());
+            map.put("workflowName", item.getWorkflowName());
+            map.put("applicantName", item.getApplicantName());
+            map.put("myRole", item.getMyRole());
+            map.put("applicationId", item.getApplicationId());
+            map.put("applicationTitle", item.getApplicationTitle());
+            map.put("deletionApplicationId", item.getDeletionApplicationId());
+            map.put("deletionTitle", item.getDeletionTitle());
+            map.put("usageApplicationId", item.getUsageApplicationId());
+            map.put("usageTitle", item.getUsageTitle());
+            // 添加统一的 title 字段（根据业务类型返回对应的标题）
+            String title = null;
+            if ("MATERIAL_ENTRY".equals(item.getBusinessType())) {
+                title = item.getApplicationTitle();
+            } else if ("ASSET_DELETION".equals(item.getBusinessType())) {
+                title = item.getDeletionTitle();
+            } else if ("ASSET_USAGE".equals(item.getBusinessType())) {
+                title = item.getUsageTitle();
+            }
+            map.put("title", title);
+            // 兼容：同时设置 businessName
+            map.put("businessName", title);
+            result.add(map);
+        }
+
+        return PageResult.of(result, (long) sortedFlows.size(), pageNum, pageSize);
     }
 }

@@ -1,6 +1,5 @@
 package com.xuanjiao.app.material.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.asset.AssetService;
@@ -16,6 +15,8 @@ import com.xuanjiao.infrastructure.dataobject.TagDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.asset.AssetTagMapper;
+import com.xuanjiao.infrastructure.asset.AssetTagQuery;
+import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.asset.TagMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
@@ -31,6 +32,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 素材录入申请服务实现类
+ * <p>实现MaterialApplicationService接口，封装素材录入申请业务逻辑</p>
+ * <p>核心功能：申请单CRUD、草稿管理、提交审批</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.material.MaterialApplicationService
+ */
 @Service
 public class MaterialApplicationServiceImpl implements MaterialApplicationService {
 
@@ -77,6 +87,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         application.setGuaranteeDeclaration(cmd.getGuaranteeDeclaration() != null ? cmd.getGuaranteeDeclaration() : 0);
         application.setStatus("DRAFT");
         application.setCreateTime(LocalDateTime.now());
+        application.setDeleted(0);
 
         MaterialApplication saved = materialApplicationRepository.save(application);
         return convert(saved);
@@ -130,9 +141,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         // 检查是否有至少一个文件
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getApplicationId, id);
-        Long count = assetMapper.selectCount(wrapper);
+        AssetQuery query = new AssetQuery();
+        query.setApplicationId(id);
+        Long count = assetMapper.selectCount(query);
         if (count == 0) {
             throw new RuntimeException("请至少上传一个素材文件");
         }
@@ -142,9 +153,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         assetService.updateStatusByApplicationId(id, "PENDING");
 
         // 再次验证所有素材状态是否正确
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> verifyWrapper = new LambdaQueryWrapper<>();
-        verifyWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getApplicationId, id);
-        List<com.xuanjiao.infrastructure.dataobject.AssetDO> allAssets = assetMapper.selectList(verifyWrapper);
+        AssetQuery verifyQuery = new AssetQuery();
+        verifyQuery.setApplicationId(id);
+        List<com.xuanjiao.infrastructure.dataobject.AssetDO> allAssets = assetMapper.selectList(verifyQuery);
         boolean allPending = allAssets.stream().allMatch(a -> "PENDING".equals(a.getStatus()));
         if (!allPending) {
             logger.warn("申请单{}存在非PENDING状态的素材，强制更新", id);
@@ -177,15 +188,15 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         // Cascade delete: First delete all associated assets
-        LambdaQueryWrapper<AssetDO> assetWrapper = new LambdaQueryWrapper<>();
-        assetWrapper.eq(AssetDO::getApplicationId, id);
-        List<AssetDO> assets = assetMapper.selectList(assetWrapper);
+        AssetQuery assetQuery = new AssetQuery();
+        assetQuery.setApplicationId(id);
+        List<AssetDO> assets = assetMapper.selectList(assetQuery);
 
         // Delete asset-tag associations first (foreign key constraints)
         for (AssetDO asset : assets) {
-            LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetTagDO> tagWrapper = new LambdaQueryWrapper<>();
-            tagWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId, asset.getId());
-            assetTagMapper.delete(tagWrapper);
+            AssetTagQuery tagQuery = new AssetTagQuery();
+            tagQuery.setAssetId(asset.getId());
+            assetTagMapper.delete(tagQuery);
 
             // Delete the asset file and database record
             assetMapper.deleteById(asset.getId());
@@ -248,6 +259,8 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         MaterialApplicationDTO dto = new MaterialApplicationDTO();
         BeanUtils.copyProperties(application, dto);
 
+        logger.info("MaterialApplication.convert - applicationId: {}, title: {}", application.getId(), application.getTitle());
+
         // 填充申请人名称
         if (application.getApplicantId() != null) {
             UserDO user = userMapper.selectById(application.getApplicantId());
@@ -274,11 +287,18 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         // 填充关联的素材文件
         if (application.getId() != null) {
-            LambdaQueryWrapper<AssetDO> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(AssetDO::getApplicationId, application.getId());
+            AssetQuery wrapper = new AssetQuery();
+            wrapper.setApplicationId(application.getId());
+            logger.info("MaterialApplication.convert - 查询assets，applicationId: {}", application.getId());
             List<AssetDO> assets = assetMapper.selectList(wrapper);
+            logger.info("MaterialApplication.convert - 查询到 {} 条assets记录", assets.size());
+            for (AssetDO assetDO : assets) {
+                logger.info("MaterialApplication.convert - asset: id={}, name={}, applicationId={}",
+                    assetDO.getId(), assetDO.getName(), assetDO.getApplicationId());
+            }
             List<AssetDTO> assetDTOs = assets.stream().map(this::convertAsset).collect(Collectors.toList());
             dto.setAssets(assetDTOs);
+            logger.info("MaterialApplication.convert - 设置后 dto.assets 数量: {}", dto.getAssets() != null ? dto.getAssets().size() : 0);
         }
 
         return dto;
@@ -301,9 +321,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         BeanUtils.copyProperties(assetDO, dto);
 
         // 填充标签
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetTagDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId, assetDO.getId());
-        List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(wrapper);
+        AssetTagQuery tagQuery = new AssetTagQuery();
+        tagQuery.setAssetId(assetDO.getId());
+        List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagQuery);
 
         if (!assetTags.isEmpty()) {
             List<Long> tagIds = assetTags.stream()
@@ -343,12 +363,13 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         newApplication.setGuaranteeDeclaration(original.getGuaranteeDeclaration());
         newApplication.setStatus("DRAFT");
         newApplication.setCreateTime(LocalDateTime.now());
+        newApplication.setDeleted(0);
 
         MaterialApplication saved = materialApplicationRepository.save(newApplication);
 
         // 3. 复制素材文件
-        LambdaQueryWrapper<AssetDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(AssetDO::getApplicationId, id);
+        AssetQuery wrapper = new AssetQuery();
+        wrapper.setApplicationId(id);
         List<AssetDO> originalAssets = assetMapper.selectList(wrapper);
 
         for (AssetDO originalAsset : originalAssets) {
@@ -358,6 +379,8 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             newAsset.setApplicationId(saved.getId());
             newAsset.setStatus("DRAFT");
             newAsset.setCreateTime(LocalDateTime.now());
+            newAsset.setUpdateTime(LocalDateTime.now());
+            newAsset.setDeleted(0);
 
             // 复制文件到新路径
             if (originalAsset.getFilePath() != null) {
@@ -413,9 +436,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             assetMapper.insert(newAsset);
 
             // 复制标签关联
-            LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetTagDO> tagWrapper = new LambdaQueryWrapper<>();
-            tagWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId, originalAsset.getId());
-            List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagWrapper);
+            AssetTagQuery tagQuery = new AssetTagQuery();
+            tagQuery.setAssetId(originalAsset.getId());
+            List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagQuery);
             for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : assetTags) {
                 com.xuanjiao.infrastructure.dataobject.AssetTagDO newAssetTag = new com.xuanjiao.infrastructure.dataobject.AssetTagDO();
                 newAssetTag.setAssetId(newAsset.getId());
@@ -425,9 +448,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         // 复制完成后，确保所有复制的素材状态都是 DRAFT（草稿状态）
-        LambdaQueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDO> verifyWrapper = new LambdaQueryWrapper<>();
-        verifyWrapper.eq(com.xuanjiao.infrastructure.dataobject.AssetDO::getApplicationId, saved.getId());
-        List<com.xuanjiao.infrastructure.dataobject.AssetDO> copiedAssets = assetMapper.selectList(verifyWrapper);
+        AssetQuery verifyQuery = new AssetQuery();
+        verifyQuery.setApplicationId(saved.getId());
+        List<com.xuanjiao.infrastructure.dataobject.AssetDO> copiedAssets = assetMapper.selectList(verifyQuery);
         for (com.xuanjiao.infrastructure.dataobject.AssetDO asset : copiedAssets) {
             if (!"DRAFT".equals(asset.getStatus())) {
                 asset.setStatus("DRAFT");

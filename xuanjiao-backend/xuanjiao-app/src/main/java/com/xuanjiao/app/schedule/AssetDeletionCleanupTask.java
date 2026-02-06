@@ -1,8 +1,7 @@
 package com.xuanjiao.app.schedule;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
+import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,35 +54,30 @@ public class AssetDeletionCleanupTask {
             LocalDateTime oneWeekAgo = LocalDateTime.now().minusWeeks(1);
             logger.info("查询条件：状态=DELETED, 删除审批时间早于{}", oneWeekAgo);
 
-            // 先查询符合条件的记录
-            LambdaQueryWrapper<AssetDO> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(AssetDO::getStatus, "DELETED")
-                       .lt(AssetDO::getDeletionApproveTime, oneWeekAgo)
-                       .eq(AssetDO::getDeleted, 0);
-            List<AssetDO> toDelete = assetMapper.selectList(queryWrapper);
+            // 先查询符合条件的记录（用于日志）
+            AssetQuery query = new AssetQuery();
+            query.setStatus("DELETED");
+            query.setDeletionApproveTimeBefore(oneWeekAgo);
+            query.setDeleted(0);
+
+            List<AssetDO> toDelete = assetMapper.selectList(query);
             logger.info("找到符合条件的素材：{} 条", toDelete.size());
             for (AssetDO asset : toDelete) {
                 logger.info("待软删除素材：id={}, name={}, status={}, deleted={}",
                     asset.getId(), asset.getName(), asset.getStatus(), asset.getDeleted());
             }
 
-            // 使用 LambdaUpdateWrapper 批量更新deleted字段为1
-            LambdaUpdateWrapper<AssetDO> wrapper = new LambdaUpdateWrapper<>();
-            wrapper.eq(AssetDO::getStatus, "DELETED")
-                   .lt(AssetDO::getDeletionApproveTime, oneWeekAgo)
-                   .eq(AssetDO::getDeleted, 0)  // 未被彻底软删除的
-                   .set(AssetDO::getDeleted, 1)
-                   .set(AssetDO::getUpdateTime, LocalDateTime.now());
-
-            int updatedCount = assetMapper.update(null, wrapper);
+            // 使用 AssetMapper 的批量更新方法
+            int updatedCount = assetMapper.cleanupDeletedAssets(oneWeekAgo);
 
             logger.info("素材彻底软删除定时任务执行完成，共处理 {} 条记录", updatedCount);
 
-            // 验证更新结果
-            LambdaQueryWrapper<AssetDO> verifyWrapper = new LambdaQueryWrapper<>();
-            verifyWrapper.eq(AssetDO::getStatus, "DELETED")
-                        .lt(AssetDO::getDeletionApproveTime, oneWeekAgo);
-            long remainingCount = assetMapper.selectCount(verifyWrapper);
+            // 验证更新结果（查询所有符合条件的记录，包括deleted=1）
+            AssetQuery verifyQuery = new AssetQuery();
+            verifyQuery.setStatus("DELETED");
+            verifyQuery.setDeletionApproveTimeBefore(oneWeekAgo);
+            verifyQuery.setDeleted(null); // 不过滤deleted，查询所有
+            long remainingCount = assetMapper.selectCount(verifyQuery);
             logger.info("更新后剩余符合条件的记录（包括deleted=1）：{} 条", remainingCount);
 
             return updatedCount;

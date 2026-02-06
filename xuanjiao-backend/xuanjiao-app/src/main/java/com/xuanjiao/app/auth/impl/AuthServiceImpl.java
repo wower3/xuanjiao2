@@ -13,6 +13,15 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 
+ /**
+ * 认证服务实现类
+ * <p>实现AuthService接口，封装用户认证逻辑</p>
+ * <p>核心功能：用户登录（生成JWT Token）、登出</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.auth.AuthService
+ */
 @Service
 public class AuthServiceImpl implements AuthService {
 

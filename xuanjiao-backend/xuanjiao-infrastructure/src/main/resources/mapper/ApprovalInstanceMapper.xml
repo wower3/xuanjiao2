@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper">
+
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="business_id" property="businessId" jdbcType="BIGINT"/>
+        <result column="applicant_id" property="applicantId" jdbcType="BIGINT"/>
+        <result column="current_stage_id" property="currentStageId" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="parent_instance_id" property="parentInstanceId" jdbcType="BIGINT"/>
+        <result column="parent_task_id" property="parentTaskId" jdbcType="BIGINT"/>
+        <result column="root_instance_id" property="rootInstanceId" jdbcType="BIGINT"/>
+        <result column="sub_workflow_approver_ids" property="subWorkflowApproverIds" jdbcType="LONGVARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, workflow_id, business_type, business_id, applicant_id, current_stage_id,
+        status, parent_instance_id, parent_task_id, root_instance_id, sub_workflow_approver_ids,
+        create_time, update_time
+    </sql>
+
+    <!-- ==================== 基础CRUD方法 ==================== -->
+
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_instance
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap" parameterType="com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_instance
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="workflowId != null">
+                AND workflow_id = #{workflowId}
+            </if>
+            <if test="businessType != null and businessType != ''">
+                AND business_type = #{businessType}
+            </if>
+            <if test="businessId != null">
+                AND business_id = #{businessId}
+            </if>
+            <if test="applicantId != null">
+                AND applicant_id = #{applicantId}
+            </if>
+            <if test="currentStageId != null">
+                AND current_stage_id = #{currentStageId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="statusNotEqual != null and statusNotEqual != ''">
+                AND status != #{statusNotEqual}
+            </if>
+            <if test="statusIn != null and statusIn != ''">
+                AND status IN
+                <foreach collection="statusIn.split(',')" item="statusValue" open="(" separator="," close=")">
+                    #{statusValue}
+                </foreach>
+            </if>
+            <if test="parentInstanceId != null">
+                AND parent_instance_id = #{parentInstanceId}
+            </if>
+            <if test="parentInstanceIdIsNull != null">
+                AND parent_instance_id IS NULL
+            </if>
+            <if test="parentTaskId != null">
+                AND parent_task_id = #{parentTaskId}
+            </if>
+            <if test="rootInstanceId != null">
+                AND root_instance_id = #{rootInstanceId}
+            </if>
+            <if test="subWorkflowApproverIds != null and subWorkflowApproverIds != ''">
+                AND sub_workflow_approver_ids = #{subWorkflowApproverIds}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_instance
+        <where>
+            <if test="query.id != null">
+                AND id = #{query.id}
+            </if>
+            <if test="query.workflowId != null">
+                AND workflow_id = #{query.workflowId}
+            </if>
+            <if test="query.businessType != null and query.businessType != ''">
+                AND business_type = #{query.businessType}
+            </if>
+            <if test="query.businessId != null">
+                AND business_id = #{query.businessId}
+            </if>
+            <if test="query.applicantId != null">
+                AND applicant_id = #{query.applicantId}
+            </if>
+            <if test="query.applicantIds != null and query.applicantIds.size() > 0">
+                AND applicant_id IN
+                <foreach collection="query.applicantIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="query.currentStageId != null">
+                AND current_stage_id = #{query.currentStageId}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND status = #{query.status}
+            </if>
+            <if test="query.statusNotEqual != null and query.statusNotEqual != ''">
+                AND status != #{query.statusNotEqual}
+            </if>
+            <if test="query.statusIn != null and statusIn != ''">
+                AND status IN
+                <foreach collection="query.statusIn.split(',')" item="statusValue" open="(" separator="," close=")">
+                    #{statusValue}
+                </foreach>
+            </if>
+            <if test="query.parentInstanceId != null">
+                AND parent_instance_id = #{query.parentInstanceId}
+            </if>
+            <if test="query.parentInstanceIdIsNull != null">
+                AND parent_instance_id IS NULL
+            </if>
+            <if test="query.parentTaskId != null">
+                AND parent_task_id = #{query.parentTaskId}
+            </if>
+            <if test="query.rootInstanceId != null">
+                AND root_instance_id = #{query.rootInstanceId}
+            </if>
+            <if test="query.subWorkflowApproverIds != null and subWorkflowApproverIds != ''">
+                AND sub_workflow_approver_ids = #{query.subWorkflowApproverIds}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long" parameterType="com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery">
+        SELECT COUNT(*)
+        FROM approval_instance
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="workflowId != null">
+                AND workflow_id = #{workflowId}
+            </if>
+            <if test="businessType != null and businessType != ''">
+                AND business_type = #{businessType}
+            </if>
+            <if test="businessId != null">
+                AND business_id = #{businessId}
+            </if>
+            <if test="applicantId != null">
+                AND applicant_id = #{applicantId}
+            </if>
+            <if test="currentStageId != null">
+                AND current_stage_id = #{currentStageId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="statusNotEqual != null and statusNotEqual != ''">
+                AND status != #{statusNotEqual}
+            </if>
+            <if test="statusIn != null and statusIn != ''">
+                AND status IN
+                <foreach collection="statusIn.split(',')" item="statusValue" open="(" separator="," close=")">
+                    #{statusValue}
+                </foreach>
+            </if>
+            <if test="parentInstanceId != null">
+                AND parent_instance_id = #{parentInstanceId}
+            </if>
+            <if test="parentInstanceIdIsNull != null">
+                AND parent_instance_id IS NULL
+            </if>
+            <if test="parentTaskId != null">
+                AND parent_task_id = #{parentTaskId}
+            </if>
+            <if test="rootInstanceId != null">
+                AND root_instance_id = #{rootInstanceId}
+            </if>
+            <if test="subWorkflowApproverIds != null and subWorkflowApproverIds != ''">
+                AND sub_workflow_approver_ids = #{subWorkflowApproverIds}
+            </if>
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO approval_instance (workflow_id, business_type, business_id, applicant_id, current_stage_id,
+                                       status, parent_instance_id, parent_task_id, root_instance_id, sub_workflow_approver_ids)
+        VALUES (#{workflowId}, #{businessType}, #{businessId}, #{applicantId}, #{currentStageId},
+                #{status}, #{parentInstanceId}, #{parentTaskId}, #{rootInstanceId}, #{subWorkflowApproverIds})
+    </insert>
+
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO">
+        UPDATE approval_instance
+        <set>
+            <if test="workflowId != null">
+                workflow_id = #{workflowId},
+            </if>
+            <if test="businessType != null and businessType != ''">
+                business_type = #{businessType},
+            </if>
+            <if test="businessId != null">
+                business_id = #{businessId},
+            </if>
+            <if test="applicantId != null">
+                applicant_id = #{applicantId},
+            </if>
+            <if test="currentStageId != null">
+                current_stage_id = #{currentStageId},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="parentInstanceId != null">
+                parent_instance_id = #{parentInstanceId},
+            </if>
+            <if test="parentTaskId != null">
+                parent_task_id = #{parentTaskId},
+            </if>
+            <if test="rootInstanceId != null">
+                root_instance_id = #{rootInstanceId},
+            </if>
+            <if test="subWorkflowApproverIds != null">
+                sub_workflow_approver_ids = #{subWorkflowApproverIds},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== 自定义查询方法 ==================== -->
+
+    <select id="selectSubInstancesToCancel" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_instance
+        <where>
+            AND parent_instance_id = #{parentInstanceId}
+            <if test="parentTaskIds != null and parentTaskIds.size() > 0">
+                AND parent_task_id IN
+                <foreach collection="parentTaskIds" item="taskId" open="(" separator="," close=")">
+                    #{taskId}
+                </foreach>
+            </if>
+            <if test="includeNullParentTask">
+                OR (parent_instance_id = #{parentInstanceId} AND parent_task_id IS NULL)
+            </if>
+        </where>
+    </select>
+
+</mapper>

@@ -1,3 +1,14 @@
+<!--
+/**
+ * 素材使用申请页面
+ * <p>提供素材使用申请的新建和编辑功能</p>
+ * <p>支持从素材库选择多个素材，为每个素材配置使用说明、发布渠道等</p>
+ * <p>支持选择审批流程和审批人后提交审批</p>
+ * <p>支持保存草稿、路由守卫防止未保存离开</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="usage-apply-page">
     <el-card>
@@ -38,6 +49,12 @@
               fit="cover"
               :preview-src-list="[getPreviewUrl(row.id)]"
               :preview-teleported="true"
+            />
+            <el-image
+              v-else-if="row.type === 'VIDEO' && row.thumbnailPath"
+              :src="`/api/asset/thumbnail/${row.id}`"
+              fit="cover"
+              style="width: 60px; height: 40px"
             />
             <el-icon v-else-if="row.type === 'VIDEO'" :size="30"><VideoCamera /></el-icon>
             <el-icon v-else :size="30"><Document /></el-icon>
@@ -315,6 +332,7 @@ import {
   submitUsageApply,
   getUsageApplyById
 } from '@/api/usageApply'
+import { getAssetById } from '@/api/asset'
 import { getWorkflowList, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
 import { getCurrentUser } from '@/api/user'
 import { useUserStore } from '@/stores/user'
@@ -560,27 +578,20 @@ async function loadData() {
 async function loadSingleAsset(assetId: number) {
   loadingAssets.value = true
   try {
-    const res = await fetch(`/api/asset/${assetId}`, {
-      headers: {
-        Authorization: `Bearer ${userStore.token}`
-      }
-    })
-    if (res.ok) {
-      const data = await res.json()
-      if (data.code === 200 && data.data) {
-        const asset = data.data
-        if (asset.status === 'APPROVED') {
-          selectedAssets.value.push({
-            ...asset,
-            usageDescription: null,
-            usagePublishChannel: null,
-            usageIsSecondaryCreation: 0,
-            usageAttachmentPath: null
-          })
-          openConfigDialog(selectedAssets.value[0])
-        } else {
-          ElMessage.warning('只能使用已通过的素材')
-        }
+    const res = await getAssetById(assetId)
+    if (res.data) {
+      const asset = res.data
+      if (asset.status === 'APPROVED') {
+        selectedAssets.value.push({
+          ...asset,
+          usageDescription: null,
+          usagePublishChannel: null,
+          usageIsSecondaryCreation: 0,
+          usageAttachmentPath: null
+        })
+        openConfigDialog(selectedAssets.value[0])
+      } else {
+        ElMessage.warning('只能使用已通过的素材')
       }
     }
   } catch (e) {

@@ -1,6 +1,5 @@
 package com.xuanjiao.app.usage.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.app.usage.UsageLogService;
 import com.xuanjiao.client.dto.PageResult;
@@ -8,6 +7,7 @@ import com.xuanjiao.client.dto.UsageLogDTO;
 import com.xuanjiao.infrastructure.dataobject.UsageLogDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.usage.UsageLogMapper;
+import com.xuanjiao.infrastructure.usage.UsageLogQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,6 +15,15 @@ import javax.annotation.Resource;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 素材使用日志服务实现类
+ * <p>实现UsageLogService接口，封装使用日志业务逻辑</p>
+ * <p>核心功能：记录使用日志、下载日志、日志查询</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.usage.UsageLogService
+ */
 @Service
 public class UsageLogServiceImpl implements UsageLogService {
 
@@ -49,23 +58,25 @@ public class UsageLogServiceImpl implements UsageLogService {
 
     @Override
     public PageResult<Map<String, Object>> query(String action, int pageNum, int pageSize) {
-        LambdaQueryWrapper<UsageLogDO> wrapper = new LambdaQueryWrapper<>();
+        UsageLogQuery query = new UsageLogQuery();
         if (StringUtils.hasText(action)) {
-            wrapper.eq(UsageLogDO::getAction, action);
+            query.setAction(action);
         }
-        wrapper.orderByDesc(UsageLogDO::getCreateTime);
-        Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<Map<String, Object>> list = page.getRecords().stream().map(this::toMap).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
     }
 
     @Override
     public PageResult<UsageLogDTO> getAssetUsageLogs(Long assetId, int pageNum, int pageSize) {
-        LambdaQueryWrapper<UsageLogDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageLogDO::getAssetId, assetId)
-                .eq(UsageLogDO::getAction, "DOWNLOAD")
-                .orderByDesc(UsageLogDO::getCreateTime);
-        Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        UsageLogQuery query = new UsageLogQuery();
+        query.setAssetId(assetId);
+        query.setAction("DOWNLOAD");
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<UsageLogDTO> list = page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
     }
@@ -97,7 +108,7 @@ public class UsageLogServiceImpl implements UsageLogService {
         if (log.getUserId() != null) {
             UserDO user = userMapper.selectById(log.getUserId());
             if (user != null) {
-                dto.setUserName(user.getRealName());
+                dto.setUsername(user.getRealName());
             }
         }
 

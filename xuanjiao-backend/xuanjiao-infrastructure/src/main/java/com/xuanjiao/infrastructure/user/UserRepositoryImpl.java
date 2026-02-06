@@ -1,6 +1,5 @@
 package com.xuanjiao.infrastructure.user;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.domain.user.entity.User;
 import com.xuanjiao.domain.user.repository.UserRepository;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
@@ -16,9 +15,7 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public User findByUsername(String username) {
-        LambdaQueryWrapper<UserDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserDO::getUsername, username);
-        UserDO userDO = userMapper.selectOne(wrapper);
+        UserDO userDO = userMapper.selectOneByUsername(username);
         return convert(userDO);
     }
 

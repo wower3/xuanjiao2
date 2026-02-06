@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.approval.ApprovalTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="instance_id" property="instanceId" jdbcType="BIGINT"/>
+        <result column="stage_id" property="stageId" jdbcType="BIGINT"/>
+        <result column="approver_id" property="approverId" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="comment" property="comment" jdbcType="VARCHAR"/>
+        <result column="approve_time" property="approveTime" jdbcType="TIMESTAMP"/>
+        <result column="next_stage_approver_ids" property="nextStageApproverIds" jdbcType="LONGVARCHAR"/>
+        <result column="sub_workflow_approver_ids" property="subWorkflowApproverIds" jdbcType="LONGVARCHAR"/>
+        <result column="selected_by_user_id" property="selectedByUserId" jdbcType="BIGINT"/>
+        <result column="is_first_approver" property="isFirstApprover" jdbcType="INTEGER"/>
+        <result column="task_type" property="taskType" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, instance_id, stage_id, approver_id, status, comment, approve_time,
+        next_stage_approver_ids, sub_workflow_approver_ids, selected_by_user_id, is_first_approver, task_type, create_time
+    </sql>
+
+    <!-- ==================== 基础CRUD方法 ==================== -->
+
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_task
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectOne" resultMap="BaseResultMap" parameterType="com.xuanjiao.infrastructure.approval.ApprovalTaskQuery">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_task
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="instanceId != null">
+                AND instance_id = #{instanceId}
+            </if>
+            <if test="stageId != null">
+                AND stage_id = #{stageId}
+            </if>
+            <if test="approverId != null">
+                AND approver_id = #{approverId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isFirstApprover != null">
+                AND is_first_approver = #{isFirstApprover}
+            </if>
+            <if test="taskType != null and taskType != ''">
+                AND task_type = #{taskType}
+            </if>
+            <if test="subWorkflowApproverIdsNotNull != null and subWorkflowApproverIdsNotNull">
+                AND sub_workflow_approver_ids IS NOT NULL
+            </if>
+            <if test="statusIn != null and statusIn.size() > 0">
+                AND status IN
+                <foreach collection="statusIn" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="idNotEqual != null">
+                AND id != #{idNotEqual}
+            </if>
+        </where>
+        LIMIT 1
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap" parameterType="com.xuanjiao.infrastructure.approval.ApprovalTaskQuery">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_task
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="instanceId != null">
+                AND instance_id = #{instanceId}
+            </if>
+            <if test="stageId != null">
+                AND stage_id = #{stageId}
+            </if>
+            <if test="approverId != null">
+                AND approver_id = #{approverId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isFirstApprover != null">
+                AND is_first_approver = #{isFirstApprover}
+            </if>
+            <if test="taskType != null and taskType != ''">
+                AND task_type = #{taskType}
+            </if>
+            <if test="subWorkflowApproverIdsNotNull != null and subWorkflowApproverIdsNotNull">
+                AND sub_workflow_approver_ids IS NOT NULL
+            </if>
+            <if test="statusIn != null and statusIn.size() > 0">
+                AND status IN
+                <foreach collection="statusIn" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="idNotEqual != null">
+                AND id != #{idNotEqual}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long" parameterType="com.xuanjiao.infrastructure.approval.ApprovalTaskQuery">
+        SELECT COUNT(*)
+        FROM approval_task
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="instanceId != null">
+                AND instance_id = #{instanceId}
+            </if>
+            <if test="stageId != null">
+                AND stage_id = #{stageId}
+            </if>
+            <if test="approverId != null">
+                AND approver_id = #{approverId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isFirstApprover != null">
+                AND is_first_approver = #{isFirstApprover}
+            </if>
+            <if test="taskType != null and taskType != ''">
+                AND task_type = #{taskType}
+            </if>
+            <if test="subWorkflowApproverIdsNotNull != null and subWorkflowApproverIdsNotNull">
+                AND sub_workflow_approver_ids IS NOT NULL
+            </if>
+            <if test="statusIn != null and statusIn.size() > 0">
+                AND status IN
+                <foreach collection="statusIn" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="idNotEqual != null">
+                AND id != #{idNotEqual}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM approval_task
+        <where>
+            <if test="query.id != null">
+                AND id = #{query.id}
+            </if>
+            <if test="query.instanceId != null">
+                AND instance_id = #{query.instanceId}
+            </if>
+            <if test="query.stageId != null">
+                AND stage_id = #{query.stageId}
+            </if>
+            <if test="query.approverId != null">
+                AND approver_id = #{query.approverId}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND status = #{query.status}
+            </if>
+            <if test="query.isFirstApprover != null">
+                AND is_first_approver = #{query.isFirstApprover}
+            </if>
+            <if test="query.taskType != null and query.taskType != ''">
+                AND task_type = #{query.taskType}
+            </if>
+            <if test="query.subWorkflowApproverIdsNotNull != null and query.subWorkflowApproverIdsNotNull">
+                AND sub_workflow_approver_ids IS NOT NULL
+            </if>
+            <if test="query.statusIn != null and query.statusIn.size() > 0">
+                AND status IN
+                <foreach collection="query.statusIn" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="query.idNotEqual != null">
+                AND id != #{query.idNotEqual}
+            </if>
+            <!-- 业务类型筛选：需要关联 approval_instance 表 -->
+            <if test="query.businessType != null and query.businessType != ''">
+                AND instance_id IN (
+                    SELECT id FROM approval_instance WHERE business_type = #{query.businessType}
+                )
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO approval_task (instance_id, stage_id, approver_id, status, comment,
+                                   approve_time, next_stage_approver_ids, sub_workflow_approver_ids,
+                                   selected_by_user_id, is_first_approver, task_type)
+        VALUES (#{instanceId}, #{stageId}, #{approverId}, #{status}, #{comment},
+                #{approveTime}, #{nextStageApproverIds}, #{subWorkflowApproverIds},
+                #{selectedByUserId}, #{isFirstApprover}, #{taskType})
+    </insert>
+
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO">
+        UPDATE approval_task
+        <set>
+            <if test="instanceId != null">
+                instance_id = #{instanceId},
+            </if>
+            <if test="stageId != null">
+                stage_id = #{stageId},
+            </if>
+            <if test="approverId != null">
+                approver_id = #{approverId},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="comment != null">
+                comment = #{comment},
+            </if>
+            <if test="approveTime != null">
+                approve_time = #{approveTime},
+            </if>
+            <if test="nextStageApproverIds != null">
+                next_stage_approver_ids = #{nextStageApproverIds},
+            </if>
+            <if test="subWorkflowApproverIds != null">
+                sub_workflow_approver_ids = #{subWorkflowApproverIds},
+            </if>
+            <if test="selectedByUserId != null">
+                selected_by_user_id = #{selectedByUserId},
+            </if>
+            <if test="isFirstApprover != null">
+                is_first_approver = #{isFirstApprover},
+            </if>
+            <if test="taskType != null and taskType != ''">
+                task_type = #{taskType},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 重置任务为重新提交状态（status=PENDING, is_first_approver=0, next_stage_approver_ids=null, comment=null, approve_time=null） -->
+    <update id="resetForResubmit" parameterType="java.lang.Long">
+        UPDATE approval_task
+        SET status = 'PENDING',
+            is_first_approver = 0,
+            next_stage_approver_ids = NULL,
+            comment = NULL,
+            approve_time = NULL
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== 优化查询方法 ==================== -->
+
+    <!-- 流经事项ResultMap -->
+    <!-- column 必须匹配 SQL 返回的实际列名（数据库列名或AS别名） -->
+    <!-- property 是 Java 属性名（驼峰） -->
+    <resultMap id="FlowItemResultMap" type="com.xuanjiao.infrastructure.approval.FlowItemDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="business_id" property="businessId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="applicant_id" property="applicantId" jdbcType="BIGINT"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="workflow_name" property="workflowName" jdbcType="VARCHAR"/>
+        <result column="applicant_name" property="applicantName" jdbcType="VARCHAR"/>
+        <result column="my_role" property="myRole" jdbcType="VARCHAR"/>
+        <result column="application_id" property="applicationId" jdbcType="BIGINT"/>
+        <result column="application_title" property="applicationTitle" jdbcType="VARCHAR"/>
+        <result column="deletion_application_id" property="deletionApplicationId" jdbcType="BIGINT"/>
+        <result column="deletion_title" property="deletionTitle" jdbcType="VARCHAR"/>
+        <result column="usage_application_id" property="usageApplicationId" jdbcType="BIGINT"/>
+        <result column="usage_title" property="usageTitle" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- 查询用户的流经事项（优化的JOIN查询，避免N+1问题） -->
+    <select id="selectFlowItemsByUser" resultMap="FlowItemResultMap">
+        SELECT
+            ai.id,
+            ai.status,
+            ai.business_type,
+            ai.business_id,
+            ai.create_time,
+            ai.applicant_id,
+            ai.workflow_id,
+            w.name AS workflow_name,
+            u.real_name AS applicant_name,
+            CASE WHEN at.id IS NOT NULL THEN 'approver' ELSE 'initiator' END AS my_role,
+            -- 业务类型相关字段
+            ma.id AS application_id,
+            ma.title AS application_title,
+            da.id AS deletion_application_id,
+            da.title AS deletion_title,
+            ua.id AS usage_application_id,
+            ua.title AS usage_title
+        FROM approval_instance ai
+        INNER JOIN sys_user u ON ai.applicant_id = u.id
+        INNER JOIN workflow w ON ai.workflow_id = w.id
+        LEFT JOIN approval_task at ON at.instance_id = ai.id AND at.approver_id = #{userId}
+        LEFT JOIN material_application ma ON ai.business_type = 'MATERIAL_ENTRY' AND ai.business_id = ma.id
+        LEFT JOIN asset_deletion_application da ON ai.business_type = 'ASSET_DELETION' AND ai.business_id = da.id
+        LEFT JOIN usage_apply ua ON ai.business_type = 'ASSET_USAGE' AND ai.business_id = ua.id
+        <where>
+            ai.parent_instance_id IS NULL
+            AND (ai.applicant_id = #{userId} OR at.id IS NOT NULL)
+            <if test="businessType != null and businessType != ''">
+                AND ai.business_type = #{businessType}
+            </if>
+            <if test="status != null and status != ''">
+                AND ai.status = #{status}
+            </if>
+        </where>
+        ORDER BY ai.create_time DESC
+    </select>
+
+</mapper>

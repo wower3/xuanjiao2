@@ -1,28 +1,63 @@
 package com.xuanjiao.infrastructure.deletion;
 
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
 /**
- * 素材删除申请-素材关联Mapper
+ * 素材删除申请-素材关联数据访问接口
+ * <p>定义删除申请与素材关联的数据库操作方法，对应SQL实现</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.domain.deletion.entity.AssetDeletionAsset
  */
 @Mapper
-public interface AssetDeletionAssetMapper extends BaseMapper<AssetDeletionAssetDO> {
+public interface AssetDeletionAssetMapper {
+
+    // ==================== 基础CRUD方法 ====================
 
     /**
-     * 查询素材删除申请关联的所有素材（包含素材详细信息）
-     * @param deletionApplicationId 删除申请ID
-     * @return 素材删除申请-素材关联列表（包含素材详细信息）
+     * 根据ID查询关联
      */
-    @Select("SELECT ada.*, a.name as assetName, a.type as assetType, a.status as assetStatus, " +
-            "a.file_path, a.thumbnail_path, a.file_size, a.description, a.publish_channel " +
-            "FROM asset_deletion_asset ada " +
-            "LEFT JOIN asset a ON a.id = ada.asset_id " +
-            "WHERE ada.deletion_application_id = #{deletionApplicationId}")
+    AssetDeletionAssetDO selectById(@Param("id") Long id);
+
+    /**
+     * 根据查询条件查询关联列表
+     */
+    List<AssetDeletionAssetDO> selectList(AssetDeletionAssetQuery query);
+
+    /**
+     * 根据查询条件统计数量
+     */
+    Long selectCount(AssetDeletionAssetQuery query);
+
+    /**
+     * 插入关联
+     */
+    int insert(AssetDeletionAssetDO assetDeletionAssetDO);
+
+    /**
+     * 更新关联
+     */
+    int updateById(AssetDeletionAssetDO assetDeletionAssetDO);
+
+    /**
+     * 根据ID删除关联（硬删除）
+     */
+    int deleteById(@Param("id") Long id);
+
+    /**
+     * 根据查询条件删除关联（硬删除）
+     */
+    int delete(AssetDeletionAssetQuery query);
+
+    // ==================== 自定义查询方法（保留原有功能）====================
+
+    /**
+     * 根据删除申请ID查询关联的素材（包含素材详情）
+     */
     List<AssetDeletionAssetDO> findByDeletionApplicationIdWithAsset(@Param("deletionApplicationId") Long deletionApplicationId);
 }

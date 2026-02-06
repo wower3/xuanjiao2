@@ -9,7 +9,7 @@ public class UsageApplyDTO {
     private Long id;
 
     private Long userId;
-    private String userName;
+    private String username;
     private String deptName;      // 部门名称
     private String purpose;       // 申请说明
     private String scope;         // 使用范围

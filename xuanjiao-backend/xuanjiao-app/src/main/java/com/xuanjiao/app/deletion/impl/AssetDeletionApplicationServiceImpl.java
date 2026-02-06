@@ -1,6 +1,5 @@
 package com.xuanjiao.app.deletion.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
@@ -17,6 +16,7 @@ import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 素材删除申请Service实现
+ * 素材删除申请服务实现类
+ * <p>实现AssetDeletionApplicationService接口，封装素材删除申请业务逻辑</p>
+ * <p>核心功能：删除申请CRUD、提交审批、审批通过后设置素材删除时间</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.deletion.AssetDeletionApplicationService
  */
 @Service
 public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplicationService {
@@ -172,22 +178,8 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public PageResult<AssetDeletionApplicationDTO> getMyApplications(String title, String status,
                                                                      Integer pageNum, Integer pageSize,
                                                                      Long userId) {
-        QueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO> wrapper =
-            new QueryWrapper<>();
-        wrapper.eq("applicant_id", userId);
-
-        if (StringUtils.hasText(title)) {
-            wrapper.like("title", title);
-        }
-        if (StringUtils.hasText(status)) {
-            wrapper.eq("status", status);
-        }
-        wrapper.orderByDesc("create_time");
-
         // 分页查询
         int offset = (pageNum - 1) * pageSize;
-        wrapper.last("LIMIT " + offset + ", " + pageSize);
-
         List<AssetDeletionApplication> applications = deletionApplicationRepository.findByApplicant(userId, offset, pageSize);
         long total = deletionApplicationRepository.countByApplicant(userId);
 
@@ -294,11 +286,10 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 获取关联的所有素材
-        QueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
-            new QueryWrapper<>();
-        wrapper.eq("deletion_application_id", id);
+        AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
+        query.setDeletionApplicationId(id);
         List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> deletionAssetDOs =
-            deletionAssetMapper.selectList(wrapper);
+            deletionAssetMapper.selectList(query);
 
         if (deletionAssetDOs == null || deletionAssetDOs.isEmpty()) {
             logger.warn("申请单没有关联任何素材: applicationId={}", id);
@@ -362,11 +353,10 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         AssetDeletionApplication saved = deletionApplicationRepository.save(newApplication);
 
         // 3. 复制素材关联（只复制引用，不复制文件）
-        QueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
-            new QueryWrapper<>();
-        wrapper.eq("deletion_application_id", id);
+        AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
+        query.setDeletionApplicationId(id);
         List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> originalAssets =
-            deletionAssetMapper.selectList(wrapper);
+            deletionAssetMapper.selectList(query);
 
         for (com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO originalAsset : originalAssets) {
             com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO newAsset =
@@ -397,10 +387,9 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
      * 删除申请单的所有素材关联
      */
     private void deleteDeletionAssetsByApplicationId(Long applicationId) {
-        QueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
-            new QueryWrapper<>();
-        wrapper.eq("deletion_application_id", applicationId);
-        deletionAssetMapper.delete(wrapper);
+        AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
+        query.setDeletionApplicationId(applicationId);
+        deletionAssetMapper.delete(query);
     }
 
     /**
@@ -423,11 +412,10 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 查询关联的素材
-        QueryWrapper<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> wrapper =
-            new QueryWrapper<>();
-        wrapper.eq("deletion_application_id", application.getId());
+        AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
+        query.setDeletionApplicationId(application.getId());
         List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> deletionAssetDOs =
-            deletionAssetMapper.selectList(wrapper);
+            deletionAssetMapper.selectList(query);
 
         List<AssetDeletionAssetDTO> assetDTOs = new ArrayList<>();
         for (com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO deletionAssetDO : deletionAssetDOs) {

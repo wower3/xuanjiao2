@@ -1,12 +1,13 @@
 package com.xuanjiao.infrastructure.usage;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.domain.usage.entity.UsageApply;
 import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
 import com.xuanjiao.domain.usage.repository.UsageApplyRepository;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -18,6 +19,8 @@ import java.util.stream.Collectors;
 @Repository
 public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
+    private static final Logger logger = LoggerFactory.getLogger(UsageApplyRepositoryImpl.class);
+
     @Resource
     private UsageApplyMapper usageApplyMapper;
 
@@ -26,7 +29,9 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public UsageApply findById(Long id) {
+        logger.info("UsageApplyRepository.findById - 查询id: {}", id);
         UsageApplyDO usageApplyDO = usageApplyMapper.selectById(id);
+        logger.info("UsageApplyRepository.findById - 查询结果: {}", usageApplyDO != null ? "id=" + usageApplyDO.getId() + ", title=" + usageApplyDO.getTitle() + ", deleted=" + usageApplyDO.getDeleted() : "null");
         UsageApply usageApply = convert(usageApplyDO);
         if (usageApply != null) {
             loadAssets(usageApply);
@@ -36,14 +41,15 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public List<UsageApply> findByCondition(String status, int offset, int limit) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        if (StringUtils.hasText(status)) {
-            wrapper.eq(UsageApplyDO::getStatus, status);
-        }
-        wrapper.orderByDesc(UsageApplyDO::getCreateTime);
-        Page<UsageApplyDO> page = new Page<>(offset / limit + 1, limit);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, wrapper);
-        return result.getRecords().stream()
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setStatus(status);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset(offset);
+        query.setLimit(limit);
+
+        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
+        return list.stream()
                 .map(this::convert)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
@@ -51,21 +57,24 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public long countByCondition(String status) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
+        UsageApplyQuery query = new UsageApplyQuery();
         if (StringUtils.hasText(status)) {
-            wrapper.eq(UsageApplyDO::getStatus, status);
+            query.setStatus(status);
         }
-        return usageApplyMapper.selectCount(wrapper);
+        return usageApplyMapper.selectCount(query);
     }
 
     @Override
     public List<UsageApply> findByUserId(Long userId, int offset, int limit) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId)
-                .orderByDesc(UsageApplyDO::getCreateTime);
-        Page<UsageApplyDO> page = new Page<>(offset / limit + 1, limit);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, wrapper);
-        return result.getRecords().stream()
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset(offset);
+        query.setLimit(limit);
+
+        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
+        return list.stream()
                 .map(this::convert)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
@@ -73,13 +82,16 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public List<UsageApply> findDraftsByUserId(Long userId, int offset, int limit) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId)
-                .eq(UsageApplyDO::getDraft, 1)
-                .orderByDesc(UsageApplyDO::getCreateTime);
-        Page<UsageApplyDO> page = new Page<>(offset / limit + 1, limit);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, wrapper);
-        return result.getRecords().stream()
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setDraft(1);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset(offset);
+        query.setLimit(limit);
+
+        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
+        return list.stream()
                 .map(this::convert)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
@@ -87,23 +99,25 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
 
     @Override
     public long countByUserId(Long userId) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId);
-        return usageApplyMapper.selectCount(wrapper);
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        return usageApplyMapper.selectCount(query);
     }
 
     @Override
     public long countDraftsByUserId(Long userId) {
-        LambdaQueryWrapper<UsageApplyDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UsageApplyDO::getUserId, userId)
-                .eq(UsageApplyDO::getDraft, 1);
-        return usageApplyMapper.selectCount(wrapper);
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setDraft(1);
+        return usageApplyMapper.selectCount(query);
     }
 
     @Override
     public void save(UsageApply usageApply) {
         UsageApplyDO usageApplyDO = new UsageApplyDO();
         BeanUtils.copyProperties(usageApply, usageApplyDO);
+        // 显式设置deleted字段，确保不为NULL
+        usageApplyDO.setDeleted(0);
         usageApplyMapper.insert(usageApplyDO);
         usageApply.setId(usageApplyDO.getId());
     }

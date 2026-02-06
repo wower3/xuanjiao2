@@ -1,3 +1,13 @@
+<!--
+/**
+ * 素材选择器组件
+ * <p>提供素材的多选功能，用于使用申请等场景</p>
+ * <p>支持按名称和类型筛选，只显示已通过的素材</p>
+ * <p>支持分页、预览、选择确认功能</p>
+ *
+ * @author system
+ * @version 1.0
+ */
 <template>
   <div class="asset-selector">
     <!-- 搜索栏 -->
@@ -31,6 +41,12 @@
             fit="cover"
             :preview-src-list="[getPreviewUrl(row.id)]"
             :preview-teleported="true"
+          />
+          <el-image
+            v-else-if="row.type === 'VIDEO' && row.thumbnailPath"
+            :src="`/api/asset/thumbnail/${row.id}`"
+            fit="cover"
+            style="width: 60px; height: 40px"
           />
           <el-icon v-else-if="row.type === 'VIDEO'" :size="30"><VideoCamera /></el-icon>
           <el-icon v-else :size="30"><Document /></el-icon>

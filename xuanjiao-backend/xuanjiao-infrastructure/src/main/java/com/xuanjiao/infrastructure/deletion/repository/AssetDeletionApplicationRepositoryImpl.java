@@ -1,13 +1,14 @@
 package com.xuanjiao.infrastructure.deletion.repository;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.xuanjiao.domain.deletion.entity.AssetDeletionApplication;
 import com.xuanjiao.domain.deletion.repository.AssetDeletionApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationQuery;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
+
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,31 +52,32 @@ public class AssetDeletionApplicationRepositoryImpl implements AssetDeletionAppl
 
     @Override
     public List<AssetDeletionApplication> findByApplicantAndStatus(Long applicantId, String status) {
-        QueryWrapper<AssetDeletionApplicationDO> wrapper = new QueryWrapper<>();
-        wrapper.eq("applicant_id", applicantId);
+        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
+        query.setApplicantId(applicantId);
         if (StringUtils.hasText(status)) {
-            wrapper.eq("status", status);
+            query.setStatus(status);
         }
-        wrapper.orderByDesc("create_time");
-        List<AssetDeletionApplicationDO> list = assetDeletionApplicationMapper.selectList(wrapper);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        List<AssetDeletionApplicationDO> list = assetDeletionApplicationMapper.selectList(query);
         return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
     @Override
     public List<AssetDeletionApplication> findByApplicant(Long applicantId, int offset, int limit) {
-        QueryWrapper<AssetDeletionApplicationDO> wrapper = new QueryWrapper<>();
-        wrapper.eq("applicant_id", applicantId);
-        wrapper.orderByDesc("create_time");
-        wrapper.last("LIMIT " + offset + ", " + limit);
-        List<AssetDeletionApplicationDO> list = assetDeletionApplicationMapper.selectList(wrapper);
+        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
+        query.setApplicantId(applicantId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        List<AssetDeletionApplicationDO> list = assetDeletionApplicationMapper.selectListWithPagination(offset, limit, query);
         return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
     @Override
     public long countByApplicant(Long applicantId) {
-        QueryWrapper<AssetDeletionApplicationDO> wrapper = new QueryWrapper<>();
-        wrapper.eq("applicant_id", applicantId);
-        return assetDeletionApplicationMapper.selectCount(wrapper);
+        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
+        query.setApplicantId(applicantId);
+        return assetDeletionApplicationMapper.selectCount(query);
     }
 
     private AssetDeletionApplication convert(AssetDeletionApplicationDO applicationDO) {

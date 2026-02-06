@@ -38,6 +38,11 @@ public class JwtUtil {
         return claims.get("userId", Long.class);
     }
 
+    public String getUsername(String token) {
+        Claims claims = parseToken(token);
+        return claims.getSubject();
+    }
+
     public boolean isTokenExpired(String token) {
         Claims claims = parseToken(token);
         return claims.getExpiration().before(new Date());

@@ -1,6 +1,5 @@
 package com.xuanjiao.app.workflow.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
@@ -9,11 +8,17 @@ import com.xuanjiao.app.workflow.handler.WorkflowCompletionHandler;
 import com.xuanjiao.infrastructure.dataobject.*;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
+import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
+import com.xuanjiao.infrastructure.workflow.StageApproverQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
+import com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
+import com.xuanjiao.infrastructure.approval.ApprovalTaskQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalProgressMapper;
+import com.xuanjiao.infrastructure.approval.ApprovalProgressQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
+import com.xuanjiao.infrastructure.user.UserQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import org.slf4j.Logger;
@@ -29,8 +34,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 工作流引擎服务实现（改造版）
- * 支持每层通过后选择下一层审批人、子流程、审批进度记录等新功能
+ * 工作流引擎服务实现类
+ * <p>实现WorkflowEngineService接口，封装工作流核心引擎逻辑</p>
+ * <p>核心功能：流程启动、任务完成、子流程管理、流程推进</p>
+ * <p>设计特点：支持每层通过后选择下一层审批人、支持子流程</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.workflow.WorkflowEngineService
  */
 @Service
 public class WorkflowEngineServiceImpl implements WorkflowEngineService {
@@ -259,10 +270,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         cancelSubWorkflowTasksForStage(instance.getId(), task.getStageId());
 
         // 4.5 查找上一层（stage_order - 1）
-        LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowStageDO::getWorkflowId, instance.getWorkflowId())
-               .eq(WorkflowStageDO::getStageOrder, currentStage.getStageOrder() - 1);
-        WorkflowStageDO previousStage = stageMapper.selectOne(wrapper);
+        WorkflowStageQuery prevStageQuery = new WorkflowStageQuery();
+        prevStageQuery.setWorkflowId(instance.getWorkflowId());
+        prevStageQuery.setStageOrder(currentStage.getStageOrder() - 1);
+        List<WorkflowStageDO> prevStageList = stageMapper.selectList(prevStageQuery);
+        WorkflowStageDO previousStage = prevStageList.isEmpty() ? null : prevStageList.get(0);
 
         if (previousStage == null) {
             throw new RuntimeException("上一层不存在，无法退回");
@@ -309,11 +321,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             }
         } else {
             // 非第一层：从该层的任务获取子流程审批人选择
-            LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
-            taskWrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-                       .eq(ApprovalTaskDO::getStageId, stage.getId())
-                       .isNotNull(ApprovalTaskDO::getSubWorkflowApproverIds);
-            ApprovalTaskDO taskWithSubWorkflow = taskMapper.selectOne(taskWrapper);
+            ApprovalTaskQuery taskQuery = new ApprovalTaskQuery();
+            taskQuery.setInstanceId(instanceId);
+            taskQuery.setStageId(stage.getId());
+            taskQuery.setSubWorkflowApproverIdsNotNull(true);
+            ApprovalTaskDO taskWithSubWorkflow = taskMapper.selectOne(taskQuery);
 
             if (taskWithSubWorkflow != null && taskWithSubWorkflow.getSubWorkflowApproverIds() != null) {
                 try {
@@ -371,10 +383,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         instanceMapper.updateById(subInstance);
 
         // 2. 取消子流程所有待办任务
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
-               .eq(ApprovalTaskDO::getStatus, "PENDING");
-        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(wrapper);
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(subInstance.getId());
+        query.setStatus("PENDING");
+        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(query);
         for (ApprovalTaskDO t : pendingTasks) {
             t.setStatus("CANCELLED");
             t.setComment(comment);
@@ -500,11 +512,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      */
     private void cancelAllSubsequentTasks(Long instanceId, int currentStageOrder) {
         // 查询当前层之后所有阶段的待办任务
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-               .eq(ApprovalTaskDO::getStatus, "PENDING");
-
-        List<ApprovalTaskDO> allPendingTasks = taskMapper.selectList(wrapper);
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(instanceId);
+        query.setStatus("PENDING");
+        List<ApprovalTaskDO> allPendingTasks = taskMapper.selectList(query);
         for (ApprovalTaskDO t : allPendingTasks) {
             WorkflowStageDO stage = stageMapper.selectById(t.getStageId());
             if (stage != null && stage.getStageOrder() > currentStageOrder) {
@@ -531,10 +542,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         List<Long> taskIdsToCancel = new ArrayList<>();
 
         // 1. 获取当前层的所有任务
-        LambdaQueryWrapper<ApprovalTaskDO> currentTasksWrapper = new LambdaQueryWrapper<>();
-        currentTasksWrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-                           .eq(ApprovalTaskDO::getStageId, currentStageId);
-        List<ApprovalTaskDO> currentTasks = taskMapper.selectList(currentTasksWrapper);
+        ApprovalTaskQuery currentTasksQuery = new ApprovalTaskQuery();
+        currentTasksQuery.setInstanceId(instanceId);
+        currentTasksQuery.setStageId(currentStageId);
+        List<ApprovalTaskDO> currentTasks = taskMapper.selectList(currentTasksQuery);
         List<Long> currentTaskIds = currentTasks.stream()
             .map(ApprovalTaskDO::getId)
             .collect(Collectors.toList());
@@ -546,16 +557,17 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             // 查询主流程实例以获取workflow_id
             ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
             if (instance != null) {
-                LambdaQueryWrapper<WorkflowStageDO> prevStageWrapper = new LambdaQueryWrapper<>();
-                prevStageWrapper.eq(WorkflowStageDO::getWorkflowId, instance.getWorkflowId())
-                               .eq(WorkflowStageDO::getStageOrder, currentStage.getStageOrder() - 1);
-                WorkflowStageDO previousStage = stageMapper.selectOne(prevStageWrapper);
+                WorkflowStageQuery prevStageQuery = new WorkflowStageQuery();
+                prevStageQuery.setWorkflowId(instance.getWorkflowId());
+                prevStageQuery.setStageOrder(currentStage.getStageOrder() - 1);
+                List<WorkflowStageDO> prevStageList = stageMapper.selectList(prevStageQuery);
+                WorkflowStageDO previousStage = prevStageList.isEmpty() ? null : prevStageList.get(0);
 
                 if (previousStage != null) {
-                    LambdaQueryWrapper<ApprovalTaskDO> prevTasksWrapper = new LambdaQueryWrapper<>();
-                    prevTasksWrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-                                   .eq(ApprovalTaskDO::getStageId, previousStage.getId());
-                    List<ApprovalTaskDO> prevTasks = taskMapper.selectList(prevTasksWrapper);
+                    ApprovalTaskQuery prevTasksQuery = new ApprovalTaskQuery();
+                    prevTasksQuery.setInstanceId(instanceId);
+                    prevTasksQuery.setStageId(previousStage.getId());
+                    List<ApprovalTaskDO> prevTasks = taskMapper.selectList(prevTasksQuery);
                     List<Long> prevTaskIds = prevTasks.stream()
                         .map(ApprovalTaskDO::getId)
                         .collect(Collectors.toList());
@@ -574,19 +586,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
         // 3. 查询由这些任务触发的所有子流程实例（通过 parentTaskId 匹配）
         // 只有退回到第一层时，才取消 parent_task_id IS NULL 的子流程（发起时创建的）
-        LambdaQueryWrapper<ApprovalInstanceDO> subInstanceWrapper = new LambdaQueryWrapper<>();
-        subInstanceWrapper.eq(ApprovalInstanceDO::getParentInstanceId, instanceId)
-                       .in(ApprovalInstanceDO::getParentTaskId, taskIdsToCancel);
-
-        // 只有退回到第一层时，才同时取消 parent_task_id IS NULL 的子流程
-        if (currentStage != null && currentStage.getStageOrder() == 2) {
-            subInstanceWrapper.or(wrapper -> wrapper
-                .eq(ApprovalInstanceDO::getParentInstanceId, instanceId)
-                .isNull(ApprovalInstanceDO::getParentTaskId)
-            );
-        }
-
-        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(subInstanceWrapper);
+        boolean includeNullParentTask = (currentStage != null && currentStage.getStageOrder() == 2);
+        List<ApprovalInstanceDO> subInstances = instanceMapper.selectSubInstancesToCancel(
+            instanceId, taskIdsToCancel, includeNullParentTask);
 
         logger.info("找到需要取消的子流程实例数量: {}", subInstances.size());
 
@@ -597,9 +599,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             instanceMapper.updateById(subInstance);
 
             // 取消子流程的所有任务（所有状态）
-            LambdaQueryWrapper<ApprovalTaskDO> allSubTaskWrapper = new LambdaQueryWrapper<>();
-            allSubTaskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId());
-            List<ApprovalTaskDO> allSubTasks = taskMapper.selectList(allSubTaskWrapper);
+            ApprovalTaskQuery allSubTaskQuery = new ApprovalTaskQuery();
+            allSubTaskQuery.setInstanceId(subInstance.getId());
+            List<ApprovalTaskDO> allSubTasks = taskMapper.selectList(allSubTaskQuery);
             int cancelledCount = 0;
             for (ApprovalTaskDO t : allSubTasks) {
                 if ("PENDING".equals(t.getStatus()) || "APPROVED".equals(t.getStatus())) {
@@ -621,21 +623,14 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      * 重置指定阶段的进度记录为 PENDING（清空审批人信息）
      */
     private void resetProgressRecordForStage(Long instanceId, Long stageId) {
-        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-               .eq(ApprovalProgressDO::getStageId, stageId);
-        ApprovalProgressDO progress = progressMapper.selectOne(wrapper);
+        ApprovalProgressQuery query = new ApprovalProgressQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(query);
 
         if (progress != null) {
-            // 使用 LambdaUpdateWrapper 强制更新字段为 null
-            // updateById 默认会忽略 null 值，无法清空字段
-            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalProgressDO> updateWrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-            updateWrapper.eq(ApprovalProgressDO::getId, progress.getId())
-                    .set(ApprovalProgressDO::getStatus, "PENDING")
-                    .set(ApprovalProgressDO::getApprovers, null)  // 清空审批人信息
-                    .set(ApprovalProgressDO::getApproveTime, null);
-            progressMapper.update(null, updateWrapper);
+            // 使用 XML Mapper 显式更新，将字段设置为 null
+            progressMapper.resetForResubmit(progress.getId());
             logger.info("已重置进度记录: instanceId={}, stageId={}", instanceId, stageId);
         }
     }
@@ -711,10 +706,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             throw new RuntimeException("审批实例不存在: " + instanceId);
         }
 
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-               .eq(ApprovalTaskDO::getStageId, currentStageId);
-        List<ApprovalTaskDO> tasks = taskMapper.selectList(wrapper);
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(currentStageId);
+        List<ApprovalTaskDO> tasks = taskMapper.selectList(query);
         logger.info("当前阶段任务数: instanceId={}, stageId={}, taskCount={}", instanceId, currentStageId, tasks.size());
 
         boolean stageCompleted = false;
@@ -811,12 +806,18 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         }
 
         // 查找下一阶段
-        LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowStageDO::getWorkflowId, instance.getWorkflowId())
-               .gt(WorkflowStageDO::getStageOrder, currentStage.getStageOrder())
-               .orderByAsc(WorkflowStageDO::getStageOrder)
-               .last("LIMIT 1");
-        WorkflowStageDO nextStage = stageMapper.selectOne(wrapper);
+        WorkflowStageQuery nextStageQuery = new WorkflowStageQuery();
+        nextStageQuery.setWorkflowId(instance.getWorkflowId());
+        nextStageQuery.setOrderByField("stage_order");
+        nextStageQuery.setOrderByDirection("ASC");
+        List<WorkflowStageDO> allNextStages = stageMapper.selectList(nextStageQuery);
+        WorkflowStageDO nextStage = null;
+        for (WorkflowStageDO stage : allNextStages) {
+            if (stage.getStageOrder() > currentStage.getStageOrder()) {
+                nextStage = stage;
+                break;
+            }
+        }
 
         logger.info("查找下一阶段: currentStageOrder={}, nextStage={}",
             currentStage.getStageOrder(), nextStage != null ? nextStage.getName() : "null");
@@ -918,9 +919,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      */
     private boolean areAllSubWorkflowsComplete(Long parentInstanceId) {
         // 查找所有子流程实例
-        LambdaQueryWrapper<ApprovalInstanceDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalInstanceDO::getParentInstanceId, parentInstanceId);
-        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(wrapper);
+        ApprovalInstanceQuery query = new ApprovalInstanceQuery();
+        query.setParentInstanceId(parentInstanceId);
+        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(query);
 
         // 如果没有子流程，返回true（没有子流程需要等待）
         if (subInstances.isEmpty()) {
@@ -951,10 +952,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 检查所有有效的子流程是否都已完成
         for (ApprovalInstanceDO subInstance : activeSubInstances) {
             // 子流程可能已经流转到其他层，需要检查其内部是否有PENDING任务
-            LambdaQueryWrapper<ApprovalTaskDO> taskWrapper = new LambdaQueryWrapper<>();
-            taskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
-                       .eq(ApprovalTaskDO::getStatus, "PENDING");
-            long pendingTaskCount = taskMapper.selectCount(taskWrapper);
+            ApprovalTaskQuery taskQuery = new ApprovalTaskQuery();
+            taskQuery.setInstanceId(subInstance.getId());
+            taskQuery.setStatus("PENDING");
+            long pendingTaskCount = taskMapper.selectCount(taskQuery);
 
             if (pendingTaskCount > 0) {
                 logger.info("子流程还有待办任务未完成: subInstanceId={}, pendingTaskCount={}",
@@ -977,10 +978,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      */
     public void startSubProcessesForStage(Long parentInstanceId, Long parentStageId, Long parentTaskId, Map<Long, List<Long>> subWorkflowApproverIds) {
         // 获取该阶段的所有审批人配置，找出所有子流程
-        LambdaQueryWrapper<StageApproverDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StageApproverDO::getStageId, parentStageId)
-               .isNotNull(StageApproverDO::getSubWorkflowId);
-        List<StageApproverDO> subWorkflowApprovers = approverMapper.selectList(wrapper);
+        StageApproverQuery query = new StageApproverQuery();
+        query.setStageId(parentStageId);
+        query.setSubWorkflowIdNotNull(true);
+        List<StageApproverDO> subWorkflowApprovers = approverMapper.selectList(query);
 
         if (subWorkflowApprovers.isEmpty()) {
             return; // 没有子流程需要启动
@@ -1053,9 +1054,9 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      * @param applicantId 申请人ID（用于二级部门校验）
      */
     private void createTasksForStage(Long instanceId, Long stageId, Long applicantId) {
-        LambdaQueryWrapper<StageApproverDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StageApproverDO::getStageId, stageId);
-        List<StageApproverDO> approvers = approverMapper.selectList(wrapper);
+        StageApproverQuery query = new StageApproverQuery();
+        query.setStageId(stageId);
+        List<StageApproverDO> approvers = approverMapper.selectList(query);
 
         // 收集所有实际审批人ID，避免重复
         Set<Long> actualApproverIds = new HashSet<>();
@@ -1087,10 +1088,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      */
     private void createProgressRecordForSubWorkflow(Long instanceId, WorkflowStageDO stage, Long parentInstanceId, Long parentTaskId, String status) {
         // 检查是否已存在该实例该阶段的进度记录
-        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-               .eq(ApprovalProgressDO::getStageId, stage.getId());
-        ApprovalProgressDO existing = progressMapper.selectOne(wrapper);
+        ApprovalProgressQuery query = new ApprovalProgressQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stage.getId());
+        ApprovalProgressDO existing = progressMapper.selectOne(query);
 
         if (existing != null) {
             // 已存在记录，更新状态
@@ -1126,10 +1127,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
     private void createProgressRecord(Long instanceId, WorkflowStageDO stage, Long parentInstanceId, Long parentStageId, String status) {
         // 检查是否已存在该实例该阶段的进度记录
-        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-               .eq(ApprovalProgressDO::getStageId, stage.getId());
-        ApprovalProgressDO existing = progressMapper.selectOne(wrapper);
+        ApprovalProgressQuery query = new ApprovalProgressQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stage.getId());
+        ApprovalProgressDO existing = progressMapper.selectOne(query);
 
         if (existing != null) {
             // 已存在记录，更新状态
@@ -1233,11 +1234,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                     deptIds.add(applicantSecondaryDeptId);
                     deptIds.addAll(getAllSubDeptIds(applicantSecondaryDeptId));
 
-                    LambdaQueryWrapper<UserDO> wrapper = new LambdaQueryWrapper<>();
-                    wrapper.eq(UserDO::getRoleId, id)
-                           .in(UserDO::getDeptId, deptIds)
-                           .eq(UserDO::getStatus, 1);
-                    List<UserDO> users = userMapper.selectList(wrapper);
+                    UserQuery userQuery = new UserQuery();
+                    userQuery.setRoleId(id);
+                    userQuery.setDeptIds(deptIds);
+                    userQuery.setStatus(1);
+                    List<UserDO> users = userMapper.selectList(userQuery);
                     for (UserDO user : users) {
                         userIds.add(user.getId());
                     }
@@ -1247,9 +1248,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 userIds = userMapper.selectUserIdsByRoleId(id);
             }
         } else if ("DEPT".equals(type)) {
-            LambdaQueryWrapper<UserDO> w = new LambdaQueryWrapper<>();
-            w.eq(UserDO::getDeptId, id).eq(UserDO::getStatus, 1);
-            List<UserDO> users = userMapper.selectList(w);
+            UserQuery userQuery = new UserQuery();
+            userQuery.setDeptId(id);
+            userQuery.setStatus(1);
+            List<UserDO> users = userMapper.selectList(userQuery);
             for (UserDO u : users) {
                 userIds.add(u.getId());
             }
@@ -1300,11 +1302,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     private void cancelPendingTasks(Long instanceId, Long stageId) {
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-               .eq(ApprovalTaskDO::getStageId, stageId)
-               .eq(ApprovalTaskDO::getStatus, "PENDING");
-        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(wrapper);
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stageId);
+        query.setStatus("PENDING");
+        List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(query);
         for (ApprovalTaskDO task : pendingTasks) {
             task.setStatus("CANCELLED");
             taskMapper.updateById(task);
@@ -1318,11 +1320,11 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      * @param stageId 被退回的层ID
      */
     private void cancelApprovedTasksInStage(Long instanceId, Long stageId) {
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-               .eq(ApprovalTaskDO::getStageId, stageId)
-               .eq(ApprovalTaskDO::getStatus, "APPROVED");
-        List<ApprovalTaskDO> approvedTasks = taskMapper.selectList(wrapper);
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stageId);
+        query.setStatus("APPROVED");
+        List<ApprovalTaskDO> approvedTasks = taskMapper.selectList(query);
         for (ApprovalTaskDO task : approvedTasks) {
             task.setStatus("CANCELLED");
             taskMapper.updateById(task);
@@ -1343,40 +1345,26 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     private void resetPreviousStageTasks(Long instanceId, Long previousStageId) {
         // 查找上层的所有任务（APPROVED、CANCELLED 和 PENDING）
         // 需要重置所有任务，包括 PENDING，以清除已保存的下一层审批人选择
-        LambdaQueryWrapper<ApprovalTaskDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalTaskDO::getInstanceId, instanceId)
-               .eq(ApprovalTaskDO::getStageId, previousStageId)
-               .in(ApprovalTaskDO::getStatus, Arrays.asList("APPROVED", "CANCELLED", "PENDING"));
-        List<ApprovalTaskDO> tasksToReset = taskMapper.selectList(wrapper);
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(previousStageId);
+        query.setStatusIn(Arrays.asList("APPROVED", "CANCELLED", "PENDING"));
+        List<ApprovalTaskDO> tasksToReset = taskMapper.selectList(query);
 
         for (ApprovalTaskDO task : tasksToReset) {
-            // 使用 UpdateWrapper 显式设置字段为 null（MyBatis Plus 默认忽略 null 值）
-            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalTaskDO> updateWrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-            updateWrapper.eq(ApprovalTaskDO::getId, task.getId())
-                    .set(ApprovalTaskDO::getStatus, "PENDING")
-                    .set(ApprovalTaskDO::getIsFirstApprover, 0)
-                    .set(ApprovalTaskDO::getNextStageApproverIds, null)  // 强制清空下一层审批人选择
-                    // 保留 subWorkflowApproverIds，以便重新审批通过后能重新创建子流程
-                    .set(ApprovalTaskDO::getComment, null)
-                    .set(ApprovalTaskDO::getApproveTime, null);
-            taskMapper.update(null, updateWrapper);
+            // 使用 XML Mapper 显式更新，将字段设置为 null
+            taskMapper.resetForResubmit(task.getId());
         }
 
         // 同时重置进度记录中的审批人状态，确保与任务状态一致
-        LambdaQueryWrapper<ApprovalProgressDO> progressWrapper = new LambdaQueryWrapper<>();
-        progressWrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-                      .eq(ApprovalProgressDO::getStageId, previousStageId);
-        ApprovalProgressDO progress = progressMapper.selectOne(progressWrapper);
+        ApprovalProgressQuery progressQuery = new ApprovalProgressQuery();
+        progressQuery.setInstanceId(instanceId);
+        progressQuery.setStageId(previousStageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(progressQuery);
 
         if (progress != null) {
-            com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalProgressDO> progressUpdateWrapper =
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
-            progressUpdateWrapper.eq(ApprovalProgressDO::getId, progress.getId())
-                    .set(ApprovalProgressDO::getStatus, "PENDING")
-                    .set(ApprovalProgressDO::getApprovers, null)  // 清空审批人信息
-                    .set(ApprovalProgressDO::getApproveTime, null);
-            progressMapper.update(null, progressUpdateWrapper);
+            // 使用 XML Mapper 显式更新，将字段设置为 null
+            progressMapper.resetForResubmit(progress.getId());
         }
 
         logger.info("已重置上一层任务和进度状态: instanceId={}, previousStageId={}, count={}",
@@ -1389,10 +1377,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      */
     private void cancelAllPendingTasksForInstance(Long rootInstanceId) {
         // 查询主流程实例的所有待办任务
-        LambdaQueryWrapper<ApprovalTaskDO> mainWrapper = new LambdaQueryWrapper<>();
-        mainWrapper.eq(ApprovalTaskDO::getInstanceId, rootInstanceId)
-                   .eq(ApprovalTaskDO::getStatus, "PENDING");
-        List<ApprovalTaskDO> mainPendingTasks = taskMapper.selectList(mainWrapper);
+        ApprovalTaskQuery mainQuery = new ApprovalTaskQuery();
+        mainQuery.setInstanceId(rootInstanceId);
+        mainQuery.setStatus("PENDING");
+        List<ApprovalTaskDO> mainPendingTasks = taskMapper.selectList(mainQuery);
         for (ApprovalTaskDO task : mainPendingTasks) {
             task.setStatus("CANCELLED");
             taskMapper.updateById(task);
@@ -1400,15 +1388,15 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         logger.info("已取消主流程待办任务: rootInstanceId={}, count={}", rootInstanceId, mainPendingTasks.size());
 
         // 查询所有子流程实例的待办任务
-        LambdaQueryWrapper<ApprovalInstanceDO> subInstanceWrapper = new LambdaQueryWrapper<>();
-        subInstanceWrapper.eq(ApprovalInstanceDO::getRootInstanceId, rootInstanceId);
-        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(subInstanceWrapper);
+        ApprovalInstanceQuery subInstanceQuery = new ApprovalInstanceQuery();
+        subInstanceQuery.setRootInstanceId(rootInstanceId);
+        List<ApprovalInstanceDO> subInstances = instanceMapper.selectList(subInstanceQuery);
 
         for (ApprovalInstanceDO subInstance : subInstances) {
-            LambdaQueryWrapper<ApprovalTaskDO> subTaskWrapper = new LambdaQueryWrapper<>();
-            subTaskWrapper.eq(ApprovalTaskDO::getInstanceId, subInstance.getId())
-                         .eq(ApprovalTaskDO::getStatus, "PENDING");
-            List<ApprovalTaskDO> subPendingTasks = taskMapper.selectList(subTaskWrapper);
+            ApprovalTaskQuery subTaskQuery = new ApprovalTaskQuery();
+            subTaskQuery.setInstanceId(subInstance.getId());
+            subTaskQuery.setStatus("PENDING");
+            List<ApprovalTaskDO> subPendingTasks = taskMapper.selectList(subTaskQuery);
             for (ApprovalTaskDO task : subPendingTasks) {
                 task.setStatus("CANCELLED");
                 taskMapper.updateById(task);
@@ -1418,21 +1406,22 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     private WorkflowStageDO getFirstStage(Long workflowId) {
-        LambdaQueryWrapper<WorkflowStageDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(WorkflowStageDO::getWorkflowId, workflowId)
-               .orderByAsc(WorkflowStageDO::getStageOrder)
-               .last("LIMIT 1");
-        return stageMapper.selectOne(wrapper);
+        WorkflowStageQuery query = new WorkflowStageQuery();
+        query.setWorkflowId(workflowId);
+        query.setOrderByField("stage_order");
+        query.setOrderByDirection("ASC");
+        List<WorkflowStageDO> stages = stageMapper.selectList(query);
+        return stages.isEmpty() ? null : stages.get(0);
     }
 
     /**
      * 更新进度记录状态（只更新整体状态，不更新单个审批人状态）
      */
     private void updateProgressRecord(Long instanceId, Long stageId, String status, Long approverId, String comment) {
-        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-               .eq(ApprovalProgressDO::getStageId, stageId);
-        ApprovalProgressDO progress = progressMapper.selectOne(wrapper);
+        ApprovalProgressQuery query = new ApprovalProgressQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(query);
 
         if (progress != null) {
             progress.setStatus(status);
@@ -1448,10 +1437,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      * 更新进度记录中单个审批人的状态
      */
     private void updateApproverStatusInProgress(Long instanceId, Long stageId, Long approverId, String status, String comment) {
-        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-               .eq(ApprovalProgressDO::getStageId, stageId);
-        ApprovalProgressDO progress = progressMapper.selectOne(wrapper);
+        ApprovalProgressQuery query = new ApprovalProgressQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(query);
 
         if (progress == null) {
             logger.warn("进度记录不存在，无法更新审批人状态: instanceId={}, stageId={}", instanceId, stageId);
@@ -1504,10 +1493,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      * 更新进度记录，添加审批人信息
      */
     private void updateProgressRecordWithApprovers(Long instanceId, Long stageId, List<Long> approverIds) {
-        LambdaQueryWrapper<ApprovalProgressDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ApprovalProgressDO::getInstanceId, instanceId)
-               .eq(ApprovalProgressDO::getStageId, stageId);
-        ApprovalProgressDO progress = progressMapper.selectOne(wrapper);
+        ApprovalProgressQuery query = new ApprovalProgressQuery();
+        query.setInstanceId(instanceId);
+        query.setStageId(stageId);
+        ApprovalProgressDO progress = progressMapper.selectOne(query);
 
         if (progress != null) {
             try {

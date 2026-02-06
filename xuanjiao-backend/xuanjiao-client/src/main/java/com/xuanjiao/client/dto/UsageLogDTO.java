@@ -8,7 +8,7 @@ public class UsageLogDTO {
     private Long id;
     private Long assetId;
     private Long userId;
-    private String userName;
+    private String username;
     private String action;
     private String ip;
     private String deptName;

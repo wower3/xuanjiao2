@@ -14,8 +14,19 @@
               :key="subMenu.id"
               :index="subMenu.path"
             >
-              <el-icon v-if="subMenu.icon"><component :is="subMenu.icon" /></el-icon>
-              <span>{{ subMenu.name }}</span>
+              <template #title>
+                <span class="menu-item-content">
+                  <el-badge
+                    v-if="shouldShowBadge(subMenu) && getBadgeCount(subMenu) > 0"
+                    :value="getBadgeCount(subMenu)"
+                    :max="99"
+                    class="menu-badge"
+                  >
+                    <span class="menu-text">{{ subMenu.name }}</span>
+                  </el-badge>
+                  <span v-else class="menu-text">{{ subMenu.name }}</span>
+                </span>
+              </template>
             </el-menu-item>
           </el-sub-menu>
           <el-menu-item v-else :index="menu.path">
@@ -45,10 +56,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getCurrentMenus } from '@/api/menu'
+import { getMyTasksCount } from '@/api/task'
+import { getUnreadCount } from '@/api/notification'
 import {
   Picture, Setting, Document, List,
   OfficeBuilding, User, Key, Menu as MenuIcon
@@ -58,6 +71,8 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const menuList = ref<any[]>([])
+const pendingCount = ref<number>(0)
+const notificationUnreadCount = ref<number>(0)
 
 // 图标映射
 const iconMap: Record<string, any> = {
@@ -68,6 +83,8 @@ const iconMap: Record<string, any> = {
   'OfficeBuilding': OfficeBuilding,
   'User': User,
   'Key': Key,
+  'Share': Picture,
+  'Bell': Setting,
   'Menu': MenuIcon
 }
 
@@ -99,6 +116,48 @@ async function loadMenus() {
   }
 }
 
+async function loadPendingCount() {
+  try {
+    const res = await getMyTasksCount()
+    pendingCount.value = res.data || 0
+  } catch (e) {
+    console.error('加载待办数量失败', e)
+  }
+}
+
+async function loadNotificationUnreadCount() {
+  try {
+    const res = await getUnreadCount()
+    notificationUnreadCount.value = res.data?.count || 0
+  } catch (e) {
+    console.error('加载知会未读数量失败', e)
+  }
+}
+
+function shouldShowBadge(subMenu: any): boolean {
+  // 待办事项：路径 /task/pending-approval 或菜单ID 12
+  if (subMenu.path === '/task/pending-approval' || subMenu.id === 12) {
+    return true
+  }
+  // 知会事项：路径 /task/notifications 或菜单ID 33
+  if (subMenu.path === '/task/notifications' || subMenu.id === 33) {
+    return true
+  }
+  return false
+}
+
+function getBadgeCount(subMenu: any): number {
+  // 待办事项返回pendingCount
+  if (subMenu.path === '/task/pending-approval' || subMenu.id === 12) {
+    return pendingCount.value
+  }
+  // 知会事项返回notificationUnreadCount
+  if (subMenu.path === '/task/notifications' || subMenu.id === 33) {
+    return notificationUnreadCount.value
+  }
+  return 0
+}
+
 function handleCommand(cmd: string) {
   if (cmd === 'logout') {
     userStore.logout()
@@ -108,6 +167,14 @@ function handleCommand(cmd: string) {
 
 onMounted(() => {
   loadMenus()
+  loadPendingCount()
+  loadNotificationUnreadCount()
+})
+
+// 监听路由变化，切换页面时刷新数量
+watch(() => route.path, () => {
+  loadPendingCount()
+  loadNotificationUnreadCount()
 })
 </script>
 
@@ -116,4 +183,24 @@ onMounted(() => {
 .logo { height: 60px; line-height: 60px; text-align: center; font-size: 18px; font-weight: bold; color: #409eff; }
 .el-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
 .user-info { cursor: pointer; }
+
+/* 菜单项内容容器 */
+.menu-item-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.menu-text {
+  display: inline-block;
+}
+
+.menu-badge {
+  position: relative;
+}
+
+.menu-badge :deep(.el-badge__content) {
+  background-color: #f56c6c;
+  border-color: #f56c6c;
+}
 </style>

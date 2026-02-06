@@ -75,6 +75,16 @@ const router = createRouter({
           component: () => import('@/views/task/material-approval.vue')
         },
         {
+          path: 'task/flow-items',
+          name: 'FlowItems',
+          component: () => import('@/views/task/flow-items.vue')
+        },
+        {
+          path: 'task/notifications',
+          name: 'Notifications',
+          component: () => import('@/views/task/notifications.vue')
+        },
+        {
           path: 'log',
           name: 'Log',
           component: () => import('@/views/log/index.vue')

@@ -9,7 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * 操作日志Service实现
+ * 操作日志服务实现类
+ * <p>实现OperationLogService接口，封装操作日志记录逻辑</p>
+ * <p>核心功能：记录用户操作日志（登录、增删改等）</p>
+ *
+ * @author system
+ * @version 1.0
+ * @see com.xuanjiao.app.log.OperationLogService
  */
 @Service
 public class OperationLogServiceImpl implements OperationLogService {

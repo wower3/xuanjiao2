@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper">
+
+    <resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="deletion_application_id" property="deletionApplicationId" jdbcType="BIGINT"/>
+        <result column="asset_id" property="assetId" jdbcType="BIGINT"/>
+        <result column="asset_name" property="assetName" jdbcType="VARCHAR"/>
+        <result column="asset_type" property="assetType" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="AssetDetailResultMap" type="com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO" extends="BaseResultMap">
+        <result column="asset_status" property="assetStatus" jdbcType="VARCHAR"/>
+        <result column="file_path" property="filePath" jdbcType="VARCHAR"/>
+        <result column="thumbnail_path" property="thumbnailPath" jdbcType="VARCHAR"/>
+        <result column="file_size" property="fileSize" jdbcType="BIGINT"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="publish_channel" property="publishChannel" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, deletion_application_id, asset_id, asset_name, asset_type
+    </sql>
+
+    <sql id="Asset_Detail_Column_List">
+        ada.id, ada.deletion_application_id, ada.asset_id, ada.asset_name, ada.asset_type,
+        a.status as asset_status, a.file_path, a.thumbnail_path, a.file_size, a.description, a.publish_channel
+    </sql>
+
+    <!-- ==================== 基础CRUD方法 ==================== -->
+
+    <select id="selectById" resultMap="BaseResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset_deletion_asset
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap" parameterType="com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset_deletion_asset
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="deletionApplicationId != null">
+                AND deletion_application_id = #{deletionApplicationId}
+            </if>
+            <if test="assetId != null">
+                AND asset_id = #{assetId}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectCount" resultType="java.lang.Long" parameterType="com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery">
+        SELECT COUNT(*)
+        FROM asset_deletion_asset
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="deletionApplicationId != null">
+                AND deletion_application_id = #{deletionApplicationId}
+            </if>
+            <if test="assetId != null">
+                AND asset_id = #{assetId}
+            </if>
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO asset_deletion_asset (deletion_application_id, asset_id, asset_name, asset_type)
+        VALUES (#{deletionApplicationId}, #{assetId}, #{assetName}, #{assetType})
+    </insert>
+
+    <update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO">
+        UPDATE asset_deletion_asset
+        <set>
+            <if test="assetId != null">
+                asset_id = #{assetId},
+            </if>
+            <if test="assetName != null and assetName != ''">
+                asset_name = #{assetName},
+            </if>
+            <if test="assetType != null and assetType != ''">
+                asset_type = #{assetType},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM asset_deletion_asset
+        WHERE id = #{id}
+    </delete>
+
+    <delete id="delete" parameterType="com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery">
+        DELETE FROM asset_deletion_asset
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="deletionApplicationId != null">
+                AND deletion_application_id = #{deletionApplicationId}
+            </if>
+            <if test="assetId != null">
+                AND asset_id = #{assetId}
+            </if>
+        </where>
+    </delete>
+
+    <!-- ==================== 自定义查询方法 ==================== -->
+
+    <select id="findByDeletionApplicationIdWithAsset" resultMap="AssetDetailResultMap" parameterType="java.lang.Long">
+        SELECT <include refid="Asset_Detail_Column_List"/>
+        FROM asset_deletion_asset ada
+        LEFT JOIN asset a ON a.id = ada.asset_id
+        WHERE ada.deletion_application_id = #{deletionApplicationId}
+    </select>
+
+</mapper>
