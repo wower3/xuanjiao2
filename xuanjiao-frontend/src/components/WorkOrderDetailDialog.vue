@@ -1,13 +1,4 @@
-<!--
-/**
- * 工单详情对话框组件
- * <p>展示审批工单的详细信息，包括申请内容、素材列表</p>
- * <p>分离展示主流程和子流程的审批进度</p>
- * <p>支持查看知会记录标签页</p>
- *
- * @author system
- * @version 1.0
- */
+<!-- 工单详情对话框组件 - 展示审批工单的详细信息 -->
 <template>
   <el-dialog v-model="visible" title="工单详情" width="1000px" @close="handleClose">
     <el-tabs v-model="activeTab" type="border-card">
