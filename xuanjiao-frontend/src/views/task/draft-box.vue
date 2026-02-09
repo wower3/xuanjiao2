@@ -49,7 +49,7 @@
         </el-table-column>
         <el-table-column label="维护人/申请人" width="120">
           <template #default="{ row }">
-            {{ row.data.maintainerName || row.data.userName || row.data.applicantName || '-' }}
+            {{ row.data.maintainerName || row.data.username || row.data.applicantName || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="归属部门" width="120">

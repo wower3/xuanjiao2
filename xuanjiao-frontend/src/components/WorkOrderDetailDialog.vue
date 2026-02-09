@@ -235,6 +235,21 @@
               </template>
             </el-table-column>
             <el-table-column prop="title" label="通知标题" min-width="200" show-overflow-tooltip />
+            <el-table-column label="附加消息" min-width="200">
+              <template #default="{ row }">
+                <!-- 只有当前用户的知会记录才显示附加消息 -->
+                <template v-if="row.recipientId === props.currentUserId">
+                  <div v-if="row.message" style="color: #606266;" :title="row.message">
+                    {{ row.message }}
+                  </div>
+                  <div v-else style="color: #C0C4CC; font-style: italic;">无附加消息</div>
+                </template>
+                <!-- 其他人的知会记录不显示附加消息 -->
+                <template v-else>
+                  <div style="color: #C0C4CC; font-style: italic;">***</div>
+                </template>
+              </template>
+            </el-table-column>
             <el-table-column label="阅读状态" width="100" align="center">
               <template #default="{ row }">
                 <el-tag :type="row.isRead === 1 ? 'success' : 'info'" size="small">
@@ -266,6 +281,7 @@ import { getNotificationRecords } from '@/api/notification'
 interface Props {
   modelValue: boolean
   instanceId: number | null
+  currentUserId?: number | null  // 当前用户ID，用于判断是否显示附加消息
 }
 
 interface Emits {

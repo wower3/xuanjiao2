@@ -669,6 +669,7 @@ async function handleSaveConfig() {
 }
 
 async function handleSaveDraft() {
+  // 保存草稿时只验证标题，不验证素材配置信息
   try {
     await formRef.value?.validate()
   } catch {
@@ -680,11 +681,8 @@ async function handleSaveDraft() {
     return
   }
 
-  const unconfigured = selectedAssets.value.filter(a => !isAssetConfigured(a))
-  if (unconfigured.length > 0) {
-    ElMessage.warning(`还有 ${unconfigured.length} 个素材未配置使用信息`)
-    return
-  }
+  // 注意：保存草稿时不检查素材配置信息，允许用户保存未完成的草稿
+  // 只有在提交审批时才检查所有素材是否都已配置
 
   saving.value = true
   try {
@@ -707,7 +705,14 @@ async function handleSaveDraft() {
   }
 }
 
-function handleSubmitDialog() {
+async function handleSubmitDialog() {
+  // 先验证表单
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+
   if (selectedAssets.value.length === 0) {
     ElMessage.warning('请至少选择一个素材')
     return
@@ -720,18 +725,28 @@ function handleSubmitDialog() {
     return
   }
 
+  // 先保存草稿（如果有未保存的更改）
+  if (hasUnsavedChanges.value) {
+    await handleSaveDraft()
+  }
+
+  // 如果是新建且没有保存成功，提示用户
+  if (!currentId.value) {
+    ElMessage.warning('请先保存草稿后再提交审批')
+    return
+  }
+
   // 先尝试加载绑定的流程，然后加载第一层审批人
-  loadWorkflows().then(() => {
-    showSubmitDialog.value = true
-    approverKeyword.value = ''
-    firstStageApproverConfigs.value = []
-    selectedFirstStageApprovers.value = {}
-    firstStageApproveType.value = ''
-    firstStageApproverCount.value = 0
-    subWorkflows.value = []
-    hasLoadedInitialApprovers.value = false
-    loadFirstStageApprovers()
-  })
+  await loadWorkflows()
+  showSubmitDialog.value = true
+  approverKeyword.value = ''
+  firstStageApproverConfigs.value = []
+  selectedFirstStageApprovers.value = {}
+  firstStageApproveType.value = ''
+  firstStageApproverCount.value = 0
+  subWorkflows.value = []
+  hasLoadedInitialApprovers.value = false
+  await loadFirstStageApprovers()
 }
 
 async function handleSubmit() {
@@ -778,11 +793,7 @@ async function handleSubmit() {
     }
   }
 
-  // 先保存草稿
-  if (hasUnsavedChanges.value) {
-    await handleSaveDraft()
-  }
-
+  // 确保有草稿ID（已在 handleSubmitDialog 中保存过）
   if (!currentId.value) {
     ElMessage.error('请先保存草稿')
     return

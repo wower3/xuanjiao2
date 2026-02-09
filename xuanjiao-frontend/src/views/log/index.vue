@@ -16,7 +16,7 @@
       </el-form>
       <el-table :data="list" v-loading="loading">
         <el-table-column prop="assetName" label="素材名称" />
-        <el-table-column prop="userName" label="操作人" />
+        <el-table-column prop="username" label="操作人" />
         <el-table-column prop="action" label="操作类型" />
         <el-table-column prop="ip" label="IP地址" />
         <el-table-column prop="createTime" label="操作时间" />

@@ -7,9 +7,11 @@ import com.xuanjiao.app.usage.UsageLogService;
 import com.xuanjiao.client.dto.*;
 import com.xuanjiao.client.dto.asset.*;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
+import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import io.swagger.annotations.Api;
@@ -48,6 +50,9 @@ public class AssetController {
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private DeptMapper deptMapper;
 
     @Resource
     private UsageApplyAssetMapper usageApplyAssetMapper;
@@ -238,9 +243,11 @@ public class AssetController {
     }
 
     private String getDeptName(Long deptId) {
-        // TODO: 实现获取部门名称的逻辑
-        // 这里需要注入 DeptMapper 并查询部门信息
-        return null;
+        if (deptId == null) {
+            return null;
+        }
+        DeptDO dept = deptMapper.selectById(deptId);
+        return dept != null ? dept.getName() : null;
     }
 
     private MediaType getMediaType(String type) {

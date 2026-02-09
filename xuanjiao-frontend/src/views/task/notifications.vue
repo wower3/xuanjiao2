@@ -107,7 +107,7 @@
     </el-card>
 
     <!-- 工单详情对话框 -->
-    <WorkOrderDetailDialog v-model="showDetailDialog" :instance-id="currentInstanceId">
+    <WorkOrderDetailDialog v-model="showDetailDialog" :instance-id="currentInstanceId" :current-user-id="userStore.userInfo?.id">
       <template #footer>
         <el-button @click="showDetailDialog = false">关闭</el-button>
         <el-button
@@ -192,9 +192,11 @@ import {
   notifyUsers
 } from '@/api/notification'
 import { getInstanceDetail } from '@/api/task'
+import { useUserStore } from '@/stores/user'
 import UserSelector from '@/components/UserSelector.vue'
 import WorkOrderDetailDialog from '@/components/WorkOrderDetailDialog.vue'
 
+const userStore = useUserStore()
 const loading = ref(false)
 const list = ref<any[]>([])
 const total = ref(0)
@@ -282,6 +284,18 @@ function handleRowClick(row: any) {
 async function handleViewDetail(row: any) {
   currentNotification.value = row
   currentInstanceId.value = row.instanceId
+
+  // 如果是未读状态，标记为已读
+  if (row.isRead !== 1) {
+    try {
+      await markAsRead(row.id)
+      row.isRead = 1
+      await loadUnreadCount()
+    } catch (e: any) {
+      console.error('标记已读失败', e)
+    }
+  }
+
   showDetailDialog.value = true
 }
 

@@ -153,7 +153,7 @@
             <span>使用记录 ({{ usageLogsTotal }})</span>
           </div>
           <el-table :data="usageLogs" size="small" v-loading="loadingLogs">
-            <el-table-column prop="userName" label="使用人" width="100" />
+            <el-table-column prop="username" label="使用人" width="100" />
             <el-table-column prop="deptName" label="部门" width="120" />
             <el-table-column prop="usageDescription" label="使用说明" min-width="150" show-overflow-tooltip />
             <el-table-column prop="usagePublishChannel" label="发布渠道" width="120" show-overflow-tooltip />
@@ -194,7 +194,7 @@
         <div class="usage-details-section">
           <div class="section-header">使用记录明细</div>
           <el-table :data="usageDetailsList" size="small" v-loading="loadingUsageDetails" max-height="400">
-            <el-table-column prop="userName" label="使用人" width="100" />
+            <el-table-column prop="username" label="使用人" width="100" />
             <el-table-column prop="deptName" label="所在机构" width="120" show-overflow-tooltip />
             <el-table-column prop="usageDescription" label="申请说明" min-width="150" show-overflow-tooltip />
             <el-table-column prop="usagePublishChannel" label="使用渠道" width="120" show-overflow-tooltip />

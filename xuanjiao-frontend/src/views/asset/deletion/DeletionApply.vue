@@ -505,7 +505,8 @@ async function handleSubmit() {
 
     ElMessage.success('提交成功')
     showSubmitDialog.value = false
-    submitted.value = true
+    // 提交成功后跳转到素材列表页面
+    router.push('/asset')
   } catch (e: any) {
     console.error('提交失败', e)
     const errorMsg = e.response?.data?.message || e.message || '提交失败'

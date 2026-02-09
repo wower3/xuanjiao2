@@ -735,8 +735,7 @@ async function saveDraftAndNavigate(to: any) {
 }
 
 async function handleSaveDraft() {
-  await formRef.value?.validate()
-
+  // 只验证保证声明，不验证标题（标题只在提交审批时验证）
   if (!form.guaranteeDeclaration) {
     ElMessage.warning('请勾选保证声明')
     return
@@ -775,6 +774,12 @@ async function handleSaveDraft() {
 }
 
 function handleSubmitDialog() {
+  // 提交审批时验证标题必填
+  if (!form.title || form.title.trim() === '') {
+    ElMessage.warning('请输入事项标题')
+    return
+  }
+
   if (!form.guaranteeDeclaration) {
     ElMessage.warning('请勾选保证声明')
     return
@@ -1047,19 +1052,20 @@ async function handleAddFile() {
 
   // 确保有申请单ID（编辑模式已有ID，新建模式需要创建）
   if (!applicationId.value) {
-    // 新建模式：自动创建申请单，不需要用户预先填写标题和保证声明
-    // 使用默认标题创建申请单
-    const defaultTitle = `素材录入申请-${new Date().toLocaleDateString()}`
+    // 新建模式：使用用户输入的标题，或默认标题
+    const titleToUse = form.title.trim() || `素材录入申请-${new Date().toLocaleDateString()}`
+
     const submitData = {
-      title: defaultTitle,
+      title: titleToUse,
       maintainerId: form.maintainerId,
       deptId: form.deptId,
       guaranteeDeclaration: 0  // 暂不强制要求保证声明
     }
     const res = await createMaterialApplication(submitData)
     applicationId.value = res.data.id
-    // 更新表单标题为默认值，用户可以后续修改
-    form.title = defaultTitle
+
+    // 同步回表单，保持一致性
+    form.title = titleToUse
   } else if (applicationStatus.value !== 'DRAFT') {
     // 只有草稿状态可以添加文件
     ElMessage.warning('只有草稿状态可以添加文件')
@@ -1092,10 +1098,9 @@ async function handleAddFile() {
     ElMessage.success('添加成功')
     showAddFile.value = false
     resetFileForm()
-    // 重新加载文件列表
-    console.log('handleAddFile - 准备重新加载...')
-    await loadApplication()
-    console.log('handleAddFile - 重新加载完成, fileList.length:', fileList.length)
+
+    // 直接添加到列表，不重新加载（避免覆盖用户输入的表单数据）
+    fileList.push(uploadRes.data)
   } catch (e: any) {
     console.error('handleAddFile - 上传失败:', e)
     ElMessage.error(e.message || '添加失败')

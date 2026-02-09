@@ -29,6 +29,11 @@
             <span style="color: #409EFF; font-weight: 500;">AP-{{ row.applicationId || row.id }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="审批类型" width="110">
+          <template #default="{ row }">
+            <el-tag :type="getBusinessTypeColor(row.businessType)">{{ getBusinessTypeText(row.businessType) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="申请标题" min-width="200" prop="businessName" />
         <el-table-column prop="workflowName" label="审批流程" />
         <el-table-column prop="applicantName" label="申请人" />
@@ -942,6 +947,24 @@ function getStatusText(status: string) {
     NOT_STARTED: '未开始'
   }
   return map[status] || status
+}
+
+function getBusinessTypeText(businessType: string) {
+  const map: Record<string, string> = {
+    MATERIAL_ENTRY: '素材录入',
+    ASSET_USAGE: '素材使用',
+    ASSET_DELETION: '素材删除'
+  }
+  return map[businessType] || businessType
+}
+
+function getBusinessTypeColor(businessType: string) {
+  const map: Record<string, string> = {
+    MATERIAL_ENTRY: 'success',
+    ASSET_USAGE: 'warning',
+    ASSET_DELETION: 'danger'
+  }
+  return map[businessType] || 'info'
 }
 
 async function handleOpenRestartDetail(row: any) {
