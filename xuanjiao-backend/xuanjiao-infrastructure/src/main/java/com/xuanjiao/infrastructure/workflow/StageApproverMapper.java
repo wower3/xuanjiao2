@@ -8,47 +8,68 @@ import java.util.List;
 
 /**
  * 阶段审批人数据访问接口
- * <p>定义阶段审批人的数据库操作方法，对应SQL实现</p>
  *
- * @author system
- * @version 1.0
- * @see com.xuanjiao.domain.workflow.entity.StageApprover
+ * <p>定义阶段审批人的数据库操作方法，对应 XML Mapper 实现。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Mapper
 public interface StageApproverMapper {
 
     /**
-     * Select stage approver by ID
+     * 根据主键查询阶段审批人
+     *
+     * @param id 审批人配置ID
+     * @return 阶段审批人数据对象
      */
     StageApproverDO selectById(@Param("id") Long id);
 
     /**
-     * Select stage approvers with dynamic query conditions
+     * 动态条件查询阶段审批人列表
+     *
+     * @param query 查询条件
+     * @return 阶段审批人数据对象列表
      */
     List<StageApproverDO> selectList(StageApproverQuery query);
 
     /**
-     * Count stage approvers with dynamic query conditions
+     * 动态条件统计阶段审批人数量
+     *
+     * @param query 查询条件
+     * @return 数量
      */
     Long selectCount(StageApproverQuery query);
 
     /**
-     * Insert new stage approver
+     * 插入阶段审批人
+     *
+     * @param stageApproverDO 阶段审批人数据对象
+     * @return 影响行数
      */
     int insert(StageApproverDO stageApproverDO);
 
     /**
-     * Update stage approver by ID
+     * 根据主键更新阶段审批人
+     *
+     * @param stageApproverDO 阶段审批人数据对象
+     * @return 影响行数
      */
     int updateById(StageApproverDO stageApproverDO);
 
     /**
-     * Delete stage approver by ID (hard delete)
+     * 根据主键删除阶段审批人（硬删除）
+     *
+     * @param id 审批人配置ID
+     * @return 影响行数
      */
     int deleteById(@Param("id") Long id);
 
     /**
-     * Batch delete stage approvers by query (hard delete)
+     * 批量删除阶段审批人（硬删除）
+     *
+     * @param query 查询条件
+     * @return 影响行数
      */
     int delete(StageApproverQuery query);
 }

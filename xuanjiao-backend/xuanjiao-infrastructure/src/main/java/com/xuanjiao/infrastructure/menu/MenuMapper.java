@@ -8,52 +8,80 @@ import java.util.List;
 
 /**
  * 菜单数据访问接口
- * <p>定义菜单的数据库操作方法，对应SQL实现</p>
  *
- * @author system
- * @version 1.0
- * @see com.xuanjiao.domain.menu.entity.Menu
+ * <p>定义菜单表的数据库操作方法，对应 XML Mapper 实现。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Mapper
 public interface MenuMapper {
 
     /**
-     * Select menu by ID
+     * 根据主键查询菜单
+     *
+     * @param id 菜单ID
+     * @return 菜单数据对象
      */
     MenuDO selectById(@Param("id") Long id);
 
     /**
-     * Select menus with dynamic query conditions
+     * 条件查询菜单列表
+     *
+     * @param query 查询条件
+     * @return 菜单数据对象列表
      */
     List<MenuDO> selectList(MenuQuery query);
 
     /**
-     * Count menus with dynamic query conditions
+     * 条件统计菜单数量
+     *
+     * @param query 查询条件
+     * @return 数量
      */
     Long selectCount(MenuQuery query);
 
     /**
-     * Select menu IDs by role ID (from sys_role_menu intermediate table)
+     * 根据角色ID查询菜单ID列表
+     *
+     * <p>通过 sys_role_menu 中间表关联查询。</p>
+     *
+     * @param roleId 角色ID
+     * @return 菜单ID列表
      */
     List<Long> selectMenuIdsByRoleId(@Param("roleId") Long roleId);
 
     /**
-     * Select menus by user ID (with JOINs to sys_role_menu and sys_user)
+     * 根据用户ID查询菜单列表
+     *
+     * <p>通过 sys_role_menu 和 sys_user 表关联查询。</p>
+     *
+     * @param userId 用户ID
+     * @return 菜单数据对象列表
      */
     List<MenuDO> selectMenusByUserId(@Param("userId") Long userId);
 
     /**
-     * Insert new menu
+     * 插入菜单
+     *
+     * @param menuDO 菜单数据对象
+     * @return 影响行数
      */
     int insert(MenuDO menuDO);
 
     /**
-     * Update menu by ID
+     * 根据主键更新菜单
+     *
+     * @param menuDO 菜单数据对象
+     * @return 影响行数
      */
     int updateById(MenuDO menuDO);
 
     /**
-     * Delete menu by ID (soft delete)
+     * 根据主键删除菜单（逻辑删除）
+     *
+     * @param id 菜单ID
+     * @return 影响行数
      */
     int deleteById(@Param("id") Long id);
 }

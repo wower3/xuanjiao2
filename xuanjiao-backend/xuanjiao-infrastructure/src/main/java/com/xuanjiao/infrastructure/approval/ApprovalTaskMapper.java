@@ -1,5 +1,6 @@
 package com.xuanjiao.infrastructure.approval;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
@@ -10,68 +11,101 @@ import java.util.List;
 
 /**
  * 审批任务数据访问接口
- * <p>定义审批任务的数据库操作方法，对应SQL实现</p>
  *
- * @author system
- * @version 1.0
- * @see com.xuanjiao.domain.approval.entity.ApprovalTask
+ * <p>定义审批任务表的数据库操作方法，对应 XML Mapper 实现。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Mapper
 public interface ApprovalTaskMapper {
 
-    // ==================== 基础CRUD方法 ====================
-
     /**
-     * 根据ID查询任务
+     * 根据主键查询审批任务
+     *
+     * @param id 任务ID
+     * @return 审批任务数据对象
      */
     ApprovalTaskDO selectById(@Param("id") Long id);
 
     /**
-     * 根据查询条件查询单个任务
+     * 根据查询条件查询单个审批任务
+     *
+     * @param query 查询条件
+     * @return 审批任务数据对象
      */
     ApprovalTaskDO selectOne(ApprovalTaskQuery query);
 
     /**
-     * 根据查询条件查询任务列表
+     * 动态条件查询审批任务列表
+     *
+     * @param query 查询条件
+     * @return 审批任务数据对象列表
      */
     List<ApprovalTaskDO> selectList(ApprovalTaskQuery query);
 
     /**
-     * 根据查询条件统计数量
+     * 动态条件统计审批任务数量
+     *
+     * @param query 查询条件
+     * @return 数量
      */
     Long selectCount(ApprovalTaskQuery query);
 
     /**
-     * 分页查询任务列表
+     * 分页查询审批任务
+     *
+     * @param page 分页参数
+     * @param query 查询条件
+     * @return 分页结果
      */
     IPage<ApprovalTaskDO> selectPage(@Param("page") Page<ApprovalTaskDO> page, @Param("query") ApprovalTaskQuery query);
 
     /**
-     * 插入任务
+     * 插入审批任务
+     *
+     * @param approvalTaskDO 审批任务数据对象
+     * @return 影响行数
      */
     int insert(ApprovalTaskDO approvalTaskDO);
 
     /**
-     * 根据ID更新任务
+     * 根据主键更新审批任务
+     *
+     * @param approvalTaskDO 审批任务数据对象
+     * @return 影响行数
      */
     int updateById(ApprovalTaskDO approvalTaskDO);
 
     /**
-     * 使用UpdateWrapper更新（用于强制设置字段为null）
-     * 保留此方法用于LambdaUpdateWrapper场景（如强制设置字段为null）
+     * 使用 UpdateWrapper 更新（用于强制设置字段为null）
+     *
+     * <p>保留此方法用于 LambdaUpdateWrapper 场景（如强制设置字段为null）。</p>
+     *
+     * @param entity 实体对象
+     * @param wrapper 更新条件包装器
+     * @return 影响行数
      */
-    int update(@Param("entity") ApprovalTaskDO entity, @Param("ew") com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<ApprovalTaskDO> wrapper);
+    int update(@Param("entity") ApprovalTaskDO entity, @Param("ew") LambdaUpdateWrapper<ApprovalTaskDO> wrapper);
 
     /**
-     * 重置任务为重新提交状态（status=PENDING, is_first_approver=0, next_stage_approver_ids=null, comment=null, approve_time=null）
-     * 用于工作流退回后重新提交场景
+     * 重置任务为重新提交状态
+     *
+     * <p>用于工作流退回后重新提交场景。</p>
+     * <p>将 status 设为 PENDING，is_first_approver 设为 0，清空 next_stage_approver_ids、comment、approve_time。</p>
+     *
+     * @param id 任务ID
+     * @return 影响行数
      */
     int resetForResubmit(@Param("id") Long id);
 
     /**
-     * 查询用户的流经事项（优化的JOIN查询，避免N+1问题）
+     * 查询用户的流经事项
+     *
+     * <p>优化的 JOIN 查询，避免 N+1 问题。</p>
+     *
      * @param userId 用户ID
-     * @param businessType 业务类型筛选
+     * @param businessType 业务类型筛选（MATERIAL_ENTRY, ASSET_USAGE, ASSET_DELETION）
      * @param status 状态筛选
      * @return 流经事项列表
      */

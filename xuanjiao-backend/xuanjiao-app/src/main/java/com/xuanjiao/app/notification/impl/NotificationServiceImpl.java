@@ -3,7 +3,16 @@ package com.xuanjiao.app.notification.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.notification.NotificationService;
 import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.notification.*;
+import com.xuanjiao.client.dto.notification.BatchCreateNotificationCmd;
+import com.xuanjiao.client.dto.notification.BatchDeleteNotificationCmd;
+import com.xuanjiao.client.dto.notification.BatchMarkReadCmd;
+import com.xuanjiao.client.dto.notification.CreateNotificationCmd;
+import com.xuanjiao.client.dto.notification.DeleteNotificationCmd;
+import com.xuanjiao.client.dto.notification.GetNotificationRecordsQry;
+import com.xuanjiao.client.dto.notification.MarkReadCmd;
+import com.xuanjiao.client.dto.notification.NotificationDTO;
+import com.xuanjiao.client.dto.notification.NotificationPageQry;
+import com.xuanjiao.client.dto.notification.NotifyUsersCmd;
 import com.xuanjiao.domain.notification.entity.Notification;
 import com.xuanjiao.domain.notification.repository.NotificationRepository;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
@@ -61,7 +70,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> getNotificationPageDTO(NotificationPageQry qry) {
+    public PageResult<NotificationDTO> getNotificationPageDTO(NotificationPageQry qry) {
         Notification query = new Notification();
         query.setRecipientId(qry.getRecipientId());
         query.setNotificationType(qry.getNotificationType());
@@ -72,8 +81,8 @@ public class NotificationServiceImpl implements NotificationService {
         List<Notification> list = notificationRepository.selectPage(query, offset, qry.getPageSize());
         long total = notificationRepository.selectCount(query);
 
-        List<Map<String, Object>> records = list.stream()
-                .map(this::convertToMap)
+        List<NotificationDTO> records = list.stream()
+                .map(this::convertToDTOWithTypeText)
                 .collect(Collectors.toList());
 
         return PageResult.of(records, total, qry.getPageNum(), qry.getPageSize());
@@ -188,6 +197,26 @@ public class NotificationServiceImpl implements NotificationService {
         }
         NotificationDTO dto = new NotificationDTO();
         BeanUtils.copyProperties(notification, dto);
+        return dto;
+    }
+
+    /**
+     * 将 Notification 转换为 NotificationDTO 并填充类型文本
+     *
+     * <p>用于列表查询，填充 notificationTypeText 和 sourceTypeText 字段。</p>
+     *
+     * @param notification 通知实体
+     * @return 带类型文本的通知DTO
+     */
+    private NotificationDTO convertToDTOWithTypeText(Notification notification) {
+        if (notification == null) {
+            return null;
+        }
+        NotificationDTO dto = convertToDTO(notification);
+        if (dto != null) {
+            dto.setNotificationTypeText(getNotificationTypeText(notification.getNotificationType()));
+            dto.setSourceTypeText(getSourceTypeText(notification.getSourceType()));
+        }
         return dto;
     }
 

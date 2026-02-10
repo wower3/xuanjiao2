@@ -5,7 +5,12 @@ import lombok.Data;
 import javax.validation.constraints.NotNull;
 
 /**
- * 查询工单知会记录Qry
+ * 查询工单知会记录查询对象
+ *
+ * <p>用于查询指定工单（审批实例）的所有知会记录。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class GetNotificationRecordsQry {

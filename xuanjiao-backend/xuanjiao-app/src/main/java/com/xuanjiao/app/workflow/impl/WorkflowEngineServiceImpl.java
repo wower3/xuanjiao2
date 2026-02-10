@@ -5,7 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.workflow.handler.WorkflowCompletionHandler;
-import com.xuanjiao.infrastructure.dataobject.*;
+import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
+import com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO;
+import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
+import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
@@ -30,7 +37,13 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -168,16 +181,32 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 instanceMapper.updateById(instance);
                 logger.info("实例状态已更新为REJECTED: instanceId={}", instance.getId());
 
-                // 取消所有待办任务（包括主流程和所有子流程）
                 // 获取根实例ID：主流程的rootInstanceId为null，使用当前实例ID；子流程使用rootInstanceId
                 Long rootInstanceId = instance.getRootInstanceId() != null ? instance.getRootInstanceId() : instance.getId();
+
+                // 如果是子流程驳回，需要同时将主流程（父实例）的状态也设置为REJECTED
+                if (instance.getRootInstanceId() != null) {
+                    ApprovalInstanceDO parentInstance = instanceMapper.selectById(instance.getRootInstanceId());
+                    if (parentInstance != null && !"REJECTED".equals(parentInstance.getStatus())) {
+                        parentInstance.setStatus("REJECTED");
+                        instanceMapper.updateById(parentInstance);
+                        logger.info("子流程驳回，主流程状态已更新为REJECTED: parentInstanceId={}", parentInstance.getId());
+                    }
+                }
+
+                // 取消所有待办任务（包括主流程和所有子流程）
                 cancelAllPendingTasksForInstance(rootInstanceId);
 
                 // 更新进度记录
                 updateProgressRecord(task.getInstanceId(), task.getStageId(), "REJECTED", userId, comment);
 
-                // 更新业务数据状态
-                handleWorkflowRejection(instance.getBusinessType(), instance.getBusinessId());
+                // 更新业务数据状态（使用主流程的业务数据）
+                ApprovalInstanceDO businessInstance = instance.getRootInstanceId() != null
+                    ? instanceMapper.selectById(instance.getRootInstanceId())
+                    : instance;
+                if (businessInstance != null) {
+                    handleWorkflowRejection(businessInstance.getBusinessType(), businessInstance.getBusinessId());
+                }
             }
             return;
         }

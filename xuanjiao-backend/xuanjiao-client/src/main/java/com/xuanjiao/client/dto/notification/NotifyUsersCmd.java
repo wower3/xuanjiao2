@@ -7,7 +7,13 @@ import javax.validation.constraints.NotNull;
 import java.util.List;
 
 /**
- * 知会用户命令
+ * 知会用户命令对象
+ *
+ * <p>用于在审批流程中向指定用户发送知会通知，
+ * 让用户了解工单进度但不参与审批。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class NotifyUsersCmd {

@@ -9,7 +9,18 @@ import com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.asset.AssetQuery;
-import com.xuanjiao.infrastructure.dataobject.*;
+import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
+import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
+import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
+import com.xuanjiao.infrastructure.dataobject.RoleDO;
+import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
@@ -26,6 +37,7 @@ import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.approval.MyAppliedDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -166,7 +178,7 @@ public class ApprovalServiceImplTest {
         when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, 100L, null, null
         );
 
@@ -209,7 +221,7 @@ public class ApprovalServiceImplTest {
         when(deptMapper.selectById(100L)).thenReturn(testDept);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, null, "SYSTEM_ADMIN", null
         );
 
@@ -253,7 +265,7 @@ public class ApprovalServiceImplTest {
         when(deptMapper.selectById(100L)).thenReturn(testDept);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, 100L, "SYSTEM_ADMIN", null
         );
 
@@ -293,7 +305,7 @@ public class ApprovalServiceImplTest {
         when(deptMapper.selectById(100L)).thenReturn(testDept);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, null, "BRANCH_MGMT", null
         );
 
@@ -346,7 +358,7 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, "MATERIAL_ENTRY", false, null, null, null, null
         );
 
@@ -389,7 +401,7 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, "ASSET", false, null, null, null, null
         );
 
@@ -449,7 +461,7 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, "ASSET_DELETION", false, null, null, null, null
         );
 

@@ -2,12 +2,19 @@ package com.xuanjiao.infrastructure.asset;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
- * Tag查询条件对象
- * 用于查询标签信息
+ * 标签查询条件对象
+ *
+ * <p>用于动态构建标签查询条件，对应 TagMapper 使用。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class TagQuery {
+
     /**
      * 标签ID
      */
@@ -34,12 +41,12 @@ public class TagQuery {
     private String orderByField;
 
     /**
-     * 排序方向 (ASC/DESC)
+     * 排序方向（ASC/DESC）
      */
     private String orderByDirection;
 
     /**
      * ID列表（用于批量查询）
      */
-    private java.util.List<Long> ids;
+    private List<Long> ids;
 }

@@ -2,14 +2,59 @@ package com.xuanjiao.client.dto;
 
 import lombok.Data;
 
+/**
+ * 阶段审批人数据传输对象
+ *
+ * <p>用于在前后端之间传输工作流阶段中的审批人配置信息，
+ * 包括审批人类型、关联的子流程等。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
+ */
 @Data
 public class StageApproverDTO {
+
+    /**
+     * 审批人配置ID
+     */
     private Long id;
-    private Long stageId; // 阶段ID
+
+    /**
+     * 所属阶段ID
+     */
+    private Long stageId;
+
+    /**
+     * 审批人类型（USER-用户、DEPT-部门、ROLE-角色）
+     */
     private String approverType;
+
+    /**
+     * 审批人ID（用户ID、部门ID或角色ID）
+     */
     private Long approverId;
+
+    /**
+     * 审批人名称
+     */
     private String approverName;
-    private Integer checkSecondaryDept; // 是否校验二级部门（仅当approver_type=ROLE时有效）：0-否，1-是
-    private Long subWorkflowId; // 关联的子流程ID（如果该审批人是子流程）
-    private String subWorkflowName; // 子流程名称（前端显示用）
+
+    /**
+     * 是否校验二级部门
+     *
+     * <p>仅当approver_type=ROLE时有效：0-否，1-是</p>
+     */
+    private Integer checkSecondaryDept;
+
+    /**
+     * 关联的子流程ID
+     *
+     * <p>如果该审批人配置了子流程，则此字段为子流程的ID</p>
+     */
+    private Long subWorkflowId;
+
+    /**
+     * 子流程名称（前端显示用）
+     */
+    private String subWorkflowName;
 }
