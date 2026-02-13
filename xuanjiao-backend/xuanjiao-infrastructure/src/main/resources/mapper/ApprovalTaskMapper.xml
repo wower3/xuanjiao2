@@ -325,4 +325,88 @@
         ORDER BY ai.create_time DESC
     </select>
 
+    <!-- ==================== 待办任务JOIN查询（优化N+1问题） ==================== -->
+
+    <!-- PendingTaskItem ResultMap -->
+    <resultMap id="PendingTaskItemResultMap" type="com.xuanjiao.infrastructure.approval.PendingTaskItemDO">
+        <id column="task_id" property="taskId"/>
+        <result column="task_status" property="taskStatus"/>
+        <result column="task_create_time" property="taskCreateTime"/>
+        <result column="task_type" property="taskType"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="stage_id" property="stageId"/>
+        <result column="sub_workflow_approver_ids" property="subWorkflowApproverIds"/>
+        <result column="instance_id" property="instanceId"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="workflow_id" property="workflowId"/>
+        <result column="workflow_name" property="workflowName"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="material_application_id" property="materialApplicationId"/>
+        <result column="material_application_title" property="materialApplicationTitle"/>
+        <result column="deletion_application_id" property="deletionApplicationId"/>
+        <result column="deletion_application_title" property="deletionApplicationTitle"/>
+        <result column="usage_apply_id" property="usageApplyId"/>
+        <result column="usage_apply_title" property="usageApplyTitle"/>
+        <result column="asset_count" property="assetCount"/>
+        <result column="asset_type" property="assetType"/>
+    </resultMap>
+
+    <!-- 分页查询待办任务（带JOIN，避免N+1问题） -->
+    <select id="selectPendingTaskPage" resultMap="PendingTaskItemResultMap">
+        SELECT
+            t.id AS task_id,
+            t.status AS task_status,
+            t.create_time AS task_create_time,
+            t.task_type,
+            t.approver_id,
+            t.stage_id,
+            t.sub_workflow_approver_ids,
+            i.id AS instance_id,
+            i.business_type,
+            i.business_id,
+            i.applicant_id,
+            w.id AS workflow_id,
+            w.name AS workflow_name,
+            u.real_name AS applicant_name,
+            ma.id AS material_application_id,
+            ma.title AS material_application_title,
+            da.id AS deletion_application_id,
+            da.title AS deletion_application_title,
+            ua.id AS usage_apply_id,
+            ua.title AS usage_apply_title,
+            (SELECT COUNT(*) FROM asset a WHERE a.application_id = ma.id AND a.deleted = 0) AS asset_count,
+            (SELECT a.type FROM asset a WHERE a.application_id = ma.id AND a.deleted = 0 LIMIT 1) AS asset_type
+        FROM approval_task t
+        INNER JOIN approval_instance i ON t.instance_id = i.id
+        INNER JOIN workflow w ON i.workflow_id = w.id
+        INNER JOIN sys_user u ON i.applicant_id = u.id
+        LEFT JOIN material_application ma ON i.business_type = 'MATERIAL_ENTRY' AND i.business_id = ma.id AND ma.deleted = 0
+        LEFT JOIN asset_deletion_application da ON i.business_type = 'ASSET_DELETION' AND i.business_id = da.id AND da.deleted = 0
+        LEFT JOIN usage_apply ua ON i.business_type = 'ASSET_USAGE' AND i.business_id = ua.id AND ua.deleted = 0
+        <where>
+            t.approver_id = #{userId}
+            AND t.status = 'PENDING'
+            <if test="businessType != null and businessType != ''">
+                AND i.business_type = #{businessType}
+            </if>
+        </where>
+        ORDER BY t.create_time DESC
+    </select>
+
+    <!-- 查询待办任务数量 -->
+    <select id="selectPendingTaskCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM approval_task t
+        INNER JOIN approval_instance i ON t.instance_id = i.id
+        <where>
+            t.approver_id = #{userId}
+            AND t.status = 'PENDING'
+            <if test="businessType != null and businessType != ''">
+                AND i.business_type = #{businessType}
+            </if>
+        </where>
+    </select>
+
 </mapper>

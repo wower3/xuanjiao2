@@ -14,6 +14,7 @@ import com.xuanjiao.client.dto.approval.MyAppliedDTO;
 import com.xuanjiao.client.dto.approval.PendingTaskDTO;
 import com.xuanjiao.infrastructure.approval.FlowItemDO;
 import com.xuanjiao.infrastructure.approval.MyAppliedDO;
+import com.xuanjiao.infrastructure.approval.PendingTaskItemDO;
 import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
 import com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO;
 import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
@@ -114,24 +115,20 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     public PageResult<PendingTaskDTO> getMyTasks(Long userId, int pageNum, int pageSize, String businessType) {
-        ApprovalTaskQuery query = new ApprovalTaskQuery();
-        query.setApproverId(userId);
-        query.setStatus("PENDING");
-        if (businessType != null && !businessType.isEmpty()) {
-            query.setBusinessType(businessType);
-        }
-        IPage<ApprovalTaskDO> page = taskMapper.selectPage(new Page<>(pageNum, pageSize), query);
-        List<PendingTaskDTO> list = page.getRecords().stream()
-            .map(this::buildTaskInfo).collect(Collectors.toList());
-        return PageResult.of(list, page.getTotal(), pageNum, pageSize);
+        // 计算偏移量
+        int offset = (pageNum - 1) * pageSize;
+        // 使用JOIN查询一次性获取所有关联数据，避免N+1问题
+        List<PendingTaskItemDO> items = taskMapper.selectPendingTaskPage(userId, businessType, offset, pageSize);
+        Long total = taskMapper.selectPendingTaskCount(userId, businessType);
+        // 转换为DTO
+        List<PendingTaskDTO> list = items.stream()
+            .map(this::convertToPendingTaskDTO).collect(Collectors.toList());
+        return PageResult.of(list, total, pageNum, pageSize);
     }
 
     @Override
     public Long getMyTasksCount(Long userId) {
-        ApprovalTaskQuery query = new ApprovalTaskQuery();
-        query.setApproverId(userId);
-        query.setStatus("PENDING");
-        return taskMapper.selectCount(query);
+        return taskMapper.selectPendingTaskCount(userId, null);
     }
 
     @Override
@@ -400,6 +397,54 @@ public class ApprovalServiceImpl implements ApprovalService {
                 dto.setApplicantName(applicant.getRealName());
             }
         }
+        return dto;
+    }
+
+    /**
+     * 将待办任务数据对象转换为DTO（优化版，使用JOIN查询结果）
+     *
+     * <p>将PendingTaskItemDO（JOIN查询结果）转换为PendingTaskDTO。</p>
+     * <p>此方法替代buildTaskInfo，避免在循环中进行数据库查询。</p>
+     *
+     * @param item 待办任务数据对象
+     * @return 待办任务DTO
+     */
+    private PendingTaskDTO convertToPendingTaskDTO(PendingTaskItemDO item) {
+        PendingTaskDTO dto = new PendingTaskDTO();
+        dto.setId(item.getTaskId());
+        dto.setStatus(item.getTaskStatus());
+        dto.setCreateTime(item.getTaskCreateTime());
+        dto.setTaskType(item.getTaskType());
+        dto.setApproverId(item.getApproverId());
+        dto.setStageId(item.getStageId());
+        dto.setSubWorkflowApproverIds(item.getSubWorkflowApproverIds());
+        dto.setInstanceId(item.getInstanceId());
+        dto.setBusinessType(item.getBusinessType());
+        dto.setBusinessId(item.getBusinessId());
+        dto.setWorkflowId(item.getWorkflowId());
+        dto.setWorkflowName(item.getWorkflowName());
+        dto.setApplicantId(item.getApplicantId());
+        dto.setApplicantName(item.getApplicantName());
+
+        // 根据业务类型设置业务名称和申请单信息
+        if ("MATERIAL_ENTRY".equals(item.getBusinessType())) {
+            dto.setApplicationId(item.getMaterialApplicationId());
+            dto.setApplicationTitle(item.getMaterialApplicationTitle());
+            dto.setBusinessName(item.getMaterialApplicationTitle());
+            dto.setAssetCount(item.getAssetCount());
+            dto.setAssetType(item.getAssetType());
+        } else if ("ASSET".equals(item.getBusinessType())) {
+            // 素材类型，直接使用businessName
+        } else if ("ASSET_USAGE".equals(item.getBusinessType())) {
+            dto.setApplicationId(item.getUsageApplyId());
+            dto.setApplicationTitle(item.getUsageApplyTitle());
+            dto.setBusinessName(item.getUsageApplyTitle());
+        } else if ("ASSET_DELETION".equals(item.getBusinessType())) {
+            dto.setApplicationId(item.getDeletionApplicationId());
+            dto.setApplicationTitle(item.getDeletionApplicationTitle());
+            dto.setBusinessName(item.getDeletionApplicationTitle());
+        }
+
         return dto;
     }
 

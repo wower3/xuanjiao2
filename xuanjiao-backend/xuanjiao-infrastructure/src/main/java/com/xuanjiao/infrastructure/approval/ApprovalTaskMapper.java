@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import com.xuanjiao.infrastructure.approval.PendingTaskItemDO;
 
 /**
  * 审批任务数据访问接口
@@ -112,4 +113,30 @@ public interface ApprovalTaskMapper {
     List<FlowItemDO> selectFlowItemsByUser(@Param("userId") Long userId,
                                            @Param("businessType") String businessType,
                                            @Param("status") String status);
+
+    /**
+     * 分页查询待办任务（带JOIN，避免N+1问题）
+     *
+     * <p>一次性获取任务、实例、工作流、申请人、业务申请等信息。</p>
+     *
+     * @param userId 用户ID
+     * @param businessType 业务类型筛选（MATERIAL_ENTRY, ASSET_USAGE, ASSET_DELETION）
+     * @param offset 偏移量
+     * @param pageSize 每页大小
+     * @return 待办任务列表
+     */
+    List<PendingTaskItemDO> selectPendingTaskPage(@Param("userId") Long userId,
+                                                   @Param("businessType") String businessType,
+                                                   @Param("offset") Integer offset,
+                                                   @Param("pageSize") Integer pageSize);
+
+    /**
+     * 查询待办任务数量
+     *
+     * @param userId 用户ID
+     * @param businessType 业务类型筛选
+     * @return 待办任务数量
+     */
+    Long selectPendingTaskCount(@Param("userId") Long userId,
+                                @Param("businessType") String businessType);
 }
