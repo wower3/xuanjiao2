@@ -7,6 +7,7 @@ import com.xuanjiao.client.dto.AssetDTO;
 import com.xuanjiao.client.dto.MaterialApplicationCmd;
 import com.xuanjiao.client.dto.MaterialApplicationDTO;
 import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.TagDTO;
 import com.xuanjiao.domain.material.entity.MaterialApplication;
 import com.xuanjiao.domain.material.repository.MaterialApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
@@ -306,6 +307,67 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         dto.setGuaranteeDeclaration(details.getGuaranteeDeclaration());
         dto.setCreateTime(details.getCreateTime());
         dto.setUpdateTime(details.getUpdateTime());
+
+        // 查询关联的素材文件
+        if (details.getId() != null) {
+            AssetQuery wrapper = new AssetQuery();
+            wrapper.setApplicationId(details.getId());
+            List<AssetDO> assets = assetMapper.selectList(wrapper);
+
+            if (!assets.isEmpty()) {
+                // 批量查询所有素材的标签（优化N+1问题）
+                List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+                Map<Long, List<TagDTO>> tagsMap = new java.util.HashMap<>();
+
+                if (!assetIds.isEmpty()) {
+                    List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags =
+                        assetTagMapper.selectByAssetIds(assetIds);
+
+                    if (!allAssetTags.isEmpty()) {
+                        List<Long> tagIds = allAssetTags.stream()
+                            .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
+                            .distinct()
+                            .collect(Collectors.toList());
+
+                        List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
+                        Map<Long, TagDO> tagIdToTag = new java.util.HashMap<>();
+                        for (TagDO tag : allTags) {
+                            tagIdToTag.put(tag.getId(), tag);
+                        }
+
+                        Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
+                            .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
+
+                        for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
+                            List<TagDTO> tagsForAsset = new ArrayList<>();
+                            for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : entry.getValue()) {
+                                TagDO tag = tagIdToTag.get(assetTag.getTagId());
+                                if (tag != null) {
+                                    TagDTO tagDTO = new TagDTO();
+                                    tagDTO.setId(tag.getId());
+                                    tagDTO.setName(tag.getName());
+                                    tagDTO.setCategory(tag.getCategory());
+                                    tagDTO.setCreateTime(tag.getCreateTime());
+                                    tagsForAsset.add(tagDTO);
+                                }
+                            }
+                            tagsMap.put(entry.getKey(), tagsForAsset);
+                        }
+                    }
+                }
+
+                // 转换为 DTO
+                List<AssetDTO> assetDTOs = new ArrayList<>();
+                for (AssetDO asset : assets) {
+                    AssetDTO assetDTO = new AssetDTO();
+                    BeanUtils.copyProperties(asset, assetDTO);
+                    assetDTO.setTags(tagsMap.get(asset.getId()));
+                    assetDTOs.add(assetDTO);
+                }
+                dto.setAssets(assetDTOs);
+            }
+        }
+
         return dto;
     }
 

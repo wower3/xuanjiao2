@@ -274,17 +274,20 @@
         <result column="update_time" property="updateTime"/>
         <result column="deleted" property="deleted"/>
         <result column="applicant_name" property="applicantName"/>
+        <result column="dept_name" property="deptName"/>
     </resultMap>
 
-    <!-- 动态条件查询（带申请人姓名，JOIN查询避免N+1） -->
+    <!-- 动态条件查询（带申请人姓名和部门名称，JOIN查询避免N+1） -->
     <select id="selectListWithDetails" resultMap="WithDetailsResultMap">
         SELECT
             ua.id, ua.user_id, ua.title, ua.purpose, ua.scope, ua.workflow_id, ua.status,
             ua.approval_instance_id, ua.attachment_path, ua.is_secondary_creation, ua.publish_channel,
             ua.dept_id, ua.draft, ua.create_time, ua.update_time, ua.deleted,
-            u.real_name AS applicant_name
+            u.real_name AS applicant_name,
+            d.name AS dept_name
         FROM usage_apply ua
         LEFT JOIN sys_user u ON ua.user_id = u.id AND u.deleted = 0
+        LEFT JOIN sys_dept d ON ua.dept_id = d.id AND COALESCE(d.deleted, 0) = 0
         <where>
             <if test="deleted != null">
                 ua.deleted = #{deleted}

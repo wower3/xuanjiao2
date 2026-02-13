@@ -33,6 +33,9 @@ public class UsageApplyWithDetailsDO {
     // 申请人姓名
     private String applicantName;
 
+    // 部门名称
+    private String deptName;
+
     // Getter and Setter methods
 
     public Long getId() {
@@ -169,5 +172,13 @@ public class UsageApplyWithDetailsDO {
 
     public void setApplicantName(String applicantName) {
         this.applicantName = applicantName;
+    }
+
+    public String getDeptName() {
+        return deptName;
+    }
+
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
     }
 }

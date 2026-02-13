@@ -475,6 +475,29 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         // 直接从JOIN结果获取申请人姓名，无需额外查询
         dto.setUsername(details.getApplicantName());
 
+        // 直接从JOIN结果获取部门名称
+        dto.setDeptName(details.getDeptName());
+
+        // 查询关联的素材（带使用配置信息）
+        List<UsageApplyAsset> assets = usageApplyAssetRepository.findByUsageApplyId(details.getId());
+        if (assets != null && !assets.isEmpty()) {
+            List<UsageApplyDTO.AssetUsageConfigDTO> assetDTOs = assets.stream().map(asset -> {
+                UsageApplyDTO.AssetUsageConfigDTO assetDTO = new UsageApplyDTO.AssetUsageConfigDTO();
+                assetDTO.setAssetId(asset.getAssetId());
+                assetDTO.setAssetName(asset.getAssetName());
+                assetDTO.setAssetType(asset.getAssetType());
+                assetDTO.setAssetFilePath(asset.getAssetFilePath());
+                assetDTO.setAssetThumbnailPath(asset.getAssetThumbnailPath());
+                assetDTO.setAssetStatus(asset.getAssetStatus());
+                assetDTO.setUsageDescription(asset.getUsageDescription());
+                assetDTO.setUsagePublishChannel(asset.getUsagePublishChannel());
+                assetDTO.setUsageIsSecondaryCreation(asset.getUsageIsSecondaryCreation());
+                assetDTO.setUsageAttachmentPath(asset.getUsageAttachmentPath());
+                return assetDTO;
+            }).collect(Collectors.toList());
+            dto.setAssets(assetDTOs);
+        }
+
         return dto;
     }
 }

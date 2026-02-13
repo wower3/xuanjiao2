@@ -14,7 +14,9 @@ import com.xuanjiao.domain.deletion.entity.AssetDeletionAsset;
 import com.xuanjiao.domain.deletion.repository.AssetDeletionApplicationRepository;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
@@ -59,6 +61,9 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private DeptMapper deptMapper;
 
     @Autowired
     private WorkflowEngineService workflowEngineService;
@@ -402,13 +407,15 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 查询申请人信息
         UserDO applicant = userMapper.selectById(application.getApplicantId());
         if (applicant != null) {
-            dto.setApplicantName(applicant.getUsername());
+            dto.setApplicantName(applicant.getRealName());
         }
 
         // 查询部门信息
         if (application.getDeptId() != null) {
-            // 这里可以根据需要查询部门名称
-            // dto.setDeptName(deptService.getById(application.getDeptId()).getName());
+            DeptDO dept = deptMapper.selectById(application.getDeptId());
+            if (dept != null) {
+                dto.setDeptName(dept.getName());
+            }
         }
 
         // 查询关联的素材
