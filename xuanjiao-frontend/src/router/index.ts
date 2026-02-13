@@ -20,11 +20,6 @@ const router = createRouter({
           component: () => import('@/views/asset/index.vue')
         },
         {
-          path: 'asset/material-list',
-          name: 'MaterialList',
-          component: () => import('@/views/asset/material-list.vue')
-        },
-        {
           path: 'asset/material-entry',
           name: 'MaterialEntry',
           component: () => import('@/views/asset/material-entry.vue')
