@@ -58,4 +58,12 @@ public interface UsageApplyMapper {
      * 删除（逻辑删除）
      */
     int deleteById(@Param("id") Long id);
+
+    /**
+     * 动态条件查询列表（带申请人姓名，JOIN查询避免N+1问题）
+     *
+     * @param query 查询条件
+     * @return 素材使用申请详情列表
+     */
+    List<UsageApplyWithDetailsDO> selectListWithDetails(UsageApplyQuery query);
 }

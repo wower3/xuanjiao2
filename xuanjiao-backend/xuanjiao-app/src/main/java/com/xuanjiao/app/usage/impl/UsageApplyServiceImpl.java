@@ -15,6 +15,9 @@ import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyQuery;
+import com.xuanjiao.infrastructure.usage.UsageApplyWithDetailsDO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -58,6 +61,9 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private UsageApplyMapper usageApplyMapper;
 
     // ========== 新API（按素材配置使用信息） ==========
 
@@ -245,37 +251,57 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     @Override
     public PageResult<UsageApplyDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize) {
-        List<UsageApply> list = usageApplyRepository.findDraftsByUserId(userId, (pageNum - 1) * pageSize, pageSize);
-        long total = usageApplyRepository.countDraftsByUserId(userId);
+        // 使用JOIN查询一次性获取申请及关联的申请人信息，避免N+1问题
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setDraft(1);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
 
-        List<UsageApplyDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        List<UsageApplyWithDetailsDO> list = usageApplyMapper.selectListWithDetails(query);
+        long total = usageApplyMapper.selectCount(query);
+
+        List<UsageApplyDTO> dtoList = list.stream().map(this::convertWithDetails).collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
     @Override
     public PageResult<UsageApplyDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
-        List<UsageApply> list = usageApplyRepository.findDraftsByUserId(userId, (pageNum - 1) * pageSize, pageSize);
-        long total = usageApplyRepository.countDraftsByUserId(userId);
-
-        // 按标题筛选
-        List<UsageApply> filteredList = list;
+        // 使用JOIN查询一次性获取申请及关联的申请人信息，避免N+1问题
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setDraft(1);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
         if (title != null && !title.isEmpty()) {
-            final String titleFilter = title;
-            filteredList = list.stream()
-                .filter(apply -> apply.getTitle() != null && apply.getTitle().contains(titleFilter))
-                .collect(Collectors.toList());
+            query.setTitleKeyword(title);
         }
 
-        List<UsageApplyDTO> dtoList = filteredList.stream().map(this::convert).collect(Collectors.toList());
-        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
+        List<UsageApplyWithDetailsDO> list = usageApplyMapper.selectListWithDetails(query);
+        long total = usageApplyMapper.selectCount(query);
+
+        List<UsageApplyDTO> dtoList = list.stream().map(this::convertWithDetails).collect(Collectors.toList());
+        return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
     @Override
     public PageResult<UsageApplyDTO> queryMyApplications(Long userId, Integer pageNum, Integer pageSize) {
-        List<UsageApply> list = usageApplyRepository.findByUserId(userId, (pageNum - 1) * pageSize, pageSize);
-        long total = usageApplyRepository.countByUserId(userId);
+        // 使用JOIN查询一次性获取申请及关联的申请人信息，避免N+1问题
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
 
-        List<UsageApplyDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        List<UsageApplyWithDetailsDO> list = usageApplyMapper.selectListWithDetails(query);
+        long total = usageApplyMapper.selectCount(query);
+
+        List<UsageApplyDTO> dtoList = list.stream().map(this::convertWithDetails).collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
@@ -290,12 +316,19 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     @Override
     public PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQueryCmd cmd, Long userId) {
-        int offset = (cmd.getPageNum() - 1) * cmd.getPageSize();
-        List<UsageApply> list = usageApplyRepository.findByCondition(cmd.getStatus(), offset, cmd.getPageSize());
-        list = list.stream().filter(apply -> apply.getUserId().equals(userId)).collect(Collectors.toList());
-        long total = usageApplyRepository.countByCondition(cmd.getStatus());
+        // 使用JOIN查询一次性获取申请及关联的申请人信息，避免N+1问题
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setUserId(userId);
+        query.setStatus(cmd.getStatus());
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((cmd.getPageNum() - 1) * cmd.getPageSize());
+        query.setLimit(cmd.getPageSize());
 
-        List<UsageApplyDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        List<UsageApplyWithDetailsDO> list = usageApplyMapper.selectListWithDetails(query);
+        long total = usageApplyMapper.selectCount(query);
+
+        List<UsageApplyDTO> dtoList = list.stream().map(this::convertWithDetails).collect(Collectors.toList());
         return PageResult.of(dtoList, total, cmd.getPageNum(), cmd.getPageSize());
     }
 
@@ -427,6 +460,20 @@ public class UsageApplyServiceImpl implements UsageApplyService {
             }).collect(Collectors.toList());
             dto.setAssets(assetDTOs);
         }
+
+        return dto;
+    }
+
+    /**
+     * 将带详情的DO转换为DTO（优化版，使用JOIN查询结果）
+     */
+    private UsageApplyDTO convertWithDetails(UsageApplyWithDetailsDO details) {
+        if (details == null) return null;
+        UsageApplyDTO dto = new UsageApplyDTO();
+        BeanUtils.copyProperties(details, dto);
+
+        // 直接从JOIN结果获取申请人姓名，无需额外查询
+        dto.setUsername(details.getApplicantName());
 
         return dto;
     }
