@@ -241,6 +241,24 @@ public class ApprovalServiceImpl implements ApprovalService {
         dto.setCurrentStageId(item.getCurrentStageId());
         dto.setCurrentStageName(item.getCurrentStageName());
         dto.setBusinessName(item.getTitle());
+
+        // 转换待审批人信息（逗号分隔字符串 -> List<Map>）
+        if (item.getPendingApproverNames() != null && !item.getPendingApproverNames().isEmpty()) {
+            String[] names = item.getPendingApproverNames().split(",");
+            String[] ids = item.getPendingApproverIds() != null
+                ? item.getPendingApproverIds().split(",")
+                : new String[0];
+
+            List<Map<String, Object>> pendingApprovers = new ArrayList<>();
+            for (int i = 0; i < names.length; i++) {
+                Map<String, Object> approver = new HashMap<>();
+                approver.put("id", i < ids.length ? Long.valueOf(ids[i].trim()) : null);
+                approver.put("name", names[i].trim());
+                pendingApprovers.add(approver);
+            }
+            dto.setPendingApprovers(pendingApprovers);
+        }
+
         return dto;
     }
 

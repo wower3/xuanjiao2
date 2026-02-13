@@ -261,6 +261,8 @@
         <result column="application_title" property="applicationTitle" jdbcType="VARCHAR"/>
         <result column="deletion_title" property="deletionTitle" jdbcType="VARCHAR"/>
         <result column="usage_title" property="usageTitle" jdbcType="VARCHAR"/>
+        <result column="pending_approver_names" property="pendingApproverNames" jdbcType="VARCHAR"/>
+        <result column="pending_approver_ids" property="pendingApproverIds" jdbcType="VARCHAR"/>
     </resultMap>
 
     <!-- 查询我发起的工单（优化的JOIN查询，避免N+1问题） -->
@@ -279,7 +281,9 @@
             ws.name AS current_stage_name,
             ma.title AS application_title,
             da.title AS deletion_title,
-            ua.title AS usage_title
+            ua.title AS usage_title,
+            GROUP_CONCAT(DISTINCT approver.real_name ORDER BY approver.real_name SEPARATOR ',') AS pending_approver_names,
+            GROUP_CONCAT(DISTINCT approver.id ORDER BY approver.id SEPARATOR ',') AS pending_approver_ids
         FROM approval_instance ai
         INNER JOIN sys_user u ON ai.applicant_id = u.id
         INNER JOIN workflow w ON ai.workflow_id = w.id
@@ -287,6 +291,8 @@
         LEFT JOIN material_application ma ON ai.business_type = 'MATERIAL_ENTRY' AND ai.business_id = ma.id
         LEFT JOIN asset_deletion_application da ON ai.business_type = 'ASSET_DELETION' AND ai.business_id = da.id
         LEFT JOIN usage_apply ua ON ai.business_type = 'ASSET_USAGE' AND ai.business_id = ua.id
+        LEFT JOIN approval_task at ON ai.id = at.instance_id AND at.status = 'PENDING'
+        LEFT JOIN sys_user approver ON at.approver_id = approver.id
         <where>
             ai.parent_instance_id IS NULL
             <if test="applicantId != null">
@@ -305,6 +311,9 @@
                 AND ai.status = #{status}
             </if>
         </where>
+        GROUP BY ai.id, ai.status, ai.business_type, ai.business_id, ai.create_time,
+                 ai.applicant_id, ai.workflow_id, ai.current_stage_id,
+                 u.real_name, w.name, ws.name, ma.title, da.title, ua.title
         ORDER BY ai.create_time DESC
     </select>
 

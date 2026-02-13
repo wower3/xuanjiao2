@@ -3,6 +3,8 @@ package com.xuanjiao.client.dto.approval;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 我发起的工单数据传输对象
@@ -75,4 +77,11 @@ public class MyAppliedDTO {
      * 业务名称（申请单标题，用于前端显示）
      */
     private String businessName;
+
+    /**
+     * 待审批人列表
+     *
+     * <p>每个审批人包含 id 和 name 字段。</p>
+     */
+    private List<Map<String, Object>> pendingApprovers;
 }

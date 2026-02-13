@@ -7,10 +7,10 @@
         <div v-loading="loading">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="申请单ID" :span="2">
-              {{ workOrderDetail.displayId || ('AP-' + workOrderDetail.instanceId) }}
+              {{ workOrderDetail.id ? 'AP-' + workOrderDetail.id : '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="申请标题" :span="2">
-              {{ workOrderDetail.displayTitle || workOrderDetail.title }}
+              {{ workOrderDetail.applicationTitle || workOrderDetail.businessName }}
             </el-descriptions-item>
             <el-descriptions-item label="申请人">
               {{ workOrderDetail.applicantName || '-' }}
@@ -29,9 +29,9 @@
           </el-descriptions>
 
           <!-- 素材文件列表 -->
-          <div v-if="workOrderDetail.assets && workOrderDetail.assets.length > 0" style="margin-top: 20px">
-            <h4>素材文件 ({{ workOrderDetail.assets.length }})</h4>
-            <el-table :data="workOrderDetail.assets" size="small" style="margin-top: 10px">
+          <div v-if="workOrderDetail.assetList && workOrderDetail.assetList.length > 0" style="margin-top: 20px">
+            <h4>素材文件 ({{ workOrderDetail.assetList.length }})</h4>
+            <el-table :data="workOrderDetail.assetList" size="small" style="margin-top: 10px">
               <el-table-column label="预览" width="80">
                 <template #default="{ row }">
                   <el-image

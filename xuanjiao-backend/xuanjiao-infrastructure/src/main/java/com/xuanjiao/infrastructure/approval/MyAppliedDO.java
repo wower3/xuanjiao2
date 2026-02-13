@@ -83,6 +83,16 @@ public class MyAppliedDO {
      */
     private String usageTitle;
 
+    /**
+     * 待审批人姓名列表（逗号分隔，如："张三,李四"）
+     */
+    private String pendingApproverNames;
+
+    /**
+     * 待审批人ID列表（逗号分隔，如："1,2"）
+     */
+    private String pendingApproverIds;
+
     // Getters and Setters
 
     public Long getId() {
@@ -195,6 +205,22 @@ public class MyAppliedDO {
 
     public void setUsageTitle(String usageTitle) {
         this.usageTitle = usageTitle;
+    }
+
+    public String getPendingApproverNames() {
+        return pendingApproverNames;
+    }
+
+    public void setPendingApproverNames(String pendingApproverNames) {
+        this.pendingApproverNames = pendingApproverNames;
+    }
+
+    public String getPendingApproverIds() {
+        return pendingApproverIds;
+    }
+
+    public void setPendingApproverIds(String pendingApproverIds) {
+        this.pendingApproverIds = pendingApproverIds;
     }
 
     /**
