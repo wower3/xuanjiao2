@@ -36,7 +36,7 @@
 
 ## 优化进度总结
 
-### 已完成优化（7项）
+### 已完成优化（10项）
 
 | 编号 | 问题 | 优化方式 | 效果 |
 |------|------|---------|------|
@@ -45,14 +45,14 @@
 | 问题4+5 | 用户详情+可用用户列表 | JOIN | 一次性获取用户及部门角色信息 |
 | 问题6 | 素材申请列表 | 分页+JOIN | 每页从4次查询减少为2次 |
 | 问题8 | 素材使用申请列表 | JOIN | 每页从N+1次减少为2次 |
+| 问题9 | 素材列表-标签转换 | 批量预加载 | 2次查询替代2*N次查询 |
+| 问题10 | 流程设计器-审批人转换 | JOIN | 1次查询替代N*4次查询 |
+| 问题11 | 流程设计器-阶段审批人列表 | JOIN | 与问题10一起优化 |
 | 问题12 | 流程列表 | JOIN | 1次查询获取流程及角色名称 |
 
-### 待优化问题（4项）
+### 待优化问题（1项）
 
 - 问题3：任务详情（批量预加载，较复杂）
-- 问题9：素材列表-标签转换
-- 问题10：流程设计器-审批人转换
-- 问题11：流程设计器-阶段审批人列表
 
 ---
 
@@ -66,10 +66,10 @@
 | 4 | 用户详情转换 ✅已合并到问题5 | ApproverSelectionServiceImpl | convertUserToMap() | JOIN | 辅助问题5，问题5优化后自动解决，使用convertUserWithDetailsToMap替代 |
 | 5 | 可用用户列表 ✅已完成 | ApproverSelectionServiceImpl | getAvailableUsersForConfig() | JOIN | 优化：使用selectListWithDetails方法，JOIN获取用户及部门角色信息 |
 | 6 | 素材申请列表转换 ✅已完成 | MaterialApplicationServiceImpl | convert() | 分页+JOIN | 优化：使用selectListWithDetails方法，每页从4次查询减少为2次 |
-| 8 | 素材使用申请列表转换 | UsageApplyServiceImpl | convert() | JOIN | 申请人名称可用JOIN获取 |
-| 9 | 素材列表-标签转换 | AssetServiceImpl | convertWithTags() | JOIN | 一条SQL获取素材及标签 |
-| 10 | 流程设计器-审批人转换 | WorkflowServiceImpl | convertApprover() | JOIN | 审批人详情可用JOIN获取 |
-| 11 | 流程设计器-阶段审批人列表 | WorkflowServiceImpl | getWorkflowDetail() | JOIN | 与问题10一起优化 |
+| 8 | 素材使用申请列表转换 ✅已完成 | UsageApplyServiceImpl | convert() | JOIN | 申请人名称可用JOIN获取 |
+| 9 | 素材列表-标签转换 ✅已完成 | MaterialApplicationServiceImpl | convertAsset() | 批量预加载 | 优化：使用selectByAssetIds批量查询，2次查询替代2*N次查询 |
+| 10 | 流程设计器-审批人转换 ✅已完成 | WorkflowServiceImpl | convertApprover() | JOIN | 优化：使用selectWithDetails批量查询，1次查询替代N*4次查询 |
+| 11 | 流程设计器-阶段审批人列表 ✅已完成 | WorkflowServiceImpl | getById() | JOIN | 与问题10一起优化 |
 | **12** | **流程列表 ✅已完成** | **WorkflowServiceImpl** | **list()** | **JOIN** | **已优化：使用WorkflowMapper.xml的selectListWithRoleName方法，1次查询获取流程及角色名称** |
 
 ---
@@ -329,106 +329,62 @@ LIMIT #{offset}, #{pageSize}
 
 ---
 
-## 问题9：素材列表-标签转换（中优先级）
+## 问题9：素材列表-标签转换 ✅已完成
 
-**文件**: `xuanjiao-app/src/main/java/com/xuanjiao/app/asset/impl/AssetServiceImpl.java`
-**方法**: `convertWithTags()` (行294-321)
-**场景**: 素材列表带标签转换为DTO
-**影响**: 100条记录会产生200+次查询
+**文件**: `xuanjiao-app/src/main/java/com/xuanjiao/app/material/impl/MaterialApplicationServiceImpl.java`
+**方法**: `convert()` 和 `convertAsset()` (行372-397)
+**场景**: 素材申请详情加载多个素材时，每个素材单独查询标签
+**影响**: 100个素材会产生200次查询
 
-**优化方式**: JOIN查询
+**优化方式**: 批量预加载
 
-**当前代码**:
-```java
-for (Asset asset : assets) {
-    List<AssetTagDO> assetTags = assetTagMapper.selectList(query);  // 1次/素材
-    List<TagDO> tags = tagMapper.selectBatchIds(tagIds);          // 1次/素材
-}
-```
+**优化方案**:
+1. 在 `AssetTagMapper.xml` 中新增 `selectByAssetIds` 方法，批量查询多个素材的标签关联
+2. 在 `MaterialApplicationServiceImpl.convert()` 中：
+   - 先批量查询所有素材-标签关联（1次查询）
+   - 再批量查询所有标签（1次查询）
+   - 在内存中建立素材ID到标签列表的映射
+   - 使用预加载的标签转换素材
 
-**优化方案**: 在AssetMapper.xml中新增带JOIN和GROUP_CONCAT的查询方法，一条SQL获取素材及其标签。
-
-**SQL示例**:
-```sql
-SELECT a.*,
-    GROUP_CONCAT(t.name SEPARATOR ',') AS tag_names,
-    GROUP_CONCAT(t.id SEPARATOR ',') AS tag_ids
-FROM asset a
-LEFT JOIN asset_tag at ON a.id = at.asset_id
-LEFT JOIN tag t ON at.tag_id = t.id
-WHERE a.deleted = 0
-GROUP BY a.id
-ORDER BY a.create_time DESC
-LIMIT #{offset}, #{pageSize}
-```
+**效果**: 将2*N次查询优化为2次查询（批量查询）
 
 **涉及Mapper**:
-- AssetMapper (新增 selectListWithTags)
+- AssetTagMapper (新增 selectByAssetIds)
 
 ---
 
-## 问题10：流程设计器-审批人转换（低优先级）
+## 问题10：流程设计器-审批人转换 ✅已完成
 
 **文件**: `xuanjiao-app/src/main/java/com/xuanjiao/app/workflow/impl/WorkflowServiceImpl.java`
-**方法**: `convertApprover()` (行391-410) 和 `getApproverName()` (行412-422)
+**方法**: `convertApprover()` 和 `getApproverName()`
 **场景**: 流程设计器中审批人配置转换为DTO
 **影响**: 10个审批人会产生40次查询
 
 **优化方式**: JOIN查询
 
-**当前代码**:
-```java
-for (StageApproverDO entity : approvers) {
-    String name = getApproverName(entity.getApproverType(), entity.getApproverId());
-    // 内部: userMapper.selectById / roleMapper.selectById / deptMapper.selectById
+**优化方案**:
+1. 在 `StageApproverMapper.xml` 中已有 `selectWithDetails` 方法，带JOIN查询
+2. 在 `StageApproverQuery` 中添加 `stageIds` 字段支持批量查询
+3. 修改 `WorkflowServiceImpl.getById()` 方法：
+   - 先获取所有阶段ID
+   - 使用 `selectWithDetails` 批量查询所有审批人详情
+   - 使用 `convertApproverWithDetails` 转换审批人
 
-    if (entity.getSubWorkflowId() != null) {
-        WorkflowDO subWorkflow = workflowMapper.selectById(entity.getSubWorkflowId());
-    }
-}
-```
-
-**优化方案**: 在StageApproverMapper.xml中新增带JOIN的查询方法，一次性获取审批人及其关联的用户/角色/部门/子流程信息。
-
-**SQL示例**:
-```sql
-SELECT
-    sa.*,
-    u.username, u.real_name, u.dept_id,
-    r.name AS role_name,
-    d.name AS dept_name,
-    sub_w.name AS sub_workflow_name
-FROM stage_approver sa
-LEFT JOIN sys_user u ON sa.approver_type = 'USER' AND sa.approver_id = u.id
-LEFT JOIN sys_role r ON sa.approver_type = 'ROLE' AND sa.approver_id = r.id
-LEFT JOIN sys_dept d ON sa.approver_type = 'DEPT' AND sa.approver_id = d.id
-LEFT JOIN workflow sub_w ON sa.sub_workflow_id = sub_w.id
-WHERE sa.stage_id IN
-<foreach collection="stageIds" item="stageId" open="(" separator="," close=")">#{stageId}</foreach>
-```
+**效果**: 将 N*4 次查询优化为 1 次查询
 
 **涉及Mapper**:
-- StageApproverMapper (新增 selectWithUserRoleDeptDetails)
+- StageApproverMapper (使用已有的 selectWithDetails 方法)
+- StageApproverQuery (新增 stageIds 字段)
 
 ---
 
-## 问题11：流程设计器-阶段审批人列表（低优先级）
+## 问题11：流程设计器-阶段审批人列表 ✅已完成
 
 **文件**: `xuanjiao-app/src/main/java/com/xuanjiao/app/workflow/impl/WorkflowServiceImpl.java`
-**方法**: `getWorkflowDetail()` 中的stream().map() (行89, 121)
+**方法**: `getById()` 中的审批人查询
 **场景**: 获取流程详情时转换审批人列表
 
 **优化方式**: JOIN查询（与问题10一起优化）
-
-**当前代码**:
-```java
-for (WorkflowStageDO stage : stages) {
-    List<StageApproverDO> approvers = approverMapper.selectList(query);
-    stageDTO.setApprovers(approvers.stream()
-        .map(this::convertApprover)  // 每个审批人都有独立查询
-        .collect(Collectors.toList()));
-}
-```
 
 **优化方案**: 与问题10使用相同的JOIN查询方法，流程详情查询也使用StageApproverMapper的JOIN方法。
 

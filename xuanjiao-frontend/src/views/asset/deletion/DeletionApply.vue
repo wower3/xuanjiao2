@@ -159,11 +159,64 @@
         </el-form-item>
 
         <!-- 无需选择审批人的提示 -->
-        <el-form-item v-if="boundWorkflow && hasLoadedInitialApprovers && firstStageApproverConfigs.length === 0">
+        <el-form-item v-if="boundWorkflow && hasLoadedInitialApprovers && firstStageApproverConfigs.length === 0 && subWorkflows.length === 0">
           <div style="color: #E6A23C; font-size: 13px">
             该流程无需手动选择审批人，系统将自动分配
           </div>
         </el-form-item>
+
+        <!-- 子流程审批人选择 -->
+        <template v-for="subWorkflow in subWorkflows" :key="subWorkflow.id">
+          <el-form-item :label="'子流程：' + (subWorkflow.name || '未命名')">
+            <div style="width: 100%">
+              <div v-if="subWorkflow.loading" v-loading="true" style="min-height: 50px"></div>
+              <div v-else>
+                <!-- 子流程标题栏 -->
+                <div style="margin-bottom: 10px; padding: 8px; background-color: #FDF6EC; border-radius: 4px; border-left: 3px solid #E6A23C; display: flex; align-items: center;">
+                  <span style="font-weight: bold; color: #E6A23C; font-size: 14px">子流程：{{ subWorkflow.name || '未命名' }} (ID: {{ subWorkflow.id }})</span>
+                  <el-tag v-if="subWorkflow.approveType === 'OR'" type="warning" size="small" style="margin-left: auto">或签</el-tag>
+                </div>
+
+                <div v-if="!subWorkflow.approverConfigs || subWorkflow.approverConfigs.length === 0" style="color: #F56C6C; font-size: 13px">
+                  该子流程未配置阶段或审批人，请在流程设计器中配置。
+                </div>
+                <template v-else>
+                  <div style="margin-bottom: 8px; font-size: 13px; color: #606266;">
+                    <template v-if="subWorkflow.approveType === 'OR'">
+                      或签：请从以下配置中选择 1 个审批人
+                    </template>
+                    <template v-else>
+                      会签：请按照配置顺序为每个配置项选择审批人，共需要选择 {{ subWorkflow.approverCount }} 个审批人。
+                    </template>
+                  </div>
+                  <div v-for="(config, index) in subWorkflow.approverConfigs" :key="config.configId" style="margin-bottom: 15px">
+                    <div style="font-weight: 500; margin-bottom: 8px; font-size: 13px">
+                      {{ index + 1 }}. {{ config.approverTypeName }}：{{ config.approverName }}
+                    </div>
+                    <el-select
+                      v-model="subWorkflow.selectedApprovers[config.configId]"
+                      filterable
+                      placeholder="请选择审批人"
+                      style="width: 100%;"
+                      clearable
+                      @change="handleSubWorkflowApproverChange(subWorkflow)"
+                    >
+                      <el-option
+                        v-for="user in (config.availableUsers || [])"
+                        :key="user.id"
+                        :label="user.realName || user.username"
+                        :value="user.id"
+                      />
+                    </el-select>
+                  </div>
+                  <div style="font-size: 12px; color: #909399; margin-top: 8px;">
+                    已选择 {{ Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined).length }} / {{ subWorkflow.approveType === 'OR' ? 1 : subWorkflow.approverCount }} 位审批人
+                  </div>
+                </template>
+              </div>
+            </div>
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="showSubmitDialog = false">取消</el-button>
@@ -211,7 +264,7 @@ import {
   getMyDeletionApplications,
   getDeletionApplicationById
 } from '@/api/assetDeletion'
-import { getWorkflowList, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows } from '@/api/workflow'
+import { getWorkflowList, getWorkflowById, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
 import { getCurrentUser } from '@/api/user'
 
 interface Props {
@@ -253,6 +306,7 @@ const firstStageApproveType = ref('')
 const firstStageApproverCount = ref(0)
 const selectedFirstStageApprovers = ref<Record<number, number>>({})
 const hasLoadedInitialApprovers = ref(false)
+const subWorkflows = ref<any[]>([]) // 第一层包含的子流程列表
 
 // 本地维护的选中素材
 const localSelectedAssets = ref<any[]>([...props.selectedAssets])
@@ -310,7 +364,9 @@ async function loadWorkflows() {
           w.status === 1
         )
         if (matched) {
-          boundWorkflow.value = matched
+          // 流程列表不包含stages信息，需要单独调用getWorkflowById获取完整信息
+          const detailRes = await getWorkflowById(matched.id)
+          boundWorkflow.value = detailRes.data
         }
       }
     }
@@ -336,11 +392,81 @@ async function loadFirstStageApprovers() {
     firstStageApproveType.value = res.data?.approveType || ''
     firstStageApproverCount.value = res.data?.approverCount || 0
     hasLoadedInitialApprovers.value = true
+    // 加载子流程信息
+    await loadSubWorkflows()
   } catch (e: any) {
     console.error('加载第一层审批人配置失败', e)
     ElMessage.error(e.message || '加载审批人配置失败')
   } finally {
     loadingAssets.value = false
+  }
+}
+
+// 加载子流程信息
+async function loadSubWorkflows() {
+  if (!boundWorkflow.value?.stages || boundWorkflow.value.stages.length === 0) return
+
+  const firstStage = boundWorkflow.value.stages[0]
+  if (!firstStage.approvers) return
+
+  // 查找第一层中包含的子流程
+  const subWorkflowApprovers = firstStage.approvers.filter((a: any) => a.subWorkflowId)
+
+  if (subWorkflowApprovers.length === 0) return
+
+  // 为每个子流程初始化数据并加载审批人配置
+  subWorkflows.value = []
+  for (const approver of subWorkflowApprovers) {
+    const subWorkflow: any = {
+      id: approver.subWorkflowId,
+      name: approver.subWorkflowName,
+      approverConfigs: [],
+      approverCount: 0,
+      selectedApprovers: {} as Record<number, number>,
+      loading: false
+    }
+    await loadSubWorkflowApprovers(subWorkflow)
+    subWorkflows.value.push(subWorkflow)
+  }
+}
+
+async function loadSubWorkflowApprovers(subWorkflow: any) {
+  if (!currentUser.value?.id) return
+
+  subWorkflow.loading = true
+  try {
+    const res = await getSubWorkflowFirstStageApprovers({
+      subWorkflowId: subWorkflow.id,
+      applicantId: currentUser.value.id,
+      keyword: '' // 暂不支持子流程审批人搜索
+    })
+    subWorkflow.approveType = res.data?.approveType || ''
+    subWorkflow.approverConfigs = res.data?.approverConfigs || []
+    subWorkflow.approverCount = res.data?.approverCount || 0
+
+    if (!subWorkflow.selectedApprovers) {
+      subWorkflow.selectedApprovers = {}
+    }
+  } catch (e: any) {
+    console.error(`加载子流程"${subWorkflow.name}"审批人配置失败`, e)
+    ElMessage.error(e.message || `加载子流程"${subWorkflow.name}"审批人配置失败`)
+  } finally {
+    subWorkflow.loading = false
+  }
+}
+
+// 处理子流程审批人选择变化（或签时只允许选1个）
+function handleSubWorkflowApproverChange(subWorkflow: any) {
+  if (subWorkflow.approveType === 'OR') {
+    const selectedKeys = Object.keys(subWorkflow.selectedApprovers).filter(
+      key => subWorkflow.selectedApprovers[key] !== null && subWorkflow.selectedApprovers[key] !== undefined
+    )
+    if (selectedKeys.length > 1) {
+      const lastKey = selectedKeys[selectedKeys.length - 1]
+      const lastValue = subWorkflow.selectedApprovers[lastKey]
+      subWorkflow.selectedApprovers = {}
+      subWorkflow.selectedApprovers[lastKey] = lastValue
+    }
   }
 }
 
@@ -467,6 +593,26 @@ async function handleSubmit() {
     }
   }
 
+  // 检查是否需要选择子流程审批人（根据子流程自己的或签/会签类型）
+  for (const subWorkflow of subWorkflows.value) {
+    if (subWorkflow.approverCount > 0) {
+      const selectedCount = Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined).length
+      if (subWorkflow.approveType === 'OR') {
+        // 子流程或签：至少选1个
+        if (selectedCount < 1) {
+          ElMessage.warning(`请为子流程"${subWorkflow.name}"选择至少 1 位审批人（或签）`)
+          return
+        }
+      } else {
+        // 子流程会签：所有配置都要选
+        if (selectedCount < subWorkflow.approverCount) {
+          ElMessage.warning(`请为子流程"${subWorkflow.name}"选择所有 ${subWorkflow.approverCount} 位审批人（当前已选 ${selectedCount} 位）`)
+          return
+        }
+      }
+    }
+  }
+
   if (!currentId.value) {
     ElMessage.error('请先保存草稿')
     return
@@ -483,24 +629,31 @@ async function handleSubmit() {
       return
     }
 
-    // 如果需要选择第一层审批人，调用选择接口
-    if (firstStageApproverCount.value > 0) {
-      const approverIds: number[] = []
-      // 从 selectedFirstStageApprovers 中提取选中的审批人ID
+    // 如果有子流程或主流程审批人，使用新API
+    if ((firstStageApproverCount.value > 0 || subWorkflows.value.length > 0) && instanceId) {
+      // 构建主流程审批人选择
+      const mainApproverIds: number[] = []
       for (const configId in selectedFirstStageApprovers.value) {
         const approverId = selectedFirstStageApprovers.value[configId]
         if (approverId !== null && approverId !== undefined) {
-          approverIds.push(approverId)
+          mainApproverIds.push(approverId)
         }
       }
 
-      if (approverIds.length > 0) {
-        await selectFirstStageApproversWithSubWorkflows({
-          instanceId: instanceId,
-          approverIds: approverIds,
-          subWorkflowApproverIds: {}
-        })
+      // 构建子流程审批人选择映射（从 configId -> userId 转换为数组）
+      const subWorkflowApproverIds: Record<number, number[]> = {}
+      for (const subWorkflow of subWorkflows.value) {
+        const selectedIds = Object.values(subWorkflow.selectedApprovers).filter(v => v !== null && v !== undefined) as number[]
+        if (selectedIds.length > 0) {
+          subWorkflowApproverIds[subWorkflow.id] = selectedIds
+        }
       }
+
+      await selectFirstStageApproversWithSubWorkflows({
+        instanceId: instanceId,
+        approverIds: mainApproverIds,
+        subWorkflowApproverIds: subWorkflowApproverIds
+      })
     }
 
     ElMessage.success('提交成功')

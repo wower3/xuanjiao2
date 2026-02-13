@@ -16,6 +16,7 @@ import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
 import com.xuanjiao.infrastructure.workflow.StageApproverQuery;
+import com.xuanjiao.infrastructure.workflow.StageApproverWithDetailsDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
@@ -90,14 +91,28 @@ public class WorkflowServiceImpl implements WorkflowService {
         stageQuery.setOrderByField("stage_order");
         stageQuery.setOrderByDirection("ASC");
         List<WorkflowStageDO> stages = stageMapper.selectList(stageQuery);
+
+        // 批量查询所有阶段的审批人（优化N+1问题）
+        List<Long> stageIds = stages.stream().map(WorkflowStageDO::getId).collect(Collectors.toList());
+        Map<Long, List<StageApproverWithDetailsDO>> approversByStageId = new HashMap<>();
+        if (!stageIds.isEmpty()) {
+            // 使用JOIN查询一次性获取所有审批人及其详情
+            StageApproverQuery approverQuery = new StageApproverQuery();
+            approverQuery.setStageIds(stageIds);
+            List<StageApproverWithDetailsDO> allApprovers = approverMapper.selectWithDetails(approverQuery);
+
+            // 按stageId分组
+            for (StageApproverWithDetailsDO approver : allApprovers) {
+                approversByStageId.computeIfAbsent(approver.getStageId(), k -> new ArrayList<>()).add(approver);
+            }
+        }
+
         List<WorkflowStageDTO> stageDTOs = new ArrayList<>();
         for (WorkflowStageDO stage : stages) {
             WorkflowStageDTO stageDTO = convertStage(stage);
-            // 查询该阶段的所有审批人（包括普通审批人和子流程）
-            StageApproverQuery approverQuery = new StageApproverQuery();
-            approverQuery.setStageId(stage.getId());
-            List<StageApproverDO> approvers = approverMapper.selectList(approverQuery);
-            stageDTO.setApprovers(approvers.stream().map(this::convertApprover).collect(Collectors.toList()));
+            // 使用预加载的审批人数据进行转换
+            List<StageApproverWithDetailsDO> approvers = approversByStageId.getOrDefault(stage.getId(), new ArrayList<>());
+            stageDTO.setApprovers(approvers.stream().map(this::convertApproverWithDetails).collect(Collectors.toList()));
             stageDTOs.add(stageDTO);
         }
         dto.setStages(stageDTOs);
@@ -386,6 +401,40 @@ public class WorkflowServiceImpl implements WorkflowService {
             }
         }
         return dto;
+    }
+
+    /**
+     * 使用预加载的详情转换审批人（优化N+1问题）
+     */
+    private StageApproverDTO convertApproverWithDetails(StageApproverWithDetailsDO entity) {
+        StageApproverDTO dto = new StageApproverDTO();
+        dto.setId(entity.getId());
+        dto.setStageId(entity.getStageId());
+        dto.setApproverType(entity.getApproverType());
+        dto.setApproverId(entity.getApproverId());
+        dto.setCheckSecondaryDept(entity.getCheckSecondaryDept());
+        dto.setSubWorkflowId(entity.getSubWorkflowId());
+        // 直接从JOIN结果获取名称，无需额外查询
+        String name = getApproverNameFromDetails(entity);
+        dto.setApproverName(name);
+        // 直接从JOIN结果获取子流程名称
+        dto.setSubWorkflowName(entity.getSubWorkflowName());
+        return dto;
+    }
+
+    /**
+     * 从JOIN详情结果中获取审批人名称
+     */
+    private String getApproverNameFromDetails(StageApproverWithDetailsDO entity) {
+        if ("USER".equals(entity.getApproverType())) {
+            String displayName = entity.getRealName() != null ? entity.getRealName() : entity.getUsername();
+            return "[用户] " + (displayName != null ? displayName : "未知");
+        } else if ("ROLE".equals(entity.getApproverType())) {
+            return "[角色] " + (entity.getRoleName() != null ? entity.getRoleName() : "未知");
+        } else if ("DEPT".equals(entity.getApproverType())) {
+            return "[部门] " + (entity.getDeptName() != null ? entity.getDeptName() : "未知");
+        }
+        return "未知";
     }
 
     private String getApproverName(String type, Long id) {

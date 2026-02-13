@@ -49,4 +49,12 @@ public interface AssetTagMapper {
      * @return 影响行数
      */
     int delete(AssetTagQuery query);
+
+    /**
+     * 批量查询多个素材的标签关联（优化N+1问题）
+     *
+     * @param assetIds 素材ID列表
+     * @return 素材标签关联列表
+     */
+    List<AssetTagDO> selectByAssetIds(@Param("assetIds") List<Long> assetIds);
 }

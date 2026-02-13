@@ -2,6 +2,8 @@ package com.xuanjiao.infrastructure.workflow;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 阶段审批人查询条件对象
  *
@@ -22,6 +24,11 @@ public class StageApproverQuery {
      * 阶段ID
      */
     private Long stageId;
+
+    /**
+     * 阶段ID列表（用于批量查询）
+     */
+    private List<Long> stageIds;
 
     /**
      * 审批人类型（USER-用户、ROLE-角色、DEPT-部门）

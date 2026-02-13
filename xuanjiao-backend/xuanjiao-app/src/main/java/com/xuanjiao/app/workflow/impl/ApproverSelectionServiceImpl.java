@@ -618,6 +618,12 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
                     approverTypeName = "指定部门";
                     approverName = config.getDeptName();
                 }
+            } else if ("SUB_WORKFLOW".equals(config.getApproverType())) {
+                // SUB_WORKFLOW类型：子流程审批人
+                approverTypeName = "子流程";
+                approverName = config.getSubWorkflowName() != null ? config.getSubWorkflowName() : "子流程";
+                // 子流程的subWorkflowId存储在StageApproverWithDetailsDO的subWorkflowId字段中
+                configInfo.put("subWorkflowId", config.getSubWorkflowId());
             }
             configInfo.put("approverTypeName", approverTypeName);
             configInfo.put("approverName", approverName);

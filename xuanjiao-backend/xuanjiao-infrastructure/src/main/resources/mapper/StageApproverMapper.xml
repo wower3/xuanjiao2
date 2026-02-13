@@ -148,6 +148,12 @@
         LEFT JOIN workflow sub_w ON sa.sub_workflow_id = sub_w.id AND sub_w.deleted = 0
         <where>
             <if test="stageId != null">AND sa.stage_id = #{stageId}</if>
+            <if test="stageIds != null and stageIds.size() > 0">
+                AND sa.stage_id IN
+                <foreach collection="stageIds" item="stageId" open="(" separator="," close=")">
+                    #{stageId}
+                </foreach>
+            </if>
             <if test="subWorkflowIdNull != null and subWorkflowIdNull == true">AND sa.sub_workflow_id IS NULL</if>
             <if test="subWorkflowIdNotNull != null and subWorkflowIdNotNull == true">AND sa.sub_workflow_id IS NOT NULL</if>
         </where>

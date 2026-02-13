@@ -370,7 +370,7 @@ import {
 } from '@/api/materialApplication'
 import { getTagList, createTag } from '@/api/tag'
 import { uploadAsset, deleteAsset } from '@/api/asset'
-import { getWorkflowList, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
+import { getWorkflowList, getWorkflowById, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
 import { useUserStore } from '@/stores/user'
 import { getCurrentUser } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -476,7 +476,9 @@ async function loadWorkflows() {
           w.status === 1
         )
         if (matched) {
-          boundWorkflow.value = matched
+          // 流程列表不包含stages信息，需要单独调用getWorkflowById获取完整信息
+          const detailRes = await getWorkflowById(matched.id)
+          boundWorkflow.value = detailRes.data
         }
       }
     }

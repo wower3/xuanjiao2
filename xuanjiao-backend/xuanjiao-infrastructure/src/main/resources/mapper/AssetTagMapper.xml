@@ -48,4 +48,18 @@
         </where>
     </delete>
 
+    <!-- 批量查询多个素材的标签关联（优化N+1问题） -->
+    <select id="selectByAssetIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM asset_tag
+        <where>
+            <if test="assetIds != null and assetIds.size() > 0">
+                asset_id IN
+                <foreach collection="assetIds" item="assetId" open="(" separator="," close=")">
+                    #{assetId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
 </mapper>
