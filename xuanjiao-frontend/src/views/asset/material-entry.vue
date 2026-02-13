@@ -702,15 +702,8 @@ onBeforeRouteLeave((to, from, next) => {
   }
 })
 
-// 保存草稿后导航
+// 保存草稿后导航（不校验任何内容，草稿阶段不限制）
 async function saveDraftAndNavigate(to: any) {
-  await formRef.value?.validate()
-
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
-    return
-  }
-
   saving.value = true
   try {
     const submitData = {
@@ -737,12 +730,7 @@ async function saveDraftAndNavigate(to: any) {
 }
 
 async function handleSaveDraft() {
-  // 只验证保证声明，不验证标题（标题只在提交审批时验证）
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
-    return
-  }
-
+  // 不校验任何内容，草稿阶段不限制（标题和保证声明只在提交审批时验证）
   saving.value = true
   try {
     const submitData = {

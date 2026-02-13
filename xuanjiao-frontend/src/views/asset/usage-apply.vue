@@ -671,13 +671,7 @@ async function handleSaveConfig() {
 }
 
 async function handleSaveDraft() {
-  // 保存草稿时只验证标题，不验证素材配置信息
-  try {
-    await formRef.value?.validate()
-  } catch {
-    return
-  }
-
+  // 不校验任何内容，草稿阶段不限制（标题和素材配置只在提交审批时验证）
   if (selectedAssets.value.length === 0) {
     ElMessage.warning('请至少选择一个素材')
     return

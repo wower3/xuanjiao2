@@ -496,14 +496,12 @@ function handleBackToAssets() {
   emit('backToAssets')
 }
 
-// 保存草稿
+// 保存草稿（不校验任何内容，草稿阶段不限制）
 async function handleSaveDraft() {
   if (localSelectedAssets.value.length === 0) {
     ElMessage.warning('请先选择要删除的素材')
     return
   }
-
-  await formRef.value?.validate()
 
   saving.value = true
   try {
@@ -546,6 +544,17 @@ async function handleSaveDraft() {
 async function handleSubmitDialog() {
   if (localSelectedAssets.value.length === 0) {
     ElMessage.warning('请先选择要删除的素材')
+    return
+  }
+
+  // 提交审批时校验标题和删除原因
+  if (!form.title || form.title.trim() === '') {
+    ElMessage.warning('请输入申请标题')
+    return
+  }
+
+  if (!form.deleteReason || form.deleteReason.trim() === '') {
+    ElMessage.warning('请输入删除原因')
     return
   }
 
