@@ -43,7 +43,7 @@
 | 3 | 任务详情 | ApprovalServiceImpl | getTaskDetail() | 批量预加载 | 详情页，涉及子流程，较复杂 |
 | 4 | 用户详情转换 ✅已合并到问题5 | ApproverSelectionServiceImpl | convertUserToMap() | JOIN | 辅助问题5，问题5优化后自动解决，使用convertUserWithDetailsToMap替代 |
 | 5 | 可用用户列表 ✅已完成 | ApproverSelectionServiceImpl | getAvailableUsersForConfig() | JOIN | 优化：使用selectListWithDetails方法，JOIN获取用户及部门角色信息 |
-| 6 | 素材申请列表转换 | MaterialApplicationServiceImpl | convert() | 分页+JOIN | 已有分页，建议每页数据用JOIN |
+| 6 | 素材申请列表转换 ✅已完成 | MaterialApplicationServiceImpl | convert() | 分页+JOIN | 优化：使用selectListWithDetails方法，每页从4次查询减少为2次 |
 | 8 | 素材使用申请列表转换 | UsageApplyServiceImpl | convert() | JOIN | 申请人名称可用JOIN获取 |
 | 9 | 素材列表-标签转换 | AssetServiceImpl | convertWithTags() | JOIN | 一条SQL获取素材及标签 |
 | 10 | 流程设计器-审批人转换 | WorkflowServiceImpl | convertApprover() | JOIN | 审批人详情可用JOIN获取 |
