@@ -39,10 +39,10 @@
 | 编号 | 问题 | 文件 | 方法 | 优化方式 | 说明 |
 |------|------|------|------|---------|------|
 | 1 | 待办列表/我发起的 ✅已完成 | ApprovalServiceImpl | getMyTasks() | 分页+JOIN | 优化：使用selectPendingTaskPage方法，每页从8次查询减少为2次 |
-| 2 | 选择审批人列表 | ApproverSelectionServiceImpl | getFirstStageApprovers() | JOIN | 数据量小，可用JOIN |
+| 2 | 选择审批人列表 ✅已完成 | ApproverSelectionServiceImpl | getFirstStageApprovers() | JOIN | 优化：使用selectWithDetails方法，一次性获取审批人及关联信息 |
 | 3 | 任务详情 | ApprovalServiceImpl | getTaskDetail() | 批量预加载 | 详情页，涉及子流程，较复杂 |
-| 4 | 用户详情转换 | ApproverSelectionServiceImpl | convertUserToMap() | JOIN | 辅助问题5，问题5优化后自动解决 |
-| 5 | 可用用户列表 | ApproverSelectionServiceImpl | getAvailableUsersForConfig() | JOIN | 角色/部门查询时直接JOIN获取用户信息 |
+| 4 | 用户详情转换 ✅已合并到问题5 | ApproverSelectionServiceImpl | convertUserToMap() | JOIN | 辅助问题5，问题5优化后自动解决，使用convertUserWithDetailsToMap替代 |
+| 5 | 可用用户列表 ✅已完成 | ApproverSelectionServiceImpl | getAvailableUsersForConfig() | JOIN | 优化：使用selectListWithDetails方法，JOIN获取用户及部门角色信息 |
 | 6 | 素材申请列表转换 | MaterialApplicationServiceImpl | convert() | 分页+JOIN | 已有分页，建议每页数据用JOIN |
 | 8 | 素材使用申请列表转换 | UsageApplyServiceImpl | convert() | JOIN | 申请人名称可用JOIN获取 |
 | 9 | 素材列表-标签转换 | AssetServiceImpl | convertWithTags() | JOIN | 一条SQL获取素材及标签 |
