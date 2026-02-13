@@ -20,6 +20,9 @@ import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.asset.TagMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
+import com.xuanjiao.infrastructure.material.MaterialApplicationWithDetailsDO;
+import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
+import com.xuanjiao.infrastructure.material.MaterialApplicationQuery;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -69,6 +72,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
     @Autowired
     private DeptMapper deptMapper;
+
+    @Autowired
+    private MaterialApplicationMapper materialApplicationMapper;
 
     @Override
     @Transactional
@@ -214,44 +220,92 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
     @Override
     public PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize) {
-        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
+        // 使用JOIN查询一次性获取申请及关联的用户/部门信息，避免N+1问题
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
+        List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
+        long total = materialApplicationMapper.selectCount(query);
+
         // 过滤出草稿状态
-        list = list.stream().filter(app -> "DRAFT".equals(app.getStatus())).collect(Collectors.toList());
-
-        long total = materialApplicationRepository.countByApplicant(userId);
-
-        List<MaterialApplicationDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        List<MaterialApplicationDTO> dtoList = list.stream()
+            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .map(this::convertWithDetails)
+            .collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
     @Override
     public PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
-        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
+        // 使用JOIN查询一次性获取申请及关联的用户/部门信息，避免N+1问题
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
+        List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
+        long total = materialApplicationMapper.selectCount(query);
+
         // 过滤出草稿状态
-        list = list.stream().filter(app -> "DRAFT".equals(app.getStatus())).collect(Collectors.toList());
+        List<MaterialApplicationWithDetailsDO> filteredList = list.stream()
+            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .collect(Collectors.toList());
 
         // 按标题筛选
-        List<MaterialApplication> filteredList = list;
         if (title != null && !title.isEmpty()) {
             final String titleFilter = title;
-            filteredList = list.stream()
+            filteredList = filteredList.stream()
                 .filter(app -> app.getTitle() != null && app.getTitle().contains(titleFilter))
                 .collect(Collectors.toList());
         }
 
-        long total = materialApplicationRepository.countByApplicant(userId);
-
-        List<MaterialApplicationDTO> dtoList = filteredList.stream().map(this::convert).collect(Collectors.toList());
-        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
+        List<MaterialApplicationDTO> dtoList = filteredList.stream()
+            .map(this::convertWithDetails)
+            .collect(Collectors.toList());
+        return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
     @Override
     public PageResult<MaterialApplicationDTO> queryMyApplications(Long userId, Integer pageNum, Integer pageSize) {
-        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
-        long total = materialApplicationRepository.countByApplicant(userId);
+        // 使用JOIN查询一次性获取申请及关联的用户/部门信息，避免N+1问题
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
+        List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
+        long total = materialApplicationMapper.selectCount(query);
 
-        List<MaterialApplicationDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        // 转换为DTO - 使用优化的convert方法
+        List<MaterialApplicationDTO> dtoList = list.stream().map(this::convertWithDetails).collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
+    }
+
+    /**
+     * 将带详情的DO转换为DTO（优化版，使用JOIN查询结果）
+     */
+    private MaterialApplicationDTO convertWithDetails(MaterialApplicationWithDetailsDO details) {
+        if (details == null) return null;
+        MaterialApplicationDTO dto = new MaterialApplicationDTO();
+        dto.setId(details.getId());
+        dto.setTitle(details.getTitle());
+        dto.setApplicantId(details.getApplicantId());
+        dto.setApplicantName(details.getApplicantName());
+        dto.setMaintainerId(details.getMaintainerId());
+        dto.setMaintainerName(details.getMaintainerName());
+        dto.setDeptId(details.getDeptId());
+        dto.setDeptName(details.getDeptName());
+        dto.setWorkflowId(details.getWorkflowId());
+        dto.setStatus(details.getStatus());
+        dto.setGuaranteeDeclaration(details.getGuaranteeDeclaration());
+        dto.setCreateTime(details.getCreateTime());
+        dto.setUpdateTime(details.getUpdateTime());
+        return dto;
     }
 
     private MaterialApplicationDTO convert(MaterialApplication application) {

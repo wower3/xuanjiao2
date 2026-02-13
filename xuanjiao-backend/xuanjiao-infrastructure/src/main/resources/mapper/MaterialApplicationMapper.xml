@@ -126,4 +126,74 @@
         AND COALESCE(deleted, 0) = 0
     </update>
 
+    <!-- ==================== 优化的JOIN查询方法（解决N+1问题） ==================== -->
+
+    <!-- ResultMap with Details -->
+    <resultMap id="WithDetailsResultMap" type="com.xuanjiao.infrastructure.material.MaterialApplicationWithDetailsDO">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="maintainer_id" property="maintainerId"/>
+        <result column="maintainer_name" property="maintainerName"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="workflow_id" property="workflowId"/>
+        <result column="status" property="status"/>
+        <result column="guarantee_declaration" property="guaranteeDeclaration"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="asset_count" property="assetCount"/>
+    </resultMap>
+
+    <!-- 条件查询素材申请列表（带申请人、维护人、部门名称，JOIN查询避免N+1） -->
+    <select id="selectListWithDetails" resultMap="WithDetailsResultMap">
+        SELECT
+            ma.id,
+            ma.title,
+            ma.applicant_id,
+            u1.real_name AS applicant_name,
+            ma.maintainer_id,
+            u2.real_name AS maintainer_name,
+            ma.dept_id,
+            d.name AS dept_name,
+            ma.workflow_id,
+            ma.status,
+            ma.guarantee_declaration,
+            ma.create_time,
+            ma.update_time,
+            (SELECT COUNT(*) FROM asset a WHERE a.application_id = ma.id AND COALESCE(a.deleted, 0) = 0) AS asset_count
+        FROM material_application ma
+        LEFT JOIN sys_user u1 ON ma.applicant_id = u1.id AND COALESCE(u1.deleted, 0) = 0
+        LEFT JOIN sys_user u2 ON ma.maintainer_id = u2.id AND COALESCE(u2.deleted, 0) = 0
+        LEFT JOIN sys_dept d ON ma.dept_id = d.id AND COALESCE(d.deleted, 0) = 0
+        <where>
+            <if test="id != null">AND ma.id = #{id}</if>
+            <if test="applicantId != null">AND ma.applicant_id = #{applicantId}</if>
+            <if test="maintainerId != null">AND ma.maintainer_id = #{maintainerId}</if>
+            <if test="deptId != null">AND ma.dept_id = #{deptId}</if>
+            <if test="workflowId != null">AND ma.workflow_id = #{workflowId}</if>
+            <if test="status != null and status != ''">AND ma.status = #{status}</if>
+            <if test="deleted != null">AND ma.deleted = #{deleted}</if>
+            <if test="deleted == null">AND COALESCE(ma.deleted, 0) = 0</if>
+
+            <!-- IN 查询 -->
+            <if test="applicantIds != null and applicantIds.size() > 0">
+                AND ma.applicant_id IN
+                <foreach collection="applicantIds" item="applicantId" open="(" separator="," close=")">
+                    #{applicantId}
+                </foreach>
+            </if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
 </mapper>
