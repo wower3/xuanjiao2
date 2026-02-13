@@ -38,6 +38,13 @@ public class MaterialApplication {
     private Long applicantId;
 
     /**
+     * 申请人姓名（非数据库字段，用于显示）
+     *
+     * <p>通过JOIN查询获取。</p>
+     */
+    private String applicantName;
+
+    /**
      * 维护人ID
      *
      * <p>关联sys_user表，负责该素材后续维护的用户。</p>
@@ -45,11 +52,25 @@ public class MaterialApplication {
     private Long maintainerId;
 
     /**
+     * 维护人姓名（非数据库字段，用于显示）
+     *
+     * <p>通过JOIN查询获取。</p>
+     */
+    private String maintainerName;
+
+    /**
      * 部门ID
      *
      * <p>关联sys_dept表，申请人所属部门。</p>
      */
     private Long deptId;
+
+    /**
+     * 部门名称（非数据库字段，用于显示）
+     *
+     * <p>通过JOIN查询获取。</p>
+     */
+    private String deptName;
 
     /**
      * 关联的工作流定义ID

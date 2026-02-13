@@ -1,16 +1,15 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.approval.ApprovalService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.approval.PendingTaskDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.approval.dto.ApprovalInstanceDetailDTO;
+import com.xuanjiao.client.dto.approval.dto.PendingTaskDTO;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -53,7 +52,7 @@ public class ApprovalApiIntegrationTest {
             return;
         }
 
-        Map<String, Object> result = approvalService.getInstanceDetail(instanceId);
+        ApprovalInstanceDetailDTO result = approvalService.getInstanceDetail(instanceId);
         assertNotNull(result);
         System.out.println("✓ Approval API: getInstanceDetail - instanceId=" + instanceId);
     }

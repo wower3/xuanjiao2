@@ -1,11 +1,11 @@
 package com.xuanjiao.app.approval;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.approval.FlowItemDTO;
-import com.xuanjiao.client.dto.approval.MyAppliedDTO;
-import com.xuanjiao.client.dto.approval.PendingTaskDTO;
-
-import java.util.Map;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.approval.dto.ApprovalInstanceDetailDTO;
+import com.xuanjiao.client.dto.approval.dto.ApprovalTaskDetailDTO;
+import com.xuanjiao.client.dto.approval.dto.FlowItemDTO;
+import com.xuanjiao.client.dto.approval.dto.MyAppliedDTO;
+import com.xuanjiao.client.dto.approval.dto.PendingTaskDTO;
 
 /**
  * 审批服务接口
@@ -77,9 +77,9 @@ public interface ApprovalService {
      * <p>返回审批任务的完整详情，包含任务信息、申请信息、审批进度、可选审批人等。</p>
      *
      * @param taskId 任务ID
-     * @return 任务详情Map，包含task、instance、progress、canSelectNextApprovers等字段
+     * @return 任务详情DTO
      */
-    Map<String, Object> getTaskDetail(Long taskId);
+    ApprovalTaskDetailDTO getTaskDetail(Long taskId);
 
     /**
      * 获取审批实例详情
@@ -87,9 +87,9 @@ public interface ApprovalService {
      * <p>返回审批实例的完整详情，包含实例信息、申请信息、所有阶段进度等。</p>
      *
      * @param instanceId 审批实例ID
-     * @return 审批实例详情Map，包含instance、businessInfo、progress等字段
+     * @return 审批实例详情DTO
      */
-    Map<String, Object> getInstanceDetail(Long instanceId);
+    ApprovalInstanceDetailDTO getInstanceDetail(Long instanceId);
 
     /**
      * 审批通过或拒绝

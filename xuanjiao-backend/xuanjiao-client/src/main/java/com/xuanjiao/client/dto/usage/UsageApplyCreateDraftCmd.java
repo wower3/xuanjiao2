@@ -27,5 +27,5 @@ public class UsageApplyCreateDraftCmd {
      * 素材配置列表
      */
     @Valid
-    private List<com.xuanjiao.client.dto.UsageApplyCmd.AssetUsageConfig> assetConfigs;
+    private List<com.xuanjiao.client.dto.usage.UsageApplyCmd.AssetUsageConfig> assetConfigs;
 }

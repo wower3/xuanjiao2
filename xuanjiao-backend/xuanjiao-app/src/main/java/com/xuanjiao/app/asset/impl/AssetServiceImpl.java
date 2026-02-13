@@ -1,15 +1,16 @@
 package com.xuanjiao.app.asset.impl;
 
 import cn.hutool.crypto.digest.DigestUtil;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xuanjiao.infrastructure.asset.AssetTagQuery;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.schedule.AssetDeletionCleanupTask;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.dto.AssetDTO;
-import com.xuanjiao.client.dto.AssetQueryCmd;
-import com.xuanjiao.client.dto.AssetUploadCmd;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.TagDTO;
+import com.xuanjiao.client.dto.asset.dto.AssetDTO;
+import com.xuanjiao.client.dto.asset.AssetQry;
+import com.xuanjiao.client.dto.asset.AssetUploadCmd;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.tag.dto.TagDTO;
 import com.xuanjiao.domain.asset.entity.Asset;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetTagDO;
@@ -196,17 +197,28 @@ public class AssetServiceImpl implements AssetService {
     }
 
     @Override
-    public PageResult<AssetDTO> query(AssetQueryCmd cmd) {
-        int offset = (cmd.getPageNum() - 1) * cmd.getPageSize();
-        List<Asset> list = assetRepository.findByCondition(
-            cmd.getName(), cmd.getType(), cmd.getStatus(), offset, cmd.getPageSize());
-        long total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
-        List<AssetDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
-        return PageResult.of(dtoList, total, cmd.getPageNum(), cmd.getPageSize());
+    public PageResult<AssetDTO> query(AssetQry cmd) {
+        // 使用 MyBatis-Plus 分页
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xuanjiao.infrastructure.dataobject.AssetDO> page =
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(cmd.getPageNum(), cmd.getPageSize());
+
+        // 构建 AssetQuery 条件
+        AssetQuery query = new AssetQuery();
+        query.setName(cmd.getName());
+        query.setType(cmd.getType());
+        query.setStatus(cmd.getStatus());
+
+        IPage<com.xuanjiao.infrastructure.dataobject.AssetDO> pageResult = assetMapper.selectPage(page, query);
+
+        List<AssetDTO> dtoList = pageResult.getRecords().stream()
+            .map(this::convertDOToDTO)
+            .collect(Collectors.toList());
+
+        return PageResult.of(dtoList, pageResult.getTotal(), cmd.getPageNum(), cmd.getPageSize());
     }
 
     @Override
-    public PageResult<AssetDTO> queryWithRoleFilter(AssetQueryCmd cmd, Long userId) {
+    public PageResult<AssetDTO> queryWithRoleFilter(AssetQry cmd, Long userId) {
         // Get user's role to determine filtering rules
         UserDO user = userMapper.selectById(userId);
         if (user == null) {
@@ -221,9 +233,16 @@ public class AssetServiceImpl implements AssetService {
         // Determine allowed statuses based on role
         String roleType = role.getRoleType();
 
-        int offset = (cmd.getPageNum() - 1) * cmd.getPageSize();
-        List<Asset> list;
-        long total;
+        // 使用 MyBatis-Plus 分页
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xuanjiao.infrastructure.dataobject.AssetDO> page =
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(cmd.getPageNum(), cmd.getPageSize());
+
+        // 构建 AssetQuery 条件
+        AssetQuery query = new AssetQuery();
+        query.setName(cmd.getName());
+        query.setType(cmd.getType());
+
+        IPage<com.xuanjiao.infrastructure.dataobject.AssetDO> pageResult;
 
         // SYSTEM_ADMIN and GENERAL_MGMT can see APPROVED, PENDING, and DELETED
         // All other users can only see APPROVED and DELETED
@@ -232,44 +251,37 @@ public class AssetServiceImpl implements AssetService {
         if ("SYSTEM_ADMIN".equals(roleType) || "GENERAL_MGMT".equals(roleType)) {
             if (cmd.getStatus() != null && !cmd.getStatus().isEmpty()) {
                 // User specified a status filter, use it
-                list = assetRepository.findByCondition(
-                    cmd.getName(), cmd.getType(), cmd.getStatus(), offset, cmd.getPageSize());
-                total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
+                query.setStatus(cmd.getStatus());
             } else {
                 // Admin default: Show APPROVED, PENDING, and DELETED
-                List<String> statusList = Arrays.asList("APPROVED", "PENDING", "DELETED");
-                list = assetRepository.findByStatusList(
-                    cmd.getName(), cmd.getType(), statusList, offset, cmd.getPageSize());
-                total = assetRepository.countByStatusList(cmd.getName(), cmd.getType(), statusList);
+                query.setStatusList(Arrays.asList("APPROVED", "PENDING", "DELETED"));
             }
         } else {
             // Regular users: APPROVED and DELETED
             if (cmd.getStatus() != null && !cmd.getStatus().isEmpty()) {
                 // User specified a status filter, use it
-                list = assetRepository.findByCondition(
-                    cmd.getName(), cmd.getType(), cmd.getStatus(), offset, cmd.getPageSize());
-                total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
+                query.setStatus(cmd.getStatus());
             } else {
                 // Regular user default: Show APPROVED and DELETED
-                List<String> statusList = Arrays.asList("APPROVED", "DELETED");
-                list = assetRepository.findByStatusList(
-                    cmd.getName(), cmd.getType(), statusList, offset, cmd.getPageSize());
-                total = assetRepository.countByStatusList(cmd.getName(), cmd.getType(), statusList);
+                query.setStatusList(Arrays.asList("APPROVED", "DELETED"));
             }
         }
 
+        pageResult = assetMapper.selectPage(page, query);
+
         // 转换为DTO并填充下载权限
-        List<AssetDTO> dtoList = list.stream().map(asset -> {
-            AssetDTO dto = convert(asset);
-            if (dto != null && "APPROVED".equals(asset.getStatus())) {
+        List<AssetDTO> dtoList = pageResult.getRecords().stream().map(assetDO -> {
+            AssetDTO dto = convertDOToDTO(assetDO);
+            if (dto != null && "APPROVED".equals(assetDO.getStatus())) {
                 // 只有 APPROVED 状态的素材需要检查下载权限
-                dto.setCanDownload(usageApplyService.canUseAsset(asset.getId(), userId));
+                dto.setCanDownload(usageApplyService.canUseAsset(assetDO.getId(), userId));
             } else {
                 dto.setCanDownload(false);
             }
             return dto;
         }).collect(Collectors.toList());
-        return PageResult.of(dtoList, total, cmd.getPageNum(), cmd.getPageSize());
+
+        return PageResult.of(dtoList, pageResult.getTotal(), cmd.getPageNum(), cmd.getPageSize());
     }
 
     @Override

@@ -17,6 +17,25 @@
         <result column="deleted" property="deleted" jdbcType="INTEGER"/>
     </resultMap>
 
+    <!-- Result Map with Details (JOIN查询结果) -->
+    <resultMap id="MaterialApplicationWithDetailsResultMap" type="com.xuanjiao.infrastructure.dataobject.MaterialApplicationWithDetailsDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="applicant_id" property="applicantId" jdbcType="BIGINT"/>
+        <result column="maintainer_id" property="maintainerId" jdbcType="BIGINT"/>
+        <result column="dept_id" property="deptId" jdbcType="BIGINT"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="guarantee_declaration" property="guaranteeDeclaration" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <!-- 关联的用户字段 -->
+        <result column="applicant_name" property="applicantName" jdbcType="VARCHAR"/>
+        <result column="maintainer_name" property="maintainerName" jdbcType="VARCHAR"/>
+        <!-- 关联的部门字段 -->
+        <result column="dept_name" property="deptName" jdbcType="VARCHAR"/>
+    </resultMap>
+
     <!-- Base Column List -->
     <sql id="Base_Column_List">
         id, title, applicant_id, maintainer_id, dept_id, workflow_id, status,
@@ -30,39 +49,6 @@
         WHERE id = #{id}
         AND COALESCE(deleted, 0) = 0
         LIMIT 1
-    </select>
-
-    <!-- Select List with Dynamic Conditions -->
-    <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM material_application
-        <where>
-            <if test="id != null">AND id = #{id}</if>
-            <if test="applicantId != null">AND applicant_id = #{applicantId}</if>
-            <if test="maintainerId != null">AND maintainer_id = #{maintainerId}</if>
-            <if test="deptId != null">AND dept_id = #{deptId}</if>
-            <if test="workflowId != null">AND workflow_id = #{workflowId}</if>
-            <if test="status != null and status != ''">AND status = #{status}</if>
-            <if test="deleted != null">AND deleted = #{deleted}</if>
-            <if test="deleted == null">AND COALESCE(deleted, 0) = 0</if>
-
-            <!-- IN 查询 -->
-            <if test="applicantIds != null and applicantIds.size() > 0">
-                AND applicant_id IN
-                <foreach collection="applicantIds" item="applicantId" open="(" separator="," close=")">
-                    #{applicantId}
-                </foreach>
-            </if>
-        </where>
-        <if test="orderByField != null and orderByField != ''">
-            ORDER BY ${orderByField}
-            <if test="orderByDirection != null and orderByDirection != ''">
-                ${orderByDirection}
-            </if>
-        </if>
-        <if test="offset != null and limit != null">
-            LIMIT #{offset}, #{limit}
-        </if>
     </select>
 
     <!-- Select Count -->
@@ -89,9 +75,42 @@
         </where>
     </select>
 
+    <!-- Select Page (MyBatis-Plus) -->
+    <select id="selectPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM material_application
+        <where>
+            <if test="query.id != null">AND id = #{query.id}</if>
+            <if test="query.applicantId != null">AND applicant_id = #{query.applicantId}</if>
+            <if test="query.maintainerId != null">AND maintainer_id = #{query.maintainerId}</if>
+            <if test="query.deptId != null">AND dept_id = #{query.deptId}</if>
+            <if test="query.workflowId != null">AND workflow_id = #{query.workflowId}</if>
+            <if test="query.status != null and query.status != ''">AND status = #{query.status}</if>
+            <if test="query.deleted != null">AND deleted = #{query.deleted}</if>
+            <if test="query.deleted == null">AND COALESCE(deleted, 0) = 0</if>
+
+            <!-- IN 查询 -->
+            <if test="query.applicantIds != null and query.applicantIds.size() > 0">
+                AND applicant_id IN
+                <foreach collection="query.applicantIds" item="applicantId" open="(" separator="," close=")">
+                    #{applicantId}
+                </foreach>
+            </if>
+        </where>
+        <if test="query.orderByField != null and query.orderByField != ''">
+            ORDER BY ${query.orderByField}
+            <if test="query.orderByDirection != null and query.orderByDirection != ''">
+                ${query.orderByDirection}
+            </if>
+        </if>
+    </select>
+
     <!-- Insert -->
     <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO"
-            useGeneratedKeys="true" keyProperty="id">
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        <selectKey keyProperty="id" resultType="java.lang.Long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
         INSERT INTO material_application (
             title, applicant_id, maintainer_id, dept_id, workflow_id, status,
             guarantee_declaration, create_time, update_time, deleted
@@ -125,5 +144,43 @@
         WHERE id = #{id}
         AND COALESCE(deleted, 0) = 0
     </update>
+
+    <!-- 分页查询素材申请列表（JOIN 用户和部门，避免 N+1） -->
+    <select id="selectPageWithDetails" resultMap="MaterialApplicationWithDetailsResultMap">
+        SELECT
+            m.id, m.title, m.applicant_id, m.maintainer_id, m.dept_id, m.workflow_id,
+            m.status, m.guarantee_declaration, m.create_time, m.update_time,
+            a.real_name AS applicant_name,
+            maintainer.real_name AS maintainer_name,
+            d.name AS dept_name
+        FROM material_application m
+        LEFT JOIN sys_user a ON m.applicant_id = a.id
+        LEFT JOIN sys_user maintainer ON m.maintainer_id = maintainer.id
+        LEFT JOIN sys_dept d ON m.dept_id = d.id
+        <where>
+            <if test="query.id != null">AND m.id = #{query.id}</if>
+            <if test="query.applicantId != null">AND m.applicant_id = #{query.applicantId}</if>
+            <if test="query.maintainerId != null">AND m.maintainer_id = #{query.maintainerId}</if>
+            <if test="query.deptId != null">AND m.dept_id = #{query.deptId}</if>
+            <if test="query.workflowId != null">AND m.workflow_id = #{query.workflowId}</if>
+            <if test="query.status != null and query.status != ''">AND m.status = #{query.status}</if>
+            <if test="query.deleted != null">AND m.deleted = #{query.deleted}</if>
+            <if test="query.deleted == null">AND COALESCE(m.deleted, 0) = 0</if>
+
+            <!-- IN 查询 -->
+            <if test="query.applicantIds != null and query.applicantIds.size() > 0">
+                AND m.applicant_id IN
+                <foreach collection="query.applicantIds" item="applicantId" open="(" separator="," close=")">
+                    #{applicantId}
+                </foreach>
+            </if>
+        </where>
+        <if test="query.orderByField != null and query.orderByField != ''">
+            ORDER BY ${query.orderByField}
+            <if test="query.orderByDirection != null and query.orderByDirection != ''">
+                ${query.orderByDirection}
+            </if>
+        </if>
+    </select>
 
 </mapper>

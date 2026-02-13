@@ -3,12 +3,12 @@ package com.xuanjiao.adapter.web.asset;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.usage.UsageApplyService;
 import com.xuanjiao.app.usage.UsageLogService;
-import com.xuanjiao.client.dto.AssetDTO;
-import com.xuanjiao.client.dto.AssetQueryCmd;
-import com.xuanjiao.client.dto.AssetUploadCmd;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.UsageApplyDTO;
+import com.xuanjiao.client.dto.asset.dto.AssetDTO;
+import com.xuanjiao.client.dto.asset.AssetQry;
+import com.xuanjiao.client.dto.asset.AssetUploadCmd;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.usage.dto.UsageApplyDTO;
 import com.xuanjiao.client.dto.asset.AssetAdminDeleteCmd;
 import com.xuanjiao.client.dto.asset.AssetAdjustDeleteTimeCmd;
 import com.xuanjiao.client.dto.asset.AssetDeleteCmd;
@@ -178,7 +178,7 @@ public class AssetController {
      */
     @ApiOperation("分页查询素材")
     @PostMapping("/list")
-    public Result<PageResult<AssetDTO>> list(@Valid @RequestBody AssetQueryCmd cmd, @RequestAttribute("userId") Long userId) {
+    public Result<PageResult<AssetDTO>> list(@Valid @RequestBody AssetQry cmd, @RequestAttribute("userId") Long userId) {
         return Result.success(assetService.queryWithRoleFilter(cmd, userId));
     }
 

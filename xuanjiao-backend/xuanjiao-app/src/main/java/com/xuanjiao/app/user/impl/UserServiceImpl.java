@@ -3,12 +3,15 @@ package com.xuanjiao.app.user.impl;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.user.UserService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UserDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.user.dto.UserDTO;
 import com.xuanjiao.client.dto.user.UserGetListWithFilterQry;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.UserWithDeptRoleDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.dept.DeptQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
@@ -20,10 +23,8 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -55,8 +56,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDTO> list() {
-        List<UserDO> list = userMapper.selectList(new UserQuery());
-        return list.stream().map(this::convert).collect(Collectors.toList());
+        List<UserWithDeptRoleDO> list = userMapper.selectListWithDeptRole(new UserQuery());
+        return list.stream().map(this::convertFromDetailDO).collect(Collectors.toList());
     }
 
     @Override
@@ -70,10 +71,12 @@ public class UserServiceImpl implements UserService {
         Set<Long> deptIds = getAllSubDeptIds(secondaryDeptId);
         deptIds.add(secondaryDeptId);
 
-        List<UserDO> allUsers = userMapper.selectList(new UserQuery());
-        return allUsers.stream()
-                .filter(user -> user.getDeptId() != null && deptIds.contains(user.getDeptId()))
-                .map(this::convert)
+        // 使用 JOIN 查询，在数据库层面过滤部门
+        UserQuery query = new UserQuery();
+        query.setDeptIds(new ArrayList<>(deptIds));
+        List<UserWithDeptRoleDO> users = userMapper.selectListWithDeptRole(query);
+        return users.stream()
+                .map(this::convertFromDetailDO)
                 .collect(Collectors.toList());
     }
 
@@ -82,7 +85,10 @@ public class UserServiceImpl implements UserService {
         // 获取当前用户信息和角色
         UserDTO currentUser = getCurrentUser(userId);
         if (currentUser == null) {
-            return list();
+            List<UserWithDeptRoleDO> users = userMapper.selectListWithDeptRole(new UserQuery());
+            return users.stream()
+                    .map(this::convertFromDetailDO)
+                    .collect(Collectors.toList());
         }
 
         RoleDO currentRole = null;
@@ -93,41 +99,36 @@ public class UserServiceImpl implements UserService {
         // 确定可查询的部门范围
         Set<Long> allowedDeptIds = getAllowedDeptIds(currentUser, currentRole);
 
-        // 计算最终的筛选部门集合（使用final变量供lambda使用）
-        final Set<Long> filterDeptIds;
+        // 构建查询条件
+        UserQuery query = new UserQuery();
+        query.setRoleIds(roleIds);
+
+        // 处理部门筛选
         if (deptId != null) {
             if (Boolean.TRUE.equals(includeSubDept)) {
                 Set<Long> subDeptIds = getAllSubDeptIds(deptId);
                 subDeptIds.add(deptId);
-                filterDeptIds = allowedDeptIds.stream()
-                        .filter(subDeptIds::contains)
-                        .collect(Collectors.toSet());
+                // 取交集：用户选择的部门 + 权限允许的部门
+                subDeptIds.retainAll(allowedDeptIds);
+                query.setSubDeptIds(new ArrayList<>(subDeptIds));
             } else {
-                filterDeptIds = allowedDeptIds.stream()
-                        .filter(id -> id.equals(deptId))
-                        .collect(Collectors.toSet());
+                // 检查用户选择的部门是否在权限范围内
+                if (allowedDeptIds.contains(deptId)) {
+                    query.setDeptId(deptId);
+                } else {
+                    // 不在权限范围内，返回空列表
+                    return new ArrayList<>();
+                }
             }
         } else {
-            filterDeptIds = allowedDeptIds;
+            // 使用允许的部门ID列表
+            query.setDeptIds(new ArrayList<>(allowedDeptIds));
         }
 
-        // 获取所有用户并筛选
-        List<UserDO> allUsers = userMapper.selectList(new UserQuery());
-        return allUsers.stream()
-                .filter(user -> {
-                    // 部门筛选
-                    if (user.getDeptId() == null || !filterDeptIds.contains(user.getDeptId())) {
-                        return false;
-                    }
-                    // 角色筛选
-                    if (roleIds != null && !roleIds.isEmpty()) {
-                        if (user.getRoleId() == null || !roleIds.contains(user.getRoleId())) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .map(this::convert)
+        // 使用 JOIN 查询一次性获取所有数据
+        List<UserWithDeptRoleDO> users = userMapper.selectListWithDeptRole(query);
+        return users.stream()
+                .map(this::convertFromDetailDO)
                 .collect(Collectors.toList());
     }
 
@@ -274,8 +275,32 @@ public class UserServiceImpl implements UserService {
         return dto;
     }
 
+    /**
+     * 将 UserWithDeptRoleDO 转换为 UserDTO
+     * 用于 JOIN 查询结果，避免 N+1 问题
+     *
+     * @param entity 用户详情数据对象
+     * @return 用户DTO
+     */
+    private UserDTO convertFromDetailDO(UserWithDeptRoleDO entity) {
+        if (entity == null) return null;
+        UserDTO dto = new UserDTO();
+        dto.setId(entity.getId());
+        dto.setUsername(entity.getUsername());
+        dto.setRealName(entity.getRealName());
+        dto.setPhone(entity.getPhone());
+        dto.setEmail(entity.getEmail());
+        dto.setRoleId(entity.getRoleId());
+        dto.setRoleName(entity.getRoleName());
+        dto.setRoleType(entity.getRoleType());
+        dto.setDeptId(entity.getDeptId());
+        dto.setDeptName(entity.getDeptName());
+        dto.setStatus(entity.getStatus());
+        return dto;
+    }
+
     @Override
-    public PageResult<Map<String, Object>> searchUsers(Long userId, UserGetListWithFilterQry qry) {
+    public PageResult<UserDTO> searchUsers(Long userId, UserGetListWithFilterQry qry) {
         // 获取当前用户信息和角色
         UserDTO currentUser = getCurrentUser(userId);
         if (currentUser == null) {
@@ -290,97 +315,40 @@ public class UserServiceImpl implements UserService {
         // 确定可查询的部门范围
         Set<Long> allowedDeptIds = getAllowedDeptIds(currentUser, currentRole);
 
-        // 计算最终的筛选部门集合
-        final Set<Long> filterDeptIds;
+        // 构建查询条件
+        UserQuery query = new UserQuery();
+        query.setRoleIds(qry.getRoleIds());
+        query.setKeyword(qry.getKeyword());
+
+        // 处理部门筛选
         if (qry.getDeptId() != null) {
             if (Boolean.TRUE.equals(qry.getIncludeSubDept())) {
                 Set<Long> subDeptIds = getAllSubDeptIds(qry.getDeptId());
                 subDeptIds.add(qry.getDeptId());
-                filterDeptIds = allowedDeptIds.stream()
-                        .filter(subDeptIds::contains)
-                        .collect(Collectors.toSet());
+                // 取交集：用户选择的部门 + 权限允许的部门
+                subDeptIds.retainAll(allowedDeptIds);
+                query.setSubDeptIds(new ArrayList<>(subDeptIds));
             } else {
-                filterDeptIds = allowedDeptIds.stream()
-                        .filter(id -> id.equals(qry.getDeptId()))
-                        .collect(Collectors.toSet());
+                // 检查用户选择的部门是否在权限范围内
+                if (allowedDeptIds.contains(qry.getDeptId())) {
+                    query.setDeptId(qry.getDeptId());
+                } else {
+                    // 不在权限范围内，返回空分页结果
+                    return PageResult.of(new ArrayList<>(), 0L, qry.getPageNum(), qry.getPageSize());
+                }
             }
         } else {
-            filterDeptIds = allowedDeptIds;
+            query.setDeptIds(new ArrayList<>(allowedDeptIds));
         }
 
-        // 获取所有用户并筛选
-        List<UserDO> allUsers = userMapper.selectList(new UserQuery());
-        List<Map<String, Object>> filteredUsers = allUsers.stream()
-                .filter(user -> {
-                    // 部门筛选
-                    if (user.getDeptId() == null || !filterDeptIds.contains(user.getDeptId())) {
-                        return false;
-                    }
-                    // 角色筛选
-                    if (qry.getRoleIds() != null && !qry.getRoleIds().isEmpty()) {
-                        if (user.getRoleId() == null || !qry.getRoleIds().contains(user.getRoleId())) {
-                            return false;
-                        }
-                    }
-                    // 关键词筛选（匹配姓名或用户名）
-                    if (StringUtils.hasText(qry.getKeyword())) {
-                        String keyword = qry.getKeyword().toLowerCase();
-                        boolean matchName = user.getRealName() != null &&
-                                user.getRealName().toLowerCase().contains(keyword);
-                        boolean matchUsername = user.getUsername() != null &&
-                                user.getUsername().toLowerCase().contains(keyword);
-                        if (!matchName && !matchUsername) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .map(this::convertToMap)
+        // 使用分页查询
+        Page<UserWithDeptRoleDO> page = new Page<>(qry.getPageNum(), qry.getPageSize());
+        IPage<UserWithDeptRoleDO> pageResult = userMapper.selectPageWithDeptRole(page, query);
+
+        List<UserDTO> dtoList = pageResult.getRecords().stream()
+                .map(this::convertFromDetailDO)
                 .collect(Collectors.toList());
 
-        // 分页处理
-        int total = filteredUsers.size();
-        int start = (qry.getPageNum() - 1) * qry.getPageSize();
-        int end = Math.min(start + qry.getPageSize(), total);
-
-        List<Map<String, Object>> pagedUsers = start < total ?
-                filteredUsers.subList(start, end) : new ArrayList<>();
-
-        return PageResult.of(pagedUsers, (long) total, qry.getPageNum(), qry.getPageSize());
-    }
-
-    /**
-     * 将UserDO转换为Map（包含角色和部门信息）
-     */
-    private Map<String, Object> convertToMap(UserDO entity) {
-        if (entity == null) return null;
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", entity.getId());
-        map.put("username", entity.getUsername());
-        map.put("realName", entity.getRealName());
-        map.put("phone", entity.getPhone());
-        map.put("email", entity.getEmail());
-        map.put("roleId", entity.getRoleId());
-        map.put("deptId", entity.getDeptId());
-        map.put("status", entity.getStatus());
-
-        // 填充角色信息
-        if (entity.getRoleId() != null) {
-            RoleDO role = roleMapper.selectById(entity.getRoleId());
-            if (role != null) {
-                map.put("roleName", role.getName());
-                map.put("roleType", role.getRoleType());
-            }
-        }
-
-        // 填充部门信息
-        if (entity.getDeptId() != null) {
-            DeptDO dept = deptMapper.selectById(entity.getDeptId());
-            if (dept != null) {
-                map.put("deptName", dept.getName());
-            }
-        }
-
-        return map;
+        return PageResult.of(dtoList, pageResult.getTotal(), qry.getPageNum(), qry.getPageSize());
     }
 }

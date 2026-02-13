@@ -1,135 +1,214 @@
-# 宣传教育平台 - 开发进度文档
+# 宣传教育平台 - 智能体开发坑
 
-## 一、功能需求清单（基于REQUIREMENTS.md）
+## 一、后端项目
 
-### 1. 素材管理模块
+### 1.数据库操作相关
 
-| 功能 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| 素材上传 | P0 | ✅ 已完成 | 支持视频/图片/文档上传 |
-| 文件存储 | P0 | ✅ 已完成 | 本地文件存储 |
-| 去重检测 | P1 | ✅ 已完成 | MD5检测重复 |
-| 素材预览 | P0 | ✅ 已完成 | 列表直接显示缩略图 |
-| 素材搜索 | P0 | ✅ 已完成 | 按名称/类型/状态筛选 |
-| 素材删除 | P1 | ✅ 已完成 | 逻辑删除 |
-| 素材下载 | P1 | ✅ 已完成 | 带权限控制的下载功能 |
-| 预览模式切换 | P1 | ✅ 已完成 | 预览模式/列表模式切换 |
-| 版权管理 | P2 | ⏳ 待开发 | 记录版权信息 |
+模型倾向使用mybatis plus的baseMapper作为操作数据库的对象，但是行内倾向使用原生mybatis，即使用mapper.xml，因此需要提供给大模型这个背景信息：
+- MyBatis (Native XML Mapper approach - no BaseMapper)
+- MyBatis uses native XML mappers with explicitly defined methods (no BaseMapper inheritance)
 
-### 2. 审批流程管理模块
+#### 1.1 MyBatis 开发规范
 
-| 功能 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| 流程定义 | P0 | ✅ 已完成 | 创建/编辑流程模板 |
-| 流程类型区分 | P0 | ✅ 已完成 | 素材录入/素材使用流程分类 |
-| 可视化设计器 | P0 | ✅ 已完成 | 基础版完成 |
-| 流程版本管理 | P1 | ⏳ 待开发 | 版本升级和历史查看 |
-| 流程启用/禁用 | P0 | ✅ 已完成 | 控制流程状态 |
-| 内置模板 | P1 | ✅ 已完成 | 常用审批流程模板 |
+##### Mapper 接口定义
 
-### 3. 审批执行模块
+**所有 Mapper 必须显式定义方法，不继承 BaseMapper**
 
-| 功能 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| 素材录入审批 | P0 | ✅ 已完成 | 素材上传时发起审批 |
-| 素材使用审批 | P0 | ✅ 已完成 | 使用素材前需申请审批 |
-| 审批实例创建 | P0 | ✅ 已完成 | 支持多种业务类型 |
-| 待办任务列表 | P0 | ✅ 已完成 | 查看待审批任务 |
-| 审批操作 | P0 | ✅ 已完成 | 通过/驳回 |
-| 审批记录 | P0 | ✅ 已完成 | 我发起的审批 |
-| 层级流转 | P0 | ✅ 已完成 | 串行层级+并行审批 |
+```java
+@Mapper
+public interface AssetMapper {
+    // 基础 CRUD 方法
+    AssetDO selectById(@Param("id") Long id);
+    AssetDO selectOne(AssetQuery query);
+    List<AssetDO> selectList(AssetQuery query);
+    Long selectCount(AssetQuery query);
+    IPage<AssetDO> selectPage(Page<AssetDO> page, @Param("query") AssetQuery query);
+    int insert(AssetDO assetDO);
+    int updateById(AssetDO assetDO);
 
-### 4. 素材使用申请模块
+    // 业务特定方法
+    AssetDO selectByMd5(@Param("md5") String md5);
+    List<AssetDO> selectByApplicationId(@Param("applicationId") Long applicationId);
+}
+```
 
-| 功能 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| 使用申请 | P0 | ✅ 已完成 | 填写用途、范围申请使用 |
-| 重复申请限制 | P1 | ✅ 已完成 | 同一用户对同一素材只能有一个待审批申请 |
-| 我的申请列表 | P0 | ✅ 已完成 | 查询我的使用申请记录 |
-| 使用权限检查 | P0 | ✅ 已完成 | 下载前检查是否已通过审批 |
-| 申请审批流转 | P0 | ✅ 已完成 | 与审批系统集成 |
+##### Mapper XML 开发规范
 
-### 5. 用户管理模块
+###### ResultMap 定义
+```xml
+<resultMap id="BaseResultMap" type="com.xuanjiao.infrastructure.dataobject.AssetDO">
+    <id column="id" property="id" jdbcType="BIGINT"/>
+    <result column="name" property="name" jdbcType="VARCHAR"/>
+    <result column="type" property="type" jdbcType="VARCHAR"/>
+    <!-- 明确映射 column (数据库) 到 property (Java) -->
+</resultMap>
+```
 
-| 功能 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| 用户登录 | P0 | ✅ 已完成 | JWT认证（Bearer Token） |
-| 用户登出 | P0 | ✅ 已完成 | 清除token |
-| 获取用户信息 | P0 | ✅ 已完成 | 获取当前登录用户 |
-| 用户管理 | P1 | ✅ 已完成 | 用户列表页面 |
-| 部门管理 | P1 | ✅ 已完成 | 部门CRUD |
-| 角色管理 | P1 | ✅ 已完成 | 角色列表页面 |
-| 权限控制 | P0 | ✅ 已完成 | 基于角色的权限 |
+###### 列定义规范
+```xml
+<sql id="Base_Column_List">
+    id, name, type, file_path, thumbnail_path, file_size,
+    md5, status, deleted, create_time, update_time
+</sql>
+```
 
-### 6. 使用日志模块
+**禁止使用 `SELECT *`**
 
-| 功能 | 优先级 | 状态 | 说明 |
-|------|--------|------|------|
-| 日志记录 | P0 | ✅ 已完成 | 记录操作日志 |
-| 日志查询 | P0 | ✅ 已完成 | 按类型查询 |
-| 日志统计 | P2 | ⏳ 待开发 | 统计分析 |
+###### 动态 SQL 规范
+```xml
+<!-- WHERE 子句：必须使用 <where> 标签 -->
+<select id="selectList" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List"/>
+    FROM asset
+    <where>
+        <if test="id != null">
+            AND id = #{id}
+        </if>
+        <if test="name != null and name != ''">
+            AND name = #{name}
+        </if>
+        <if test="deleted != null">
+            AND deleted = #{deleted}
+        </if>
+        <if test="deletedIsNull != null and deletedIsNull">
+            AND deleted IS NULL
+        </if>
+        <if test="statusIn != null and statusIn.size() > 0">
+            AND status IN
+            <foreach collection="statusIn" item="status" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+    </where>
+    ORDER BY create_time DESC
+</select>
+```
 
-### 7. 前端基础功能
+###### UPDATE 语句规范
+```xml
+<!-- SET 子句：使用 <set> 标签 -->
+<update id="updateById" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDO">
+    UPDATE asset
+    <set>
+        <if test="name != null and name != ''">name = #{name},</if>
+        <if test="type != null and type != ''">type = #{type},</if>
+        <if test="status != null and status != ''">status = #{status},</if>
+        <if test="deleted != null">deleted = #{deleted},</if>
+    </set>
+    WHERE id = #{id}
+</update>
+```
 
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| 登录页面 | ✅ 已完成 | |
-| 主布局 | ✅ 已完成 | 侧边栏+头部 |
-| 路由守卫 | ✅ 已完成 | 登录验证 |
-| 素材管理页 | ✅ 已完成 | 含预览模式切换、下载、申请使用 |
-| 流程管理页 | ✅ 已完成 | 含流程类型筛选 |
-| 流程设计器 | ✅ 已完成 | 含流程类型选择 |
-| 审批工单页 | ✅ 已完成 | 支持素材录入/使用审批 |
-| 使用日志页 | ✅ 已完成 | |
-| 部门管理页 | ✅ 已完成 | |
-| 用户管理页 | ✅ 已完成 | |
-| 角色管理页 | ✅ 已完成 | |
+###### INSERT 语句规范
+```xml
+<!-- 明确列出所有字段 -->
+<insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDO"
+        useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO asset (
+        name, type, file_path, thumbnail_path, file_size,
+        md5, status, deleted, create_time, update_time
+    ) VALUES (
+        #{name}, #{type}, #{filePath}, #{thumbnailPath}, #{fileSize},
+        #{md5}, #{status}, #{deleted}, #{createTime}, #{updateTime}
+    )
+</insert>
+```
 
-## 二、最新更新（2025-01-12）
+##### 特殊查询场景
 
-### 新增功能
+###### IS NULL / IS NOT NULL 查询
+```java
+// Query 对象中添加 Boolean 字段
+@Data
+public class ApprovalProgressQuery {
+    private Long parentInstanceId;
+    private Boolean parentInstanceIdIsNull;  // IS NULL 查询
+}
+```
 
-#### 1. 素材使用审批功能
-- **后端实现**：
-  - 新增 `usage_apply` 表存储使用申请记录
-  - `UsageApplyService` 处理使用申请业务逻辑
-  - `UsageApplyController` 提供申请、查询、权限检查API
-  - 审批流程支持 `ASSET_USAGE` 业务类型
-  - 下载接口增加使用权限检查
+```xml
+<if test="parentInstanceIdIsNull != null and parentInstanceIdIsNull">
+    AND parent_instance_id IS NULL
+</if>
+<if test="parentInstanceIdIsNull != null and !parentInstanceIdIsNull">
+    AND parent_instance_id IS NOT NULL
+</if>
+```
 
-- **前端实现**：
-  - 素材列表添加"申请使用"按钮
-  - 使用申请对话框（填写用途、范围、选择流程）
-  - 下载功能集成权限检查
+###### IN 查询
+```java
+@Data
+public class AssetQuery {
+    private List<String> statusIn;
+}
+```
 
-#### 2. 素材预览模式切换
-- **预览模式**：列表中直接显示缩略图
-- **列表模式**：仅显示"查看"按钮，单击后预览
-- 切换按钮位于素材列表页右上角
+```xml
+<if test="statusIn != null and statusIn.size() > 0">
+    AND status IN
+    <foreach collection="statusIn" item="status" open="(" separator="," close=")">
+        #{status}
+    </foreach>
+</if>
+```
 
-#### 3. 流程类型管理
-- **流程管理页**：添加流程类型筛选（素材录入/素材使用）
-- **流程设计器**：创建流程时选择流程类型
-- 流程类型字段：`ASSET_UPLOAD`（素材录入）、`ASSET_USAGE`（素材使用）
+###### != 查询
+```java
+@Data
+public class ApprovalTaskQuery {
+    private Long idNotEqual;  // != 查询
+}
+```
 
-### Bug修复
-- 修复认证拦截器未处理 `Bearer` Token 前缀的问题
+```xml
+<if test="idNotEqual != null">
+    AND id != #{idNotEqual}
+</if>
+```
 
-## 三、数据库变更
+##### 分页查询规范
 
-### 新增表
-- `usage_apply` - 素材使用申请表
+```java
+// Mapper 接口
+IPage<AssetDO> selectPage(Page<AssetDO> page, @Param("query") AssetQuery query);
 
-### 表结构变更
-- `workflow` 表新增 `type` 字段（流程类型）
+// 调用方式
+IPage<AssetDO> page = assetMapper.selectPage(
+    new Page<>(pageNum, pageSize),
+    query
+);
+```
 
-## 四、API接口变更
+##### 强制设置字段为 NULL
 
-### 新增接口
-- `POST /api/usage-apply/apply` - 申请使用素材
-- `GET /api/usage-apply/my-applications` - 查询我的申请列表
-- `GET /api/usage-apply/can-use/{assetId}` - 检查使用权限
-- `GET /api/asset/download/{id}` - 下载素材（带权限检查）
+**问题**: `updateById()` 方法无法将字段更新为 NULL
 
-### 修改接口
-- 审批接口支持 `ASSET_USAGE` 业务类型
+**解决方案**: 使用显式 XML 方法
+
+```java
+// Mapper 接口添加方法
+int resetApprovers(@Param("id") Long id);
+
+// Mapper XML
+<update id="resetApprovers">
+    UPDATE approval_progress
+    SET approvers = NULL
+    WHERE id = #{id}
+</update>
+```
+
+##### 字段映射规范
+
+**column**: 数据库字段名（下划线命名，如 `role_id`）
+**property**: Java 属性名（驼峰命名，如 `roleId`）
+
+```xml
+<result column="role_id" property="roleId" jdbcType="BIGINT"/>
+<result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+```
+
+### 2.分页相关
+可以明确规定分页使用Ipage，每页默认值为10，最大可以设计成100，设计BasePageQry，设计分页查询的对象继承该类。
+
+### 3.infrastructure中的实体类型
+使用Query对象作为查询条件对象，使用DO类作为接受结果对象。

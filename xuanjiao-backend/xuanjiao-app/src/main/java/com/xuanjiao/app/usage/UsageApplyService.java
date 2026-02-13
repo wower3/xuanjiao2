@@ -1,9 +1,9 @@
 package com.xuanjiao.app.usage;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageApplyCmd;
-import com.xuanjiao.client.dto.UsageApplyDTO;
-import com.xuanjiao.client.dto.UsageApplyQueryCmd;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.usage.UsageApplyCmd;
+import com.xuanjiao.client.dto.usage.dto.UsageApplyDTO;
+import com.xuanjiao.client.dto.usage.UsageApplyQry;
 
 /**
  * 素材使用申请服务接口
@@ -156,7 +156,7 @@ public interface UsageApplyService {
      * @param userId 用户ID
      * @return 分页结果
      */
-    PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQueryCmd cmd, Long userId);
+    PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQry cmd, Long userId);
 
     /**
      * 检查用户是否有权限使用素材

@@ -108,7 +108,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getMyFlowItems } from '@/api/flowItems'
-import { getInstanceDetail } from '@/api/task'
+import { getInstanceDetail } from '@/api/approval'
 import NotifyDialog from '@/components/NotifyDialog.vue'
 import WorkOrderDetailDialog from '@/components/WorkOrderDetailDialog.vue'
 

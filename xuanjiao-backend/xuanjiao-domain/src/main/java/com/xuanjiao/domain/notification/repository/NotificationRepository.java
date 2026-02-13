@@ -1,9 +1,9 @@
 package com.xuanjiao.domain.notification.repository;
 
 import com.xuanjiao.domain.notification.entity.Notification;
+import com.xuanjiao.domain.notification.entity.NotificationWithWorkOrder;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 通知仓储接口
@@ -29,15 +29,13 @@ public interface NotificationRepository {
     /**
      * 分页查询知会事项（包含工单信息）
      *
-     * <p>返回Map结构以便灵活扩展字段。</p>
-     *
      * @param query 查询条件
      * @param offset 分页偏移量
      * @param limit 分页大小
      * @param keyword 关键词
      * @return 知会事项列表
      */
-    List<Map<String, Object>> selectPageWithWorkOrder(Notification query, int offset, int limit, String keyword);
+    List<NotificationWithWorkOrder> selectPageWithWorkOrder(Notification query, int offset, int limit, String keyword);
 
     /**
      * 查询总数（支持关键词）

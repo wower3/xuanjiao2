@@ -1,8 +1,9 @@
 package com.xuanjiao.adapter.web.workflow;
 
 import com.xuanjiao.app.workflow.ApproverSelectionService;
-import com.xuanjiao.client.dto.ApprovalProgressDTO;
-import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.approval.dto.ApprovalProgressDTO;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.workflow.dto.FirstStageApproversDTO;
 import com.xuanjiao.client.dto.workflow.WorkflowGetApprovalProgressQry;
 import com.xuanjiao.client.dto.workflow.WorkflowGetFirstStageApproversQry;
 import com.xuanjiao.client.dto.workflow.WorkflowGetSubWorkflowFirstStageApproversQry;
@@ -70,12 +71,12 @@ public class ApproverSelectionController {
      * 返回结果包括按部门分组的审批人列表。</p>
      *
      * @param qry 查询条件，包含工作流ID、申请人ID和搜索关键字
-     * @return 包含审批人列表的Map，key为部门名称，value为审批人列表
+     * @return 首阶段审批人选择结果DTO
      */
     @ApiOperation("获取第一层可选审批人")
     @PostMapping("/getFirstStageApprovers")
-    public Result<Map<String, Object>> getFirstStageApprovers(@Valid @RequestBody WorkflowGetFirstStageApproversQry qry) {
-        Map<String, Object> data = approverSelectionService.getFirstStageApprovers(
+    public Result<FirstStageApproversDTO> getFirstStageApprovers(@Valid @RequestBody WorkflowGetFirstStageApproversQry qry) {
+        FirstStageApproversDTO data = approverSelectionService.getFirstStageApprovers(
             qry.getWorkflowId(), qry.getApplicantId(), qry.getKeyword()
         );
         return Result.success(data);
@@ -117,18 +118,15 @@ public class ApproverSelectionController {
         return Result.success();
     }
 
-    /**
-     * 获取子流程第一层可选审批人
-     *
      * <p>根据子流程ID查询子流程第一阶段的可选审批人列表，支持按关键字搜索。</p>
      *
      * @param qry 查询条件，包含子流程ID、申请人ID和搜索关键字
-     * @return 包含审批人列表的Map
+     * @return 首阶段审批人选择结果DTO
      */
     @ApiOperation("获取子流程第一层可选审批人")
     @PostMapping("/getSubWorkflowFirstStageApprovers")
-    public Result<Map<String, Object>> getSubWorkflowFirstStageApprovers(@Valid @RequestBody WorkflowGetSubWorkflowFirstStageApproversQry qry) {
-        Map<String, Object> data = approverSelectionService.getSubWorkflowFirstStageApprovers(
+    public Result<FirstStageApproversDTO> getSubWorkflowFirstStageApprovers(@Valid @RequestBody WorkflowGetSubWorkflowFirstStageApproversQry qry) {
+        FirstStageApproversDTO data = approverSelectionService.getSubWorkflowFirstStageApprovers(
             qry.getSubWorkflowId(), qry.getApplicantId(), qry.getKeyword()
         );
         return Result.success(data);

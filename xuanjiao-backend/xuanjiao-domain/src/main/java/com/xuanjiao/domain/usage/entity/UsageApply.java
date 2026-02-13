@@ -32,6 +32,13 @@ public class UsageApply {
     private Long userId;
 
     /**
+     * 申请人姓名（非数据库字段，用于显示）
+     *
+     * <p>通过JOIN查询获取。</p>
+     */
+    private String username;
+
+    /**
      * 申请单标题
      *
      * <p>简要说明使用目的。</p>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 排除 Lombok 生成的代码 -->
+    <Match>
+        <Class name="~.*\..*\$.*" />
+        <Bug pattern="NP_BOOLEAN_RETURN_NULL" />
+    </Match>
+
+    <!-- 排除自动生成的代码 -->
+    <Match>
+        <Package name="~.*\.generated\..*" />
+    </Match>
+
+    <!-- 排除 DTO/Entity 类的某些检查 -->
+    <Match>
+        <Class name="~.*\.dto\..*" />
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+    </Match>
+    <Match>
+        <Class name="~.*\.dto\..*" />
+        <Bug pattern="EI_EXPOSE_ROT,EI_EXPOSE_ROT2" />
+    </Match>
+
+    <!-- 排除序列化相关的警告 -->
+    <Match>
+        <Bug pattern="SE_BAD_FIELD,SE_BAD_FIELD_INNER_CLASS,SE_TRANSIENT_FIELD_NOT_RESTORED" />
+    </Match>
+
+    <!-- 排除未使用的参数（在接口实现中很常见） -->
+    <Match>
+        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD" />
+    </Match>
+</FindBugsFilter>

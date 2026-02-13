@@ -53,31 +53,6 @@ public class AssetRepositoryImpl implements AssetRepository {
     }
 
     /**
-     * 条件查询素材列表
-     *
-     * @param name 名称关键字
-     * @param type 类型
-     * @param status 状态
-     * @param offset 偏移量
-     * @param limit 限制数
-     * @return 素材实体列表
-     */
-    @Override
-    public List<Asset> findByCondition(String name, String type, String status, int offset, int limit) {
-        AssetQuery query = new AssetQuery();
-        query.setName(name);
-        query.setType(type);
-        query.setStatus(status);
-        query.setOffset(offset);
-        query.setLimit(limit);
-        query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
-
-        List<AssetDO> list = assetMapper.selectList(query);
-        return list.stream().map(this::convert).collect(Collectors.toList());
-    }
-
-    /**
      * 根据申请ID查询素材列表
      *
      * @param applicationId 申请ID
@@ -87,67 +62,6 @@ public class AssetRepositoryImpl implements AssetRepository {
     public List<Asset> findByApplicationId(Long applicationId) {
         List<AssetDO> list = assetMapper.selectByApplicationId(applicationId);
         return list.stream().map(this::convert).collect(Collectors.toList());
-    }
-
-    /**
-     * 根据状态列表查询素材
-     *
-     * @param name 名称关键字
-     * @param type 类型
-     * @param statusList 状态列表
-     * @param offset 偏移量
-     * @param limit 限制数
-     * @return 素材实体列表
-     */
-    @Override
-    public List<Asset> findByStatusList(String name, String type, List<String> statusList, int offset, int limit) {
-        AssetQuery query = new AssetQuery();
-        query.setName(name);
-        query.setType(type);
-        query.setStatusList(statusList);
-        query.setOffset(offset);
-        query.setLimit(limit);
-        query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
-
-        List<AssetDO> list = assetMapper.selectList(query);
-        return list.stream().map(this::convert).collect(Collectors.toList());
-    }
-
-    /**
-     * 统计状态列表中的素材数量
-     *
-     * @param name 名称关键字
-     * @param type 类型
-     * @param statusList 状态列表
-     * @return 数量
-     */
-    @Override
-    public long countByStatusList(String name, String type, List<String> statusList) {
-        AssetQuery query = new AssetQuery();
-        query.setName(name);
-        query.setType(type);
-        query.setStatusList(statusList);
-
-        return assetMapper.selectCount(query);
-    }
-
-    /**
-     * 条件统计素材数量
-     *
-     * @param name 名称关键字
-     * @param type 类型
-     * @param status 状态
-     * @return 数量
-     */
-    @Override
-    public long countByCondition(String name, String type, String status) {
-        AssetQuery query = new AssetQuery();
-        query.setName(name);
-        query.setType(type);
-        query.setStatus(status);
-
-        return assetMapper.selectCount(query);
     }
 
     /**

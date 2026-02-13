@@ -1,8 +1,11 @@
 package com.xuanjiao.infrastructure.material;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.domain.material.entity.MaterialApplication;
 import com.xuanjiao.domain.material.repository.MaterialApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
+import com.xuanjiao.infrastructure.dataobject.MaterialApplicationWithDetailsDO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -28,7 +31,13 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
         MaterialApplicationDO applicationDO = new MaterialApplicationDO();
         BeanUtils.copyProperties(application, applicationDO);
         materialApplicationMapper.insert(applicationDO);
-        application.setId(applicationDO.getId());
+
+        // 验证 ID 是否正确生成
+        Long generatedId = applicationDO.getId();
+        if (generatedId == null) {
+            throw new RuntimeException("插入申请单失败：未获取到生成的ID");
+        }
+        application.setId(generatedId);
         return application;
     }
 
@@ -54,8 +63,10 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
         }
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        return list.stream().map(this::convert).collect(Collectors.toList());
+        // 使用 MyBatis-Plus 分页查询全部
+        Page<MaterialApplicationDO> page = new Page<>(1, Integer.MAX_VALUE);
+        IPage<MaterialApplicationDO> pageResult = materialApplicationMapper.selectPage(page, query);
+        return pageResult.getRecords().stream().map(this::convert).collect(Collectors.toList());
     }
 
     @Override
@@ -64,10 +75,10 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
         query.setApplicantId(applicantId);
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
-        query.setOffset(offset);
-        query.setLimit(limit);
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        return list.stream().map(this::convert).collect(Collectors.toList());
+        // 使用 MyBatis-Plus 分页
+        Page<MaterialApplicationWithDetailsDO> page = new Page<>(offset / limit + 1, limit);
+        IPage<MaterialApplicationWithDetailsDO> pageResult = materialApplicationMapper.selectPageWithDetails(page, query);
+        return pageResult.getRecords().stream().map(this::convertFromDetailDO).collect(Collectors.toList());
     }
 
     @Override
@@ -81,6 +92,41 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
         if (applicationDO == null) return null;
         MaterialApplication application = new MaterialApplication();
         BeanUtils.copyProperties(applicationDO, application);
+        return application;
+    }
+
+    /**
+     * 将 MaterialApplicationWithDetailsDO 转换为 MaterialApplication
+     * 用于 JOIN 查询结果，避免 N+1 问题
+     *
+     * @param detailDO 素材录入申请详情数据对象
+     * @return 素材录入申请实体
+     */
+    private MaterialApplication convertFromDetailDO(MaterialApplicationWithDetailsDO detailDO) {
+        if (detailDO == null) return null;
+        MaterialApplication application = new MaterialApplication();
+        application.setId(detailDO.getId());
+        application.setTitle(detailDO.getTitle());
+        application.setApplicantId(detailDO.getApplicantId());
+        application.setMaintainerId(detailDO.getMaintainerId());
+        application.setDeptId(detailDO.getDeptId());
+        application.setWorkflowId(detailDO.getWorkflowId());
+        application.setStatus(detailDO.getStatus());
+        application.setGuaranteeDeclaration(detailDO.getGuaranteeDeclaration());
+        application.setCreateTime(detailDO.getCreateTime());
+        application.setUpdateTime(detailDO.getUpdateTime());
+
+        // 设置用户名称（从 JOIN 结果中获取）
+        if (detailDO.getApplicantName() != null) {
+            application.setApplicantName(detailDO.getApplicantName());
+        }
+        if (detailDO.getMaintainerName() != null) {
+            application.setMaintainerName(detailDO.getMaintainerName());
+        }
+        if (detailDO.getDeptName() != null) {
+            application.setDeptName(detailDO.getDeptName());
+        }
+
         return application;
     }
 }

@@ -2,7 +2,6 @@ package com.xuanjiao.client.dto.material;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -23,9 +22,8 @@ public class MaterialApplicationUpdateCmd {
     private Long id;
 
     /**
-     * 事项标题
+     * 事项标题（更新时允许为空，仅提交审批时验证）
      */
-    @NotBlank(message = "事项标题不能为空")
     private String title;
 
     /**

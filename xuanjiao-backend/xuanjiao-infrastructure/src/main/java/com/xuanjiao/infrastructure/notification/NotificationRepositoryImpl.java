@@ -2,15 +2,14 @@ package com.xuanjiao.infrastructure.notification;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.domain.notification.entity.Notification;
+import com.xuanjiao.domain.notification.entity.NotificationWithWorkOrder;
 import com.xuanjiao.domain.notification.repository.NotificationRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Repository
@@ -41,7 +40,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     }
 
     @Override
-    public List<Map<String, Object>> selectPageWithWorkOrder(Notification query, int offset, int limit, String keyword) {
+    public List<NotificationWithWorkOrder> selectPageWithWorkOrder(Notification query, int offset, int limit, String keyword) {
         NotificationQuery notificationQuery = new NotificationQuery();
         if (query != null) {
             notificationQuery.setRecipientId(query.getRecipientId());
@@ -57,8 +56,40 @@ public class NotificationRepositoryImpl implements NotificationRepository {
 
         List<NotificationWithWorkOrderDO> list = notificationMapper.selectListWithWorkOrder(notificationQuery);
         return list.stream()
-                .map(this::convertToMap)
+                .map(this::convertToEntityWithWorkOrder)
                 .collect(Collectors.toList());
+    }
+
+    private NotificationWithWorkOrder convertToEntityWithWorkOrder(NotificationWithWorkOrderDO doWithWorkOrder) {
+        if (doWithWorkOrder == null) {
+            return null;
+        }
+        NotificationWithWorkOrder entity = new NotificationWithWorkOrder();
+        // 基础字段
+        entity.setId(doWithWorkOrder.getId());
+        entity.setTitle(doWithWorkOrder.getTitle());
+        entity.setContent(doWithWorkOrder.getContent());
+        entity.setNotificationType(doWithWorkOrder.getNotificationType());
+        entity.setSourceType(doWithWorkOrder.getSourceType());
+        entity.setSourceId(doWithWorkOrder.getSourceId());
+        entity.setSenderId(doWithWorkOrder.getSenderId());
+        entity.setSenderName(doWithWorkOrder.getSenderName());
+        entity.setRecipientId(doWithWorkOrder.getRecipientId());
+        entity.setIsRead(doWithWorkOrder.getIsRead());
+        entity.setReadTime(doWithWorkOrder.getReadTime());
+        entity.setStatus(doWithWorkOrder.getStatus());
+        entity.setCreateTime(doWithWorkOrder.getCreateTime());
+        entity.setUpdateTime(doWithWorkOrder.getUpdateTime());
+        entity.setDeleted(doWithWorkOrder.getDeleted());
+        // 工单相关字段
+        entity.setInstanceId(doWithWorkOrder.getInstanceId());
+        entity.setInstanceStatus(doWithWorkOrder.getInstanceStatus());
+        entity.setWorkflowId(doWithWorkOrder.getWorkflowId());
+        entity.setWorkflowName(doWithWorkOrder.getWorkflowName());
+        entity.setApplicantId(doWithWorkOrder.getApplicantId());
+        entity.setApplicantName(doWithWorkOrder.getApplicantName());
+        entity.setBusinessTitle(doWithWorkOrder.getBusinessTitle());
+        return entity;
     }
 
     @Override
@@ -74,89 +105,6 @@ public class NotificationRepositoryImpl implements NotificationRepository {
         return notificationMapper.selectCount(notificationQuery);
     }
 
-    private Map<String, Object> convertToMap(NotificationWithWorkOrderDO notification) {
-        if (notification == null) {
-            return new HashMap<>();
-        }
-        Map<String, Object> map = new HashMap<>();
-        // 基础字段
-        map.put("id", notification.getId());
-        map.put("title", notification.getTitle());
-        map.put("content", notification.getContent());
-        map.put("notificationType", notification.getNotificationType());
-        map.put("sourceType", notification.getSourceType());
-        map.put("sourceId", notification.getSourceId());
-        map.put("senderId", notification.getSenderId());
-        map.put("senderName", notification.getSenderName());
-        map.put("recipientId", notification.getRecipientId());
-        map.put("isRead", notification.getIsRead());
-        map.put("readTime", notification.getReadTime());
-        map.put("status", notification.getStatus());
-        map.put("createTime", notification.getCreateTime());
-        map.put("updateTime", notification.getUpdateTime());
-        map.put("deleted", notification.getDeleted());
-        // 工单相关字段
-        map.put("instanceId", notification.getInstanceId());
-        map.put("instanceStatus", notification.getInstanceStatus());
-        map.put("workflowId", notification.getWorkflowId());
-        map.put("workflowName", notification.getWorkflowName());
-        map.put("applicantId", notification.getApplicantId());
-        map.put("applicantName", notification.getApplicantName());
-        map.put("businessTitle", notification.getBusinessTitle());
-        // 显示用字段
-        map.put("displayWorkOrderId", notification.getDisplayWorkOrderId());
-        map.put("displayTitle", notification.getDisplayTitle());
-        // 类型文本映射
-        map.put("notificationTypeText", getNotificationTypeText(notification.getNotificationType()));
-        map.put("sourceTypeText", getSourceTypeText(notification.getSourceType()));
-        map.put("statusText", getStatusText(notification.getInstanceStatus()));
-        // 工单状态使用 instanceStatus
-        map.put("status", notification.getInstanceStatus() != null ? notification.getInstanceStatus() : notification.getStatus());
-        return map;
-    }
-
-    private String getNotificationTypeText(String type) {
-        if (type == null) {
-            return "";
-        }
-        switch (type) {
-            case "WORKFLOW_FLOW":
-                return "流程流转";
-            case "MENTION":
-                return "知会";
-            case "SYSTEM":
-                return "系统通知";
-            default:
-                return type;
-        }
-    }
-
-    private String getSourceTypeText(String type) {
-        if (type == null) {
-            return "";
-        }
-        switch (type) {
-            case "MATERIAL_ENTRY":
-                return "素材录入";
-            case "ASSET_USAGE":
-                return "素材使用";
-            case "ASSET_DELETION":
-                return "素材删除";
-            default:
-                return type;
-        }
-    }
-
-    private String getStatusText(String status) {
-        if (status == null) return "";
-        switch (status) {
-            case "PENDING": return "审批中";
-            case "APPROVED": return "已通过";
-            case "REJECTED": return "已驳回";
-            case "CANCELLED": return "已取消";
-            default: return status;
-        }
-    }
 
     @Override
     public long selectCount(Notification query) {

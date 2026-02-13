@@ -25,24 +25,6 @@ public interface UsageApplyRepository {
     UsageApply findById(Long id);
 
     /**
-     * 根据条件查询申请单列表
-     *
-     * @param status 申请状态
-     * @param offset 分页偏移量
-     * @param limit 分页大小
-     * @return 匹配的使用申请列表
-     */
-    List<UsageApply> findByCondition(String status, int offset, int limit);
-
-    /**
-     * 根据条件统计申请单数量
-     *
-     * @param status 申请状态
-     * @return 匹配的申请单数量
-     */
-    long countByCondition(String status);
-
-    /**
      * 根据用户ID查询申请单列表
      *
      * @param userId 用户ID

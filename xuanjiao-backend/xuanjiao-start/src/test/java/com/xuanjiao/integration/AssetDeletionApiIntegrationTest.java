@@ -1,9 +1,9 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
-import com.xuanjiao.client.dto.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.deletion.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.dto.deletion.dto.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.dto.common.PageResult;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.MethodOrderer;

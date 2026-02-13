@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 包含所有安全相关的 Bug 模式 -->
+    <Match>
+        <Bug category="SECURITY" />
+    </Match>
+
+    <!-- 包含 SQL 注入相关 -->
+    <Match>
+        <Bug pattern="SQL_INJECTION_JPA,SQL_INJECTION_JPAI,SQL_INJECTION_JDBC,SQL_INJECTION_JDO,SQL_INJECTION_HIBERNATE" />
+    </Match>
+
+    <!-- 包含命令注入 -->
+    <Match>
+        <Bug pattern="COMMAND_INJECTION" />
+    </Match>
+
+    <!-- 包含路径遍历 -->
+    <Match>
+        <Bug pattern="PATH_TRAVERSAL_IN,PATH_TRAVERSAL_OUT" />
+    </Match>
+
+    <!-- 包含 XSS -->
+    <Match>
+        <Bug pattern="XSS_REQUEST_PARAMETER_TO_SEND_ERROR,XSS_REQUEST_PARAMETER_TO_JSP,XSS_REQUEST_PARAMETER_TO_SERVLET" />
+    </Match>
+
+    <!-- 包含敏感信息泄露 -->
+    <Match>
+        <Bug pattern="HARD_CODE_PASSWORD, HardCodedCryptKey,HardCodedKey" />
+    </Match>
+
+    <!-- 包含弱加密 -->
+    <Match>
+        <Bug pattern="WEAK_TRUST_MANAGER,WEAK_PASSWORD_HASH,WEAK_ENCRYPTION" />
+    </Match>
+
+    <!-- 包含 LDAP 注入 -->
+    <Match>
+        <Bug pattern="LDAP_INJECTION" />
+    </Match>
+
+    <!-- 包含 XXE -->
+    <Match>
+        <Bug pattern="XXE_SAXPARSER,XXE_XMLREADER,XXE_DOCUMENT" />
+    </Match>
+
+    <!-- 包含不安全的反序列化 -->
+    <Match>
+        <Bug pattern="OBJECT_DESERIALIZATION,JACKSON_UNSAFE_DESERIALIZATION" />
+    </Match>
+</FindBugsFilter>

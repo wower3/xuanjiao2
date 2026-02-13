@@ -1,7 +1,9 @@
 package com.xuanjiao.infrastructure.usage;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
+import com.xuanjiao.infrastructure.dataobject.UsageApplyWithUserDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -30,11 +32,6 @@ public interface UsageApplyMapper {
     UsageApplyDO selectByAssetAndUser(@Param("assetId") Long assetId, @Param("userId") Long userId, @Param("status") String status);
 
     /**
-     * 动态条件查询列表
-     */
-    List<UsageApplyDO> selectList(UsageApplyQuery query);
-
-    /**
      * 统计查询
      */
     Long selectCount(UsageApplyQuery query);
@@ -58,4 +55,13 @@ public interface UsageApplyMapper {
      * 删除（逻辑删除）
      */
     int deleteById(@Param("id") Long id);
+
+    /**
+     * 分页查询使用申请（JOIN 用户和部门，避免 N+1）
+     *
+     * @param page 分页对象
+     * @param query 查询条件
+     * @return 分页结果
+     */
+    IPage<UsageApplyWithUserDO> selectPageWithUser(Page<UsageApplyWithUserDO> page, @Param("query") UsageApplyQuery query);
 }

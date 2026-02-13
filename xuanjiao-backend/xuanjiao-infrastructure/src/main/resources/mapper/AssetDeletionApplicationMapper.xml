@@ -164,7 +164,8 @@
         AND deleted = 0
     </select>
 
-    <select id="selectListWithPagination" resultMap="BaseResultMap">
+    <!-- MyBatis-Plus 分页查询 -->
+    <select id="selectPage" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM asset_deletion_application
         <where>
@@ -204,7 +205,6 @@
         </where>
         AND deleted = 0
         ORDER BY create_time DESC
-        LIMIT #{offset}, #{limit}
     </select>
 
     <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO" useGeneratedKeys="true" keyProperty="id">

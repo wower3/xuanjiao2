@@ -1,8 +1,9 @@
 package com.xuanjiao.adapter.web.workflow;
 
 import com.xuanjiao.app.workflow.WorkflowService;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.WorkflowDTO;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.workflow.dto.WorkflowDTO;
+import com.xuanjiao.client.dto.workflow.dto.FirstStageApproversDTO;
 import com.xuanjiao.client.dto.workflow.WorkflowBindRoleCmd;
 import com.xuanjiao.client.dto.workflow.WorkflowDeleteCmd;
 import com.xuanjiao.client.dto.workflow.WorkflowGetDetailQry;

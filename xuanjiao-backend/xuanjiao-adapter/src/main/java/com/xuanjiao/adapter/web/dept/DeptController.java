@@ -1,8 +1,8 @@
 package com.xuanjiao.adapter.web.dept;
 
 import com.xuanjiao.app.dept.DeptService;
-import com.xuanjiao.client.dto.DeptDTO;
-import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.dept.dto.DeptDTO;
+import com.xuanjiao.client.dto.common.Result;
 import com.xuanjiao.client.dto.dept.DeptDeleteCmd;
 import com.xuanjiao.client.dto.dept.DeptGetDetailQry;
 import com.xuanjiao.client.dto.dept.DeptGetListQry;

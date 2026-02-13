@@ -1,8 +1,8 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.approval.ApprovalService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.approval.FlowItemDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.approval.dto.FlowItemDTO;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;

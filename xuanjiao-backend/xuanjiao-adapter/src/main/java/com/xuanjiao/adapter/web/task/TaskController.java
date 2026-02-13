@@ -3,11 +3,12 @@ package com.xuanjiao.adapter.web.task;
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.app.usage.UsageApplyService;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.UsageApplyDTO;
+import com.xuanjiao.client.dto.deletion.dto.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.dto.material.dto.MaterialApplicationDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.usage.dto.UsageApplyDTO;
+import com.xuanjiao.client.dto.task.dto.DraftItemDTO;
 import com.xuanjiao.client.dto.task.TaskQueryDraftsQry;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -19,13 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.validation.Valid;
-import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 我的任务控制器
@@ -84,21 +81,38 @@ public class TaskController {
      */
     @ApiOperation("查询草稿箱（支持按类型和标题筛选）")
     @PostMapping("/queryDrafts")
-    public Result<PageResult<Map<String, Object>>> queryDrafts(
+    public Result<PageResult<DraftItemDTO>> queryDrafts(
             @RequestAttribute("userId") Long userId,
             @Valid @RequestBody TaskQueryDraftsQry qry) {
 
-        List<Map<String, Object>> combinedList = new ArrayList<>();
+        List<DraftItemDTO> combinedList = new ArrayList<>();
 
         // 查询素材录入草稿
         if (qry.getDraftType() == null || "MATERIAL_ENTRY".equals(qry.getDraftType())) {
             PageResult<MaterialApplicationDTO> materialDrafts =
                 materialApplicationService.queryDrafts(userId, qry.getPageNum(), qry.getPageSize(), qry.getTitle());
             for (MaterialApplicationDTO dto : materialDrafts.getList()) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("type", "MATERIAL_ENTRY");
-                map.put("data", convertMaterialApplicationAssets(dto));
-                combinedList.add(map);
+                DraftItemDTO item = new DraftItemDTO();
+                item.setType("MATERIAL_ENTRY");
+                item.setId(dto.getId());
+                item.setTitle(dto.getTitle());
+                item.setCreateTime(dto.getCreateTime());
+                item.setUpdateTime(dto.getUpdateTime());
+
+                DraftItemDTO.MaterialEntryDraftData data = new DraftItemDTO.MaterialEntryDraftData();
+                data.setApplicantId(dto.getApplicantId());
+                data.setApplicantName(dto.getApplicantName());
+                data.setMaintainerId(dto.getMaintainerId());
+                data.setMaintainerName(dto.getMaintainerName());
+                data.setDeptId(dto.getDeptId());
+                data.setDeptName(dto.getDeptName());
+                data.setWorkflowId(dto.getWorkflowId());
+                data.setStatus(dto.getStatus());
+                data.setGuaranteeDeclaration(dto.getGuaranteeDeclaration());
+                data.setAssets(dto.getAssets()); // 直接使用 DTO，避免循环依赖
+                item.setMaterialEntry(data);
+
+                combinedList.add(item);
             }
         }
 
@@ -107,10 +121,28 @@ public class TaskController {
             PageResult<UsageApplyDTO> usageDrafts =
                 usageApplyService.queryDrafts(userId, qry.getPageNum(), qry.getPageSize(), qry.getTitle());
             for (UsageApplyDTO dto : usageDrafts.getList()) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("type", "ASSET_USAGE");
-                map.put("data", convertUsageApplyAssets(dto));
-                combinedList.add(map);
+                DraftItemDTO item = new DraftItemDTO();
+                item.setType("ASSET_USAGE");
+                item.setId(dto.getId());
+                item.setTitle(dto.getTitle());
+                item.setCreateTime(dto.getCreateTime());
+                item.setUpdateTime(dto.getUpdateTime());
+
+                DraftItemDTO.UsageDraftData data = new DraftItemDTO.UsageDraftData();
+                data.setUserId(dto.getUserId());
+                data.setUsername(dto.getUsername());
+                data.setDeptId(dto.getDeptId());
+                data.setDeptName(dto.getDeptName());
+                data.setWorkflowId(dto.getWorkflowId());
+                data.setStatus(dto.getStatus());
+                data.setAttachmentPath(dto.getAttachmentPath());
+                data.setIsSecondaryCreation(dto.getIsSecondaryCreation());
+                data.setPublishChannel(dto.getPublishChannel());
+                data.setDraft(dto.getDraft());
+                data.setAssets(dto.getAssets()); // 直接使用 DTO，避免循环依赖
+                item.setAssetUsage(data);
+
+                combinedList.add(item);
             }
         }
 
@@ -119,19 +151,33 @@ public class TaskController {
             PageResult<AssetDeletionApplicationDTO> deletionDrafts =
                 deletionApplicationService.queryDrafts(userId, qry.getPageNum(), qry.getPageSize(), qry.getTitle());
             for (AssetDeletionApplicationDTO dto : deletionDrafts.getList()) {
-                Map<String, Object> map = new HashMap<>();
-                map.put("type", "ASSET_DELETION");
-                map.put("data", convertDeletionApplicationAssets(dto));
-                combinedList.add(map);
+                DraftItemDTO item = new DraftItemDTO();
+                item.setType("ASSET_DELETION");
+                item.setId(dto.getId());
+                item.setTitle(dto.getTitle());
+                item.setCreateTime(dto.getCreateTime());
+                item.setUpdateTime(dto.getUpdateTime());
+
+                DraftItemDTO.DeletionDraftData data = new DraftItemDTO.DeletionDraftData();
+                data.setApplicantId(dto.getApplicantId());
+                data.setApplicantName(dto.getApplicantName());
+                data.setDeptId(dto.getDeptId());
+                data.setDeptName(dto.getDeptName());
+                data.setWorkflowId(dto.getWorkflowId());
+                data.setStatus(dto.getStatus());
+                data.setDeleteReason(dto.getDeleteReason());
+                data.setAttachmentPath(dto.getAttachmentPath());
+                data.setAssets(dto.getAssets()); // 直接使用 DTO，避免循环依赖
+                item.setAssetDeletion(data);
+
+                combinedList.add(item);
             }
         }
 
         // 按创建时间倒序排序
         combinedList.sort((a, b) -> {
-            Object dataA = a.get("data");
-            Object dataB = b.get("data");
-            Comparable timeA = getCreateTime(dataA);
-            Comparable timeB = getCreateTime(dataB);
+            LocalDateTime timeA = a.getCreateTime();
+            LocalDateTime timeB = b.getCreateTime();
             if (timeA == null && timeB == null) return 0;
             if (timeA == null) return 1;
             if (timeB == null) return -1;
@@ -142,192 +188,9 @@ public class TaskController {
         int total = combinedList.size();
         int fromIndex = (qry.getPageNum() - 1) * qry.getPageSize();
         int toIndex = Math.min(fromIndex + qry.getPageSize(), total);
-        List<Map<String, Object>> pagedList =
+        List<DraftItemDTO> pagedList =
             fromIndex < total ? combinedList.subList(fromIndex, toIndex) : new ArrayList<>();
 
         return Result.success(PageResult.of(pagedList, (long) total, qry.getPageNum(), qry.getPageSize()));
-    }
-
-    /**
-     * 转换素材录入申请的素材字段
-     *
-     * <p>将 MaterialApplicationDTO 转换为 Map 格式，确保 assets 字段包含
-     * id, name, type 等前端兼容字段。</p>
-     *
-     * @param dto 素材录入申请DTO
-     * @return 转换后的Map对象
-     */
-    private Map<String, Object> convertMaterialApplicationAssets(MaterialApplicationDTO dto) {
-        Map<String, Object> resultMap = new LinkedHashMap<>();
-        // 复制基本字段
-        resultMap.put("id", dto.getId());
-        resultMap.put("title", dto.getTitle());
-        resultMap.put("applicantId", dto.getApplicantId());
-        resultMap.put("applicantName", dto.getApplicantName());
-        resultMap.put("maintainerId", dto.getMaintainerId());
-        resultMap.put("maintainerName", dto.getMaintainerName());
-        resultMap.put("deptId", dto.getDeptId());
-        resultMap.put("deptName", dto.getDeptName());
-        resultMap.put("workflowId", dto.getWorkflowId());
-        resultMap.put("status", dto.getStatus());
-        resultMap.put("guaranteeDeclaration", dto.getGuaranteeDeclaration());
-        resultMap.put("createTime", dto.getCreateTime());
-        resultMap.put("updateTime", dto.getUpdateTime());
-
-        // 转换 assets 为 Map 格式，添加 id, name, type 前端兼容字段
-        if (dto.getAssets() != null) {
-            List<Map<String, Object>> convertedAssets = dto.getAssets().stream()
-                .map(asset -> {
-                    Map<String, Object> assetMap = new LinkedHashMap<>();
-                    assetMap.put("id", asset.getId()); // 前端兼容字段
-                    assetMap.put("name", asset.getName()); // 前端兼容字段
-                    assetMap.put("type", asset.getType()); // 前端兼容字段
-                    assetMap.put("filePath", asset.getFilePath());
-                    assetMap.put("thumbnailPath", asset.getThumbnailPath());
-                    assetMap.put("fileSize", asset.getFileSize());
-                    assetMap.put("md5", asset.getMd5());
-                    assetMap.put("status", asset.getStatus());
-                    assetMap.put("copyright", asset.getCopyright());
-                    assetMap.put("uploadUserId", asset.getUploadUserId());
-                    assetMap.put("uploadUserName", asset.getUploadUserName());
-                    assetMap.put("description", asset.getDescription());
-                    assetMap.put("tags", asset.getTags());
-                    return assetMap;
-                })
-                .collect(Collectors.toList());
-            resultMap.put("assets", convertedAssets);
-        }
-
-        return resultMap;
-    }
-
-    /**
-     * 转换素材使用申请的素材字段
-     *
-     * <p>将 UsageApplyDTO 转换为 Map 格式，确保 assets 字段包含
-     * id, name, type 等前端兼容字段。</p>
-     *
-     * @param dto 素材使用申请DTO
-     * @return 转换后的Map对象
-     */
-    private Map<String, Object> convertUsageApplyAssets(UsageApplyDTO dto) {
-        Map<String, Object> resultMap = new LinkedHashMap<>();
-        // 复制基本字段
-        resultMap.put("id", dto.getId());
-        resultMap.put("title", dto.getTitle());
-        resultMap.put("userId", dto.getUserId());
-        resultMap.put("username", dto.getUsername());
-        resultMap.put("deptName", dto.getDeptName());
-        resultMap.put("deptId", dto.getDeptId());
-        resultMap.put("workflowId", dto.getWorkflowId());
-        resultMap.put("status", dto.getStatus());
-        resultMap.put("attachmentPath", dto.getAttachmentPath());
-        resultMap.put("isSecondaryCreation", dto.getIsSecondaryCreation());
-        resultMap.put("publishChannel", dto.getPublishChannel());
-        resultMap.put("draft", dto.getDraft());
-        resultMap.put("createTime", dto.getCreateTime());
-        resultMap.put("updateTime", dto.getUpdateTime());
-
-        // 转换 assets 为 Map 格式，添加 id, name, type 前端兼容字段
-        if (dto.getAssets() != null) {
-            List<Map<String, Object>> convertedAssets = dto.getAssets().stream()
-                .map(asset -> {
-                    Map<String, Object> assetMap = new LinkedHashMap<>();
-                    assetMap.put("id", asset.getAssetId()); // 前端兼容字段，指向 assetId
-                    assetMap.put("name", asset.getAssetName()); // 前端兼容字段，指向 assetName
-                    assetMap.put("type", asset.getAssetType()); // 前端兼容字段，指向 assetType
-                    assetMap.put("assetId", asset.getAssetId());
-                    assetMap.put("assetName", asset.getAssetName());
-                    assetMap.put("assetType", asset.getAssetType());
-                    assetMap.put("assetFilePath", asset.getAssetFilePath());
-                    assetMap.put("assetThumbnailPath", asset.getAssetThumbnailPath());
-                    assetMap.put("assetStatus", asset.getAssetStatus());
-                    assetMap.put("usageDescription", asset.getUsageDescription());
-                    assetMap.put("usagePublishChannel", asset.getUsagePublishChannel());
-                    assetMap.put("usageIsSecondaryCreation", asset.getUsageIsSecondaryCreation());
-                    assetMap.put("usageAttachmentPath", asset.getUsageAttachmentPath());
-                    return assetMap;
-                })
-                .collect(Collectors.toList());
-            resultMap.put("assets", convertedAssets);
-        }
-
-        return resultMap;
-    }
-
-    /**
-     * 转换素材删除申请的素材字段
-     *
-     * <p>将 AssetDeletionApplicationDTO 转换为 Map 格式，确保 assets 字段包含
-     * id, name, type 等前端兼容字段。</p>
-     *
-     * @param dto 素材删除申请DTO
-     * @return 转换后的Map对象
-     */
-    private Map<String, Object> convertDeletionApplicationAssets(AssetDeletionApplicationDTO dto) {
-        Map<String, Object> resultMap = new LinkedHashMap<>();
-        // 复制基本字段
-        resultMap.put("id", dto.getId());
-        resultMap.put("title", dto.getTitle());
-        resultMap.put("applicantId", dto.getApplicantId());
-        resultMap.put("applicantName", dto.getApplicantName());
-        resultMap.put("deptId", dto.getDeptId());
-        resultMap.put("deptName", dto.getDeptName());
-        resultMap.put("workflowId", dto.getWorkflowId());
-        resultMap.put("status", dto.getStatus());
-        resultMap.put("deleteReason", dto.getDeleteReason());
-        resultMap.put("attachmentPath", dto.getAttachmentPath());
-        resultMap.put("createTime", dto.getCreateTime());
-        resultMap.put("updateTime", dto.getUpdateTime());
-
-        // 转换 assets 为 Map 格式，添加 id, name, type 前端兼容字段
-        if (dto.getAssets() != null) {
-            List<Map<String, Object>> convertedAssets = dto.getAssets().stream()
-                .map(asset -> {
-                    Map<String, Object> assetMap = new LinkedHashMap<>();
-                    assetMap.put("id", asset.getAssetId()); // 前端兼容字段，指向 assetId
-                    assetMap.put("name", asset.getAssetName()); // 前端兼容字段，指向 assetName
-                    assetMap.put("type", asset.getAssetType()); // 前端兼容字段，指向 assetType
-                    assetMap.put("assetId", asset.getAssetId());
-                    assetMap.put("assetName", asset.getAssetName());
-                    assetMap.put("assetType", asset.getAssetType());
-                    assetMap.put("filePath", asset.getFilePath());
-                    assetMap.put("thumbnailPath", asset.getThumbnailPath());
-                    assetMap.put("deletionApplicationId", asset.getDeletionApplicationId());
-                    return assetMap;
-                })
-                .collect(Collectors.toList());
-            resultMap.put("assets", convertedAssets);
-        }
-
-        return resultMap;
-    }
-
-    /**
-     * 从DTO对象中获取创建时间
-     *
-     * <p>通过反射获取对象的 createTime 属性值，支持 Map 和普通 Java 对象。</p>
-     *
-     * @param dto DTO对象
-     * @return 创建时间值，如果获取失败返回 null
-     */
-    private Comparable getCreateTime(Object dto) {
-        if (dto instanceof Map) {
-            Object time = ((Map<?, ?>) dto).get("createTime");
-            if (time instanceof Comparable) {
-                return (Comparable) time;
-            }
-            return null;
-        }
-        try {
-            Method method = dto.getClass().getMethod("getCreateTime");
-            Object result = method.invoke(dto);
-            if (result instanceof Comparable) {
-                return (Comparable) result;
-            }
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

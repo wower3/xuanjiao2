@@ -1,11 +1,10 @@
 /**
  * 审批API模块
- * <p>提供审批任务、实例管理相关接口</p>
- * <p>注意：task.ts 已包含审批相关API，此文件为冗余保留</p>
+ * <p>提供审批任务、实例管理、草稿箱相关接口</p>
+ * <p>统一入口：所有审批相关的API都在此文件中</p>
  *
  * @author system
- * @version 1.0
- * @deprecated 请使用 @/api/task.ts
+ * @version 2.0
  */
 import request from '@/utils/request'
 
@@ -64,24 +63,19 @@ export function withdrawInstance(instanceId: number, comment?: string) {
 /**
  * 审批通过或驳回
  * @param id 任务ID
- * @param comment 审批意见
- * @param passed 是否通过
+ * @param data 审批数据（包含审批意见和是否通过）
  */
-export function approve(id: number, comment: string, passed: boolean) {
-  return request.post(`/approval/tasks/${id}/approve`, null, {
-    params: { comment, passed }
-  })
+export function approve(id: number, data: { comment: string; passed: boolean }) {
+  return request.post(`/approval/tasks/${id}/approve`, data)
 }
 
 /**
  * 退回任务
  * @param id 任务ID
- * @param comment 退回意见
+ * @param data 退回数据（包含退回意见）
  */
-export function returnTask(id: number, comment?: string) {
-  return request.post(`/approval/tasks/${id}/return`, null, {
-    params: { comment }
-  })
+export function returnTask(id: number, data?: { comment?: string }) {
+  return request.post(`/approval/tasks/${id}/return`, data || {})
 }
 
 /**
@@ -91,4 +85,52 @@ export function returnTask(id: number, comment?: string) {
  */
 export function restartSubWorkflow(id: number, approverIds: number[]) {
   return request.post(`/approval/tasks/${id}/restart-sub-workflow`, approverIds)
+}
+
+// ========== 别名函数，提供更直观的命名 ==========
+
+/**
+ * 获取待审批任务列表（别名）
+ * 提供更直观的函数命名
+ * @param params 查询参数
+ */
+export function getPendingApproval(params: {
+  pageNum?: number
+  pageSize?: number
+  businessType?: string
+}) {
+  return getMyTasks(params)
+}
+
+/**
+ * 获取我发起的审批列表（别名）
+ * 提供更直观的函数命名
+ * @param params 查询参数
+ */
+export function getMyInitiated(params: {
+  pageNum?: number
+  pageSize?: number
+  businessType?: string
+}) {
+  return getMyApplied(params)
+}
+
+/**
+ * 获取待办任务数量
+ * @returns 待办任务数量
+ */
+export function getMyTasksCount() {
+  return request.post('/approval/getMyTasksCount')
+}
+
+/**
+ * 查询草稿列表
+ * @param params 查询参数
+ */
+export function getDrafts(params: {
+  pageNum?: number
+  pageSize?: number
+  businessType?: string
+}) {
+  return request.post('/task/queryDrafts', params)
 }

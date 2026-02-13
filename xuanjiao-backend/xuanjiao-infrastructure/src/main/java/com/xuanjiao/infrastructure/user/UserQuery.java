@@ -64,4 +64,9 @@ public class UserQuery {
      * 角色ID列表（IN查询）
      */
     private List<Long> roleIds;
+
+    /**
+     * 子部门ID列表（用于递归查询子部门下的用户）
+     */
+    private List<Long> subDeptIds;
 }

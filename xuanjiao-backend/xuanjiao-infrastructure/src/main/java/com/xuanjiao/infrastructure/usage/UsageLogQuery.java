@@ -16,6 +16,4 @@ public class UsageLogQuery {
     private String deptName;
     private String orderByField;
     private String orderByDirection;
-    private Integer offset;
-    private Integer limit;
 }

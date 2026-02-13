@@ -2,7 +2,7 @@ package com.xuanjiao.app.notification.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.notification.NotificationService;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.common.PageResult;
 import com.xuanjiao.client.dto.notification.BatchCreateNotificationCmd;
 import com.xuanjiao.client.dto.notification.BatchDeleteNotificationCmd;
 import com.xuanjiao.client.dto.notification.BatchMarkReadCmd;
@@ -10,10 +10,12 @@ import com.xuanjiao.client.dto.notification.CreateNotificationCmd;
 import com.xuanjiao.client.dto.notification.DeleteNotificationCmd;
 import com.xuanjiao.client.dto.notification.GetNotificationRecordsQry;
 import com.xuanjiao.client.dto.notification.MarkReadCmd;
-import com.xuanjiao.client.dto.notification.NotificationDTO;
+import com.xuanjiao.client.dto.notification.dto.NotificationDTO;
 import com.xuanjiao.client.dto.notification.NotificationPageQry;
+import com.xuanjiao.client.dto.notification.dto.NotificationWithWorkOrderDTO;
 import com.xuanjiao.client.dto.notification.NotifyUsersCmd;
 import com.xuanjiao.domain.notification.entity.Notification;
+import com.xuanjiao.domain.notification.entity.NotificationWithWorkOrder;
 import com.xuanjiao.domain.notification.repository.NotificationRepository;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
 import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
@@ -30,9 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -89,7 +89,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> getNotificationPageWithWorkOrder(NotificationPageQry qry) {
+    public PageResult<NotificationWithWorkOrderDTO> getNotificationPageWithWorkOrder(NotificationPageQry qry) {
         Notification query = new Notification();
         query.setRecipientId(qry.getRecipientId());
         query.setNotificationType(qry.getNotificationType());
@@ -97,7 +97,10 @@ public class NotificationServiceImpl implements NotificationService {
         query.setSourceType(qry.getSourceType());
 
         int offset = (qry.getPageNum() - 1) * qry.getPageSize();
-        List<Map<String, Object>> list = notificationRepository.selectPageWithWorkOrder(query, offset, qry.getPageSize(), qry.getKeyword());
+        List<NotificationWithWorkOrderDTO> list = notificationRepository.selectPageWithWorkOrder(query, offset, qry.getPageSize(), qry.getKeyword())
+                .stream()
+                .map(this::convertToDTOWithWorkOrder)
+                .collect(Collectors.toList());
         long total = notificationRepository.selectCountWithKeyword(query, qry.getKeyword());
 
         return PageResult.of(list, total, qry.getPageNum(), qry.getPageSize());
@@ -220,20 +223,57 @@ public class NotificationServiceImpl implements NotificationService {
         return dto;
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> convertToMap(Notification notification) {
-        NotificationDTO dto = convertToDTO(notification);
-        if (dto == null) {
-            return new HashMap<>();
+    /**
+     * 将 NotificationWithWorkOrder 转换为 NotificationWithWorkOrderDTO 并填充类型文本
+     *
+     * @param entity 知会事项实体
+     * @return 知会事项DTO
+     */
+    private NotificationWithWorkOrderDTO convertToDTOWithWorkOrder(com.xuanjiao.domain.notification.entity.NotificationWithWorkOrder entity) {
+        if (entity == null) {
+            return null;
         }
-        try {
-            Map<String, Object> map = objectMapper.convertValue(dto, Map.class);
-            // 添加类型文本映射
-            map.put("notificationTypeText", getNotificationTypeText(notification.getNotificationType()));
-            map.put("sourceTypeText", getSourceTypeText(notification.getSourceType()));
-            return map;
-        } catch (Exception e) {
-            return new HashMap<>();
+        NotificationWithWorkOrderDTO dto = new NotificationWithWorkOrderDTO();
+        // 基础字段
+        dto.setId(entity.getId());
+        dto.setTitle(entity.getTitle());
+        dto.setContent(entity.getContent());
+        dto.setNotificationType(entity.getNotificationType());
+        dto.setNotificationTypeText(getNotificationTypeText(entity.getNotificationType()));
+        dto.setSourceType(entity.getSourceType());
+        dto.setSourceTypeText(getSourceTypeText(entity.getSourceType()));
+        dto.setSourceId(entity.getSourceId());
+        dto.setSenderId(entity.getSenderId());
+        dto.setSenderName(entity.getSenderName());
+        dto.setRecipientId(entity.getRecipientId());
+        dto.setIsRead(entity.getIsRead());
+        dto.setReadTime(entity.getReadTime());
+        // 工单相关字段
+        dto.setInstanceId(entity.getInstanceId());
+        dto.setDisplayWorkOrderId(entity.getDisplayWorkOrderId());
+        dto.setStatus(entity.getInstanceStatus());
+        dto.setStatusText(getStatusText(entity.getInstanceStatus()));
+        dto.setWorkflowId(entity.getWorkflowId());
+        dto.setWorkflowName(entity.getWorkflowName());
+        dto.setApplicantId(entity.getApplicantId());
+        dto.setApplicantName(entity.getApplicantName());
+        dto.setBusinessTitle(entity.getBusinessTitle());
+        dto.setDisplayTitle(entity.getDisplayTitle());
+        dto.setCreateTime(entity.getCreateTime());
+        return dto;
+    }
+
+    /**
+     * 获取工单状态文本
+     */
+    private String getStatusText(String status) {
+        if (status == null) return "";
+        switch (status) {
+            case "PENDING": return "审批中";
+            case "APPROVED": return "已通过";
+            case "REJECTED": return "已驳回";
+            case "CANCELLED": return "已取消";
+            default: return status;
         }
     }
 
@@ -362,20 +402,6 @@ public class NotificationServiceImpl implements NotificationService {
             }
         } catch (Exception e) {
             return null;
-        }
-    }
-
-    /**
-     * 获取状态文本
-     */
-    private String getStatusText(String status) {
-        if (status == null) return "";
-        switch (status) {
-            case "PENDING": return "审批中";
-            case "APPROVED": return "已通过";
-            case "REJECTED": return "已驳回";
-            case "CANCELLED": return "已取消";
-            default: return status;
         }
     }
 

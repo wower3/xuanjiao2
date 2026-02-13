@@ -44,25 +44,31 @@
         </el-table-column>
         <el-table-column label="事项标题" min-width="200">
           <template #default="{ row }">
-            {{ row.data.title || row.data.businessName }}
+            {{ row.title }}
           </template>
         </el-table-column>
         <el-table-column label="维护人/申请人" width="120">
           <template #default="{ row }">
-            {{ row.data.maintainerName || row.data.username || row.data.applicantName || '-' }}
+            <span v-if="row.type === 'MATERIAL_ENTRY'">{{ row.materialEntry?.maintainerName || '-' }}</span>
+            <span v-else-if="row.type === 'ASSET_USAGE'">{{ row.assetUsage?.username || '-' }}</span>
+            <span v-else-if="row.type === 'ASSET_DELETION'">{{ row.assetDeletion?.applicantName || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="归属部门" width="120">
           <template #default="{ row }">
-            {{ row.data.deptName || '-' }}
+            <span v-if="row.type === 'MATERIAL_ENTRY'">{{ row.materialEntry?.deptName || '-' }}</span>
+            <span v-else-if="row.type === 'ASSET_USAGE'">{{ row.assetUsage?.deptName || '-' }}</span>
+            <span v-else-if="row.type === 'ASSET_DELETION'">{{ row.assetDeletion?.deptName || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="文件数量" width="100">
           <template #default="{ row }">
-            {{ row.data.assets?.length || 0 }} 个
+            <span v-if="row.type === 'MATERIAL_ENTRY'">{{ (row.materialEntry?.assets as any)?.length || 0 }} 个</span>
+            <span v-else-if="row.type === 'ASSET_USAGE'">{{ (row.assetUsage?.assets as any)?.length || 0 }} 个</span>
+            <span v-else-if="row.type === 'ASSET_DELETION'">{{ (row.assetDeletion?.assets as any)?.length || 0 }} 个</span>
           </template>
         </el-table-column>
-        <el-table-column prop="data.createTime" label="创建时间" width="180" />
+        <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
             <el-button link type="primary" @click="continueEdit(row)">继续编辑</el-button>
@@ -84,7 +90,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getDrafts } from '@/api/task'
+import { getDrafts } from '@/api/approval'
 import { deleteMaterialApplication } from '@/api/materialApplication'
 import { deleteDeletionApplication } from '@/api/assetDeletion'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -129,23 +135,23 @@ function handleFilterChange() {
 function continueEdit(row: any) {
   if (row.type === 'MATERIAL_ENTRY') {
     // 跳转到素材录入页面，带上工单ID
-    router.push(`/asset/material-entry?id=${row.data.id}`)
+    router.push(`/asset/material-entry?id=${row.id}`)
   } else if (row.type === 'ASSET_USAGE') {
     // 跳转到使用申请页面，带上工单ID
-    router.push(`/asset/usage-apply?id=${row.data.id}`)
+    router.push(`/asset/usage-apply?id=${row.id}`)
   } else if (row.type === 'ASSET_DELETION') {
     // 跳转到素材删除页面，带上工单ID
-    router.push(`/asset/deletion?id=${row.data.id}`)
+    router.push(`/asset/deletion?id=${row.id}`)
   }
 }
 
 async function deleteDraft(row: any) {
   await ElMessageBox.confirm('确定删除该草稿?', '提示')
   if (row.type === 'MATERIAL_ENTRY') {
-    await deleteMaterialApplication(row.data.id)
+    await deleteMaterialApplication(row.id)
     ElMessage.success('删除成功')
   } else if (row.type === 'ASSET_DELETION') {
-    await deleteDeletionApplication(row.data.id)
+    await deleteDeletionApplication(row.id)
     ElMessage.success('删除成功')
   } else {
     // 使用申请删除

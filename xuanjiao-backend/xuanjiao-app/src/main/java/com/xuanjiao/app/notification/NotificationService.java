@@ -1,6 +1,6 @@
 package com.xuanjiao.app.notification;
 
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.common.PageResult;
 import com.xuanjiao.client.dto.notification.BatchCreateNotificationCmd;
 import com.xuanjiao.client.dto.notification.BatchDeleteNotificationCmd;
 import com.xuanjiao.client.dto.notification.BatchMarkReadCmd;
@@ -8,13 +8,13 @@ import com.xuanjiao.client.dto.notification.CreateNotificationCmd;
 import com.xuanjiao.client.dto.notification.DeleteNotificationCmd;
 import com.xuanjiao.client.dto.notification.GetNotificationRecordsQry;
 import com.xuanjiao.client.dto.notification.MarkReadCmd;
-import com.xuanjiao.client.dto.notification.NotificationDTO;
+import com.xuanjiao.client.dto.notification.dto.NotificationDTO;
 import com.xuanjiao.client.dto.notification.NotificationPageQry;
+import com.xuanjiao.client.dto.notification.dto.NotificationWithWorkOrderDTO;
 import com.xuanjiao.client.dto.notification.NotifyUsersCmd;
 import com.xuanjiao.infrastructure.notification.NotificationRecordDO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 系统通知服务接口
@@ -63,7 +63,7 @@ public interface NotificationService {
      * @param qry 查询参数，包含用户ID、类型筛选、已读状态、分页参数等
      * @return 分页结果，包含通知信息和关联的工单信息
      */
-    PageResult<Map<String, Object>> getNotificationPageWithWorkOrder(NotificationPageQry qry);
+    PageResult<NotificationWithWorkOrderDTO> getNotificationPageWithWorkOrder(NotificationPageQry qry);
 
     /**
      * 根据ID获取通知详情

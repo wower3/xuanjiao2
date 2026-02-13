@@ -3,7 +3,9 @@ package com.xuanjiao.app.workflow;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.workflow.impl.ApproverSelectionServiceImpl;
-import com.xuanjiao.client.dto.ApproverSelectionDTO;
+import com.xuanjiao.client.dto.approval.dto.ApproverSelectionDTO;
+import com.xuanjiao.client.dto.approval.dto.ApprovalProgressDTO;
+import com.xuanjiao.client.dto.workflow.dto.WorkflowDTO;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalProgressMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
@@ -285,7 +287,7 @@ public class ApproverSelectionServiceImplTest {
         when(workflowMapper.selectById(1L)).thenReturn(testWorkflow);
         when(workflowStageMapper.selectList(any())).thenReturn(new ArrayList<>());
 
-        com.xuanjiao.client.dto.WorkflowDTO result = approverSelectionService.getWorkflowByRole(1L, "ASSET_UPLOAD");
+        WorkflowDTO result = approverSelectionService.getWorkflowByRole(1L, "ASSET_UPLOAD");
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
@@ -309,7 +311,7 @@ public class ApproverSelectionServiceImplTest {
         when(workflowMapper.selectList(any(WorkflowQuery.class)))
                 .thenReturn(new ArrayList<>());
 
-        com.xuanjiao.client.dto.WorkflowDTO result = approverSelectionService.getWorkflowByRole(999L, "UNKNOWN_TYPE");
+        WorkflowDTO result = approverSelectionService.getWorkflowByRole(999L, "UNKNOWN_TYPE");
 
         assertNull(result);
         // 验证 workflowMapper.selectList 被调用
@@ -356,7 +358,7 @@ public class ApproverSelectionServiceImplTest {
                 "ASC".equals(query.getOrderByDirection())
         ))).thenReturn(Arrays.asList(stage1));
 
-        List<com.xuanjiao.client.dto.ApprovalProgressDTO> result =
+        List<ApprovalProgressDTO> result =
                 approverSelectionService.getApprovalProgress(1L);
 
         assertNotNull(result);
@@ -399,7 +401,7 @@ public class ApproverSelectionServiceImplTest {
                 "ASC".equals(query.getOrderByDirection())
         ))).thenReturn(Arrays.asList(subStage1));
 
-        List<com.xuanjiao.client.dto.ApprovalProgressDTO> result =
+        List<ApprovalProgressDTO> result =
                 approverSelectionService.getApprovalProgress(2L);
 
         assertNotNull(result);

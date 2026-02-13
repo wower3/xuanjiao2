@@ -75,7 +75,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
-import { getMyInitiated, withdrawInstance } from '@/api/task'
+import { getMyInitiated, withdrawInstance } from '@/api/approval'
 import { copyApplication } from '@/api/materialApplication'
 import { copyApplication as copyUsageApplication } from '@/api/usageApply'
 import { copyApplication as copyDeletionApplication } from '@/api/assetDeletion'
@@ -195,14 +195,16 @@ async function handleCopyApplication(row: any) {
     let targetPage = ''
 
     // 根据工单类型调用不同的复制 API
+    // 注意：MyAppliedDTO.id 是审批实例ID，businessId 才是实际的申请单ID
+    const applicationId = row.businessId || row.id
     if (row.businessType === 'MATERIAL_ENTRY') {
-      newApplicationId = await copyApplication(row.applicationId || row.id)
+      newApplicationId = await copyApplication(applicationId)
       targetPage = '素材录入'
     } else if (row.businessType === 'ASSET_USAGE') {
-      newApplicationId = await copyUsageApplication(row.applicationId || row.id)
+      newApplicationId = await copyUsageApplication(applicationId)
       targetPage = '素材使用'
     } else if (row.businessType === 'ASSET_DELETION') {
-      newApplicationId = await copyDeletionApplication(row.applicationId || row.id)
+      newApplicationId = await copyDeletionApplication(applicationId)
       targetPage = '素材删除'
     } else {
       ElMessage.error('不支持的工单类型')

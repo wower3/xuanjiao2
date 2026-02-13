@@ -2,16 +2,20 @@ package com.xuanjiao.adapter.web.approval;
 
 import com.xuanjiao.app.approval.ApprovalService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.approval.ApprovalApproveCmd;
 import com.xuanjiao.client.dto.approval.ApprovalGetInstanceDetailQry;
-import com.xuanjiao.client.dto.approval.FlowItemDTO;
-import com.xuanjiao.client.dto.approval.MyAppliedDTO;
-import com.xuanjiao.client.dto.approval.PendingTaskDTO;
 import com.xuanjiao.client.dto.approval.ApprovalGetMyAppliedQry;
 import com.xuanjiao.client.dto.approval.ApprovalGetMyFlowItemsQry;
 import com.xuanjiao.client.dto.approval.ApprovalGetMyTasksQry;
 import com.xuanjiao.client.dto.approval.ApprovalGetTaskDetailQry;
+import com.xuanjiao.client.dto.approval.ApprovalReturnCmd;
+import com.xuanjiao.client.dto.approval.dto.ApprovalInstanceDetailDTO;
+import com.xuanjiao.client.dto.approval.dto.ApprovalTaskDetailDTO;
+import com.xuanjiao.client.dto.approval.dto.FlowItemDTO;
+import com.xuanjiao.client.dto.approval.dto.MyAppliedDTO;
+import com.xuanjiao.client.dto.approval.dto.PendingTaskDTO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -134,9 +138,8 @@ public class ApprovalController {
     public Result<Void> approve(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId,
-            @RequestParam String comment,
-            @RequestParam boolean passed) {
-        approvalService.approve(id, userId, comment, passed);
+            @Valid @RequestBody ApprovalApproveCmd cmd) {
+        approvalService.approve(id, userId, cmd.getComment(), cmd.getPassed());
         return Result.success();
     }
 
@@ -156,8 +159,8 @@ public class ApprovalController {
     public Result<Void> returnTask(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId,
-            @RequestParam(required = false) String comment) {
-        approvalService.returnTask(id, userId, comment);
+            @Valid @RequestBody ApprovalReturnCmd cmd) {
+        approvalService.returnTask(id, userId, cmd.getComment());
         return Result.success();
     }
 
@@ -172,7 +175,7 @@ public class ApprovalController {
      */
     @ApiOperation("获取审批任务详情")
     @PostMapping("/getTaskDetail")
-    public Result<Map<String, Object>> getTaskDetail(@Valid @RequestBody ApprovalGetTaskDetailQry qry) {
+    public Result<ApprovalTaskDetailDTO> getTaskDetail(@Valid @RequestBody ApprovalGetTaskDetailQry qry) {
         return Result.success(approvalService.getTaskDetail(qry.getId()));
     }
 
@@ -187,7 +190,7 @@ public class ApprovalController {
      */
     @ApiOperation("获取审批实例详情")
     @PostMapping("/getInstanceDetail")
-    public Result<Map<String, Object>> getInstanceDetail(@Valid @RequestBody ApprovalGetInstanceDetailQry qry) {
+    public Result<ApprovalInstanceDetailDTO> getInstanceDetail(@Valid @RequestBody ApprovalGetInstanceDetailQry qry) {
         return Result.success(approvalService.getInstanceDetail(qry.getId()));
     }
 

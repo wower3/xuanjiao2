@@ -1,5 +1,7 @@
 package com.xuanjiao.infrastructure.deletion;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -18,43 +20,36 @@ public class AssetDeletionApplicationMapperImpl implements AssetDeletionApplicat
     @Autowired
     private SqlSessionFactory sqlSessionFactory;
 
+    @Autowired
+    private AssetDeletionApplicationMapper assetDeletionApplicationMapper;
+
     private SqlSession getSession() {
         return sqlSessionFactory.openSession();
     }
 
     @Override
     public AssetDeletionApplicationDO selectById(Long id) {
-        try (SqlSession session = getSession()) {
-            return session.selectOne("com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper.selectById", id);
-        }
+        return assetDeletionApplicationMapper.selectById(id);
     }
 
     @Override
     public AssetDeletionApplicationDO selectOne(AssetDeletionApplicationQuery query) {
-        try (SqlSession session = getSession()) {
-            return session.selectOne("com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper.selectOne", query);
-        }
+        return assetDeletionApplicationMapper.selectOne(query);
     }
 
     @Override
     public List<AssetDeletionApplicationDO> selectList(AssetDeletionApplicationQuery query) {
-        try (SqlSession session = getSession()) {
-            return session.selectList("com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper.selectList", query);
-        }
+        return assetDeletionApplicationMapper.selectList(query);
     }
 
     @Override
     public Long selectCount(AssetDeletionApplicationQuery query) {
-        try (SqlSession session = getSession()) {
-            return session.selectOne("com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper.selectCount", query);
-        }
+        return assetDeletionApplicationMapper.selectCount(query);
     }
 
     @Override
-    public List<AssetDeletionApplicationDO> selectListWithPagination(int offset, int limit, AssetDeletionApplicationQuery query) {
-        try (SqlSession session = getSession()) {
-            return session.selectList("com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper.selectListWithPagination", query);
-        }
+    public IPage<AssetDeletionApplicationDO> selectPage(Page<AssetDeletionApplicationDO> page, AssetDeletionApplicationQuery query) {
+        return assetDeletionApplicationMapper.selectPage(page, query);
     }
 
     @Override

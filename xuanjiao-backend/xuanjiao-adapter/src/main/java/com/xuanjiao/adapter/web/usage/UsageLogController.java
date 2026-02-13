@@ -1,9 +1,9 @@
 package com.xuanjiao.adapter.web.usage;
 
 import com.xuanjiao.app.usage.UsageLogService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.UsageLogDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.usage.dto.UsageLogDTO;
 import com.xuanjiao.client.dto.log.LogGetAssetUsageLogsQry;
 import com.xuanjiao.client.dto.log.LogQueryLogsQry;
 import io.swagger.annotations.Api;
@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.validation.Valid;
-import java.util.Map;
 
 /**
  * 使用日志控制器
@@ -57,7 +56,7 @@ public class UsageLogController {
      */
     @ApiOperation("查询日志")
     @PostMapping("/queryLogs")
-    public Result<PageResult<Map<String, Object>>> list(@Valid @RequestBody LogQueryLogsQry qry) {
+    public Result<PageResult<UsageLogDTO>> list(@Valid @RequestBody LogQueryLogsQry qry) {
         return Result.success(logService.query(qry.getAction(), qry.getPageNum(), qry.getPageSize()));
     }
 

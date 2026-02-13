@@ -3,10 +3,10 @@ package com.xuanjiao.app.material.impl;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.asset.AssetService;
-import com.xuanjiao.client.dto.AssetDTO;
-import com.xuanjiao.client.dto.MaterialApplicationCmd;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.asset.dto.AssetDTO;
+import com.xuanjiao.client.dto.material.MaterialApplicationCmd;
+import com.xuanjiao.client.dto.material.dto.MaterialApplicationDTO;
+import com.xuanjiao.client.dto.common.PageResult;
 import com.xuanjiao.domain.material.entity.MaterialApplication;
 import com.xuanjiao.domain.material.repository.MaterialApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
@@ -261,24 +261,20 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         logger.info("MaterialApplication.convert - applicationId: {}, title: {}", application.getId(), application.getTitle());
 
-        // 填充申请人名称
-        if (application.getApplicantId() != null) {
+        // 如果 entity 中没有这些字段（来自老代码），则查询数据库
+        if (dto.getApplicantName() == null && application.getApplicantId() != null) {
             UserDO user = userMapper.selectById(application.getApplicantId());
             if (user != null) {
                 dto.setApplicantName(user.getRealName());
             }
         }
-
-        // 填充维护人名称
-        if (application.getMaintainerId() != null) {
+        if (dto.getMaintainerName() == null && application.getMaintainerId() != null) {
             UserDO maintainer = userMapper.selectById(application.getMaintainerId());
             if (maintainer != null) {
                 dto.setMaintainerName(maintainer.getRealName());
             }
         }
-
-        // 填充部门名称
-        if (application.getDeptId() != null) {
+        if (dto.getDeptName() == null && application.getDeptId() != null) {
             DeptDO dept = deptMapper.selectById(application.getDeptId());
             if (dept != null) {
                 dto.setDeptName(dept.getName());
@@ -332,7 +328,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             if (!tagIds.isEmpty()) {
                 List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
                 dto.setTags(tags.stream().map(tag -> {
-                    com.xuanjiao.client.dto.TagDTO tagDTO = new com.xuanjiao.client.dto.TagDTO();
+                    com.xuanjiao.client.dto.tag.dto.TagDTO tagDTO = new com.xuanjiao.client.dto.tag.dto.TagDTO();
                     BeanUtils.copyProperties(tag, tagDTO);
                     return tagDTO;
                 }).collect(Collectors.toList()));

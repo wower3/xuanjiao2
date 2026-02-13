@@ -43,10 +43,4 @@ public class UsageApplyQuery {
 
     /** 排序方向 */
     private String orderByDirection;
-
-    /** 分页偏移量 */
-    private Integer offset;
-
-    /** 分页限制 */
-    private Integer limit;
 }

@@ -33,32 +33,6 @@ public interface AssetRepository {
     Asset findByMd5(String md5);
 
     /**
-     * 根据条件查询素材列表
-     *
-     * @param name 素材名称（模糊匹配）
-     * @param type 素材类型
-     * @param status 素材状态
-     * @param offset 分页偏移量
-     * @param limit 分页大小
-     * @return 匹配的素材列表
-     */
-    List<Asset> findByCondition(String name, String type, String status, int offset, int limit);
-
-    /**
-     * 根据状态列表查询素材
-     *
-     * <p>支持多状态筛选。</p>
-     *
-     * @param name 素材名称（模糊匹配）
-     * @param type 素材类型
-     * @param statusList 状态列表
-     * @param offset 分页偏移量
-     * @param limit 分页大小
-     * @return 匹配的素材列表
-     */
-    List<Asset> findByStatusList(String name, String type, List<String> statusList, int offset, int limit);
-
-    /**
      * 根据申请ID查找素材列表
      *
      * <p>获取某个素材录入申请下所有素材。</p>
@@ -67,26 +41,6 @@ public interface AssetRepository {
      * @return 该申请下的素材列表
      */
     List<Asset> findByApplicationId(Long applicationId);
-
-    /**
-     * 根据条件统计素材数量
-     *
-     * @param name 素材名称（模糊匹配）
-     * @param type 素材类型
-     * @param status 素材状态
-     * @return 匹配的素材数量
-     */
-    long countByCondition(String name, String type, String status);
-
-    /**
-     * 根据状态列表统计素材数量
-     *
-     * @param name 素材名称（模糊匹配）
-     * @param type 素材类型
-     * @param statusList 状态列表
-     * @return 匹配的素材数量
-     */
-    long countByStatusList(String name, String type, List<String> statusList);
 
     /**
      * 保存素材

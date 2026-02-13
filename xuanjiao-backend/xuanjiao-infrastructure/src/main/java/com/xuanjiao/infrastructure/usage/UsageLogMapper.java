@@ -1,7 +1,9 @@
 package com.xuanjiao.infrastructure.usage;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.UsageLogDO;
+import com.xuanjiao.infrastructure.dataobject.UsageLogWithUserDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -23,11 +25,6 @@ public interface UsageLogMapper {
      * Select usage log by ID
      */
     UsageLogDO selectById(@Param("id") Long id);
-
-    /**
-     * Select usage logs with dynamic query conditions
-     */
-    List<UsageLogDO> selectList(UsageLogQuery query);
 
     /**
      * Count usage logs with dynamic query conditions
@@ -53,4 +50,13 @@ public interface UsageLogMapper {
      * Delete usage log by ID
      */
     int deleteById(@Param("id") Long id);
+
+    /**
+     * 分页查询使用日志（JOIN 用户，避免 N+1）
+     *
+     * @param page 分页对象
+     * @param query 查询条件
+     * @return 分页结果
+     */
+    IPage<UsageLogWithUserDO> selectPageWithUser(Page<UsageLogWithUserDO> page, @Param("query") UsageLogQuery query);
 }

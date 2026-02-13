@@ -1,9 +1,9 @@
 package com.xuanjiao.app.asset;
 
-import com.xuanjiao.client.dto.AssetDTO;
-import com.xuanjiao.client.dto.AssetQueryCmd;
-import com.xuanjiao.client.dto.AssetUploadCmd;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.asset.dto.AssetDTO;
+import com.xuanjiao.client.dto.asset.AssetQry;
+import com.xuanjiao.client.dto.asset.AssetUploadCmd;
+import com.xuanjiao.client.dto.common.PageResult;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
@@ -68,7 +68,7 @@ public interface AssetService {
      * @param cmd 查询参数，支持名称、类型、状态、标签等筛选
      * @return 分页结果
      */
-    PageResult<AssetDTO> query(AssetQueryCmd cmd);
+    PageResult<AssetDTO> query(AssetQry cmd);
 
     /**
      * 查询素材列表（带角色权限过滤）
@@ -84,7 +84,7 @@ public interface AssetService {
      * @param userId 当前用户ID
      * @return 分页结果
      */
-    PageResult<AssetDTO> queryWithRoleFilter(AssetQueryCmd cmd, Long userId);
+    PageResult<AssetDTO> queryWithRoleFilter(AssetQry cmd, Long userId);
 
     /**
      * 获取我已审批通过的素材列表

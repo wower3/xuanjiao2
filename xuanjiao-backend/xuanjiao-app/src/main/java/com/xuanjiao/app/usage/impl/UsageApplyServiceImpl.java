@@ -1,18 +1,23 @@
 package com.xuanjiao.app.usage.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xuanjiao.app.usage.UsageApplyService;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetQuery;
+import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyQuery;
+import com.xuanjiao.infrastructure.dataobject.UsageApplyWithUserDO;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageApplyCmd;
-import com.xuanjiao.client.dto.UsageApplyDTO;
-import com.xuanjiao.client.dto.UsageApplyQueryCmd;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.usage.UsageApplyCmd;
+import com.xuanjiao.client.dto.usage.dto.UsageApplyDTO;
+import com.xuanjiao.client.dto.usage.UsageApplyQry;
 import com.xuanjiao.domain.usage.entity.UsageApply;
 import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
 import com.xuanjiao.domain.usage.repository.UsageApplyAssetRepository;
 import com.xuanjiao.domain.usage.repository.UsageApplyRepository;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import org.springframework.beans.BeanUtils;
@@ -51,6 +56,9 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     private com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper usageApplyAssetMapper;
 
     @Autowired
+    private UsageApplyMapper usageApplyMapper;
+
+    @Autowired
     private WorkflowEngineService workflowEngineService;
 
     @Autowired
@@ -58,6 +66,9 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private com.xuanjiao.infrastructure.dept.DeptMapper deptMapper;
 
     // ========== 新API（按素材配置使用信息） ==========
 
@@ -289,14 +300,23 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     }
 
     @Override
-    public PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQueryCmd cmd, Long userId) {
-        int offset = (cmd.getPageNum() - 1) * cmd.getPageSize();
-        List<UsageApply> list = usageApplyRepository.findByCondition(cmd.getStatus(), offset, cmd.getPageSize());
-        list = list.stream().filter(apply -> apply.getUserId().equals(userId)).collect(Collectors.toList());
-        long total = usageApplyRepository.countByCondition(cmd.getStatus());
+    public PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQry cmd, Long userId) {
+        // 使用 MyBatis-Plus 分页
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<UsageApplyWithUserDO> page =
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(cmd.getPageNum(), cmd.getPageSize());
 
-        List<UsageApplyDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
-        return PageResult.of(dtoList, total, cmd.getPageNum(), cmd.getPageSize());
+        // 构建 UsageApplyQuery 条件
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setStatus(cmd.getStatus());
+        query.setUserId(userId); // 只查询当前用户的申请
+
+        IPage<UsageApplyWithUserDO> pageResult = usageApplyMapper.selectPageWithUser(page, query);
+
+        List<UsageApplyDTO> dtoList = pageResult.getRecords().stream()
+            .map(this::convertFromWithUserDO)
+            .collect(Collectors.toList());
+
+        return PageResult.of(dtoList, pageResult.getTotal(), cmd.getPageNum(), cmd.getPageSize());
     }
 
     @Override
@@ -401,11 +421,19 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         UsageApplyDTO dto = new UsageApplyDTO();
         BeanUtils.copyProperties(usageApply, dto);
 
-        // 填充用户名称
-        if (usageApply.getUserId() != null) {
+        // 如果 entity 中没有 username（来自老代码），则查询用户表
+        if (dto.getUsername() == null && usageApply.getUserId() != null) {
             UserDO user = userMapper.selectById(usageApply.getUserId());
             if (user != null) {
                 dto.setUsername(user.getRealName());
+            }
+        }
+
+        // 查询部门信息
+        if (dto.getDeptName() == null && usageApply.getDeptId() != null) {
+            DeptDO dept = deptMapper.selectById(usageApply.getDeptId());
+            if (dept != null) {
+                dto.setDeptName(dept.getName());
             }
         }
 
@@ -428,6 +456,19 @@ public class UsageApplyServiceImpl implements UsageApplyService {
             dto.setAssets(assetDTOs);
         }
 
+        return dto;
+    }
+
+    /**
+     * 将 UsageApplyWithUserDO 转换为 UsageApplyDTO
+     * 用于 JOIN 查询结果，避免 N+1 问题
+     */
+    private UsageApplyDTO convertFromWithUserDO(UsageApplyWithUserDO withUserDO) {
+        if (withUserDO == null) return null;
+        UsageApplyDTO dto = new UsageApplyDTO();
+        BeanUtils.copyProperties(withUserDO, dto);
+        // 用户名已经通过 JOIN 查询获取
+        dto.setUsername(withUserDO.getUsername());
         return dto;
     }
 }

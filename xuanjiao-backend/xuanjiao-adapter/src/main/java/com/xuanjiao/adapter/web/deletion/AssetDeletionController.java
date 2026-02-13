@@ -1,14 +1,15 @@
 package com.xuanjiao.adapter.web.deletion;
 
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
-import com.xuanjiao.client.dto.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.deletion.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.dto.deletion.dto.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.common.Result;
 import com.xuanjiao.client.dto.deletion.DeletionDeleteCmd;
 import com.xuanjiao.client.dto.deletion.DeletionGetDetailQry;
 import com.xuanjiao.client.dto.deletion.DeletionGetMyApplicationsQry;
 import com.xuanjiao.client.dto.deletion.DeletionUpdateCmd;
+import com.xuanjiao.client.dto.deletion.AssetDeletionSubmitCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -98,18 +99,16 @@ public class AssetDeletionController {
      * <p>将草稿状态的素材删除申请提交到指定的审批流程。
      * 提交后申请单状态变为待审批，开始审批流程。</p>
      *
-     * @param id 申请单ID
-     * @param workflowId 审批流程ID
+     * @param cmd 提交命令，包含申请单ID和审批流程ID
      * @param userId 当前登录用户ID，由拦截器注入
      * @return 审批实例ID
      */
     @ApiOperation("提交审批")
-    @PostMapping("/{id}/submit")
+    @PostMapping("/submit")
     public Result<Long> submitApproval(
-            @PathVariable Long id,
-            @RequestParam Long workflowId,
-            @RequestAttribute("userId") Long userId) {
-        Long instanceId = deletionApplicationService.submitApproval(id, workflowId, userId);
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody AssetDeletionSubmitCmd cmd) {
+        Long instanceId = deletionApplicationService.submitApproval(cmd.getId(), cmd.getWorkflowId(), userId);
         return Result.success(instanceId);
     }
 

@@ -1,15 +1,15 @@
 package com.xuanjiao.adapter.web.material;
 
 import com.xuanjiao.app.material.MaterialApplicationService;
-import com.xuanjiao.client.dto.MaterialApplicationCmd;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.material.MaterialApplicationCreateCmd;
+import com.xuanjiao.client.dto.material.MaterialApplicationCmd;
+import com.xuanjiao.client.dto.material.dto.MaterialApplicationDTO;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.common.PageResult;
 import com.xuanjiao.client.dto.material.MaterialApplicationDeleteCmd;
 import com.xuanjiao.client.dto.material.MaterialApplicationGetDetailQry;
 import com.xuanjiao.client.dto.material.MaterialApplicationGetDraftsQry;
 import com.xuanjiao.client.dto.material.MaterialApplicationGetMyApplicationsQry;
+import com.xuanjiao.client.dto.material.MaterialApplicationSubmitCmd;
 import com.xuanjiao.client.dto.material.MaterialApplicationUpdateCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 import javax.annotation.Resource;
 import javax.validation.Valid;
+import java.util.List;
 
 /**
  * 素材录入申请控制器
@@ -36,6 +36,10 @@ import javax.validation.Valid;
  *   <li>提交审批：将申请单提交审批流程</li>
  *   <li>查询详情：查询单个申请单的详细信息</li>
  *   <li>查询列表：分页查询申请单列表</li>
+ *   <li>查询草稿：分页查询当前用户保存的草稿申请单</li>
+ *   <li>查询我的申请：分页查询当前用户发起的申请单</li>
+ *   <li>复制申请单：复制指定申请单创建一个新的草稿申请单</li>
+ *   <li>删除申请单：删除指定的草稿申请单</li>
  * </ul>
  *
  * @author xuanjiao
@@ -45,7 +49,6 @@ import javax.validation.Valid;
 @RestController
 @RequestMapping("/material-application")
 public class MaterialApplicationController {
-
     /**
      * 素材录入申请服务
      *
@@ -57,34 +60,28 @@ public class MaterialApplicationController {
     /**
      * 创建申请单（草稿）
      *
-     * <p>创建新的素材录入申请，初始状态为草稿。
-     * 需要提供申请标题、维护人、部门、保障声明等信息。</p>
+     * <p>创建一个新的素材录入申请单，初始状态为DRAFT。</p>
      *
-     * @param cmd 创建命令，包含申请单信息
+     * @param cmd 申请命令，包含申请单标题，维护人、部门、保障声明等信息
      * @param userId 当前登录用户ID，由拦截器注入
      * @return 创建后的申请单信息
      */
     @ApiOperation("创建申请单（草稿）")
     @PostMapping("/create")
     public Result<MaterialApplicationDTO> create(
-            @Valid @RequestBody MaterialApplicationCreateCmd cmd,
+            @Valid @RequestBody MaterialApplicationCmd cmd,
             @RequestAttribute("userId") Long userId) {
-        // Convert to MaterialApplicationCmd
-        MaterialApplicationCmd applicationCmd = new MaterialApplicationCmd();
-        applicationCmd.setTitle(cmd.getTitle());
-        applicationCmd.setMaintainerId(cmd.getMaintainerId());
-        applicationCmd.setDeptId(cmd.getDeptId());
-        applicationCmd.setGuaranteeDeclaration(cmd.getGuaranteeDeclaration());
-        return Result.success(materialApplicationService.create(applicationCmd, userId));
+        MaterialApplicationDTO result = materialApplicationService.create(cmd, userId);
+        return Result.success(result);
     }
 
     /**
      * 更新申请单
      *
-     * <p>修改指定申请单的信息，仅草稿状态的申请单可以修改。
-     * 可修改内容包括申请标题、维护人、部门、保障声明等。</p>
+     * <p>更新申请单信息，仅草稿状态的申请单可以修改。</p>
      *
-     * @param cmd 更新命令，包含申请单ID和要更新的字段
+     * @param id 申请单ID
+     * @param cmd 申请命令，包含要更新的字段
      * @param userId 当前登录用户ID，由拦截器注入
      * @return 更新后的申请单信息
      */
@@ -103,53 +100,30 @@ public class MaterialApplicationController {
     }
 
     /**
-     * 提交申请单
+     * 提交审批
      *
-     * <p>将草稿状态的申请单提交到指定的审批流程。
-     * 提交后申请单状态变为待审批，开始审批流程。</p>
+     * <p>将草稿状态的申请单提交审批流程。</p>
      *
-     * @param id 申请单ID
-     * @param workflowId 审批流程ID
+     * @param cmd 提交命令，包含申请单ID和审批流程ID
      * @param userId 当前登录用户ID，由拦截器注入
-     * @return 审批实例ID
+     * @return 提交结果
      */
     @ApiOperation("提交申请单")
-    @PostMapping("/{id}/submit")
-    public Result<Long> submit(
-            @PathVariable Long id,
-            @RequestParam Long workflowId,
-            @RequestAttribute("userId") Long userId) {
-        Long instanceId = materialApplicationService.submit(id, workflowId, userId);
-        return Result.success(instanceId);
-    }
-
-    /**
-     * 删除申请单
-     *
-     * <p>删除指定的申请单，仅草稿状态的申请单可以删除。
-     * 已提交审批的申请单不能删除。</p>
-     *
-     * @param cmd 删除命令，包含要删除的申请单ID
-     * @param userId 当前登录用户ID，由拦截器注入
-     * @return 操作结果
-     */
-    @ApiOperation("删除申请单")
-    @PostMapping("/delete")
-    public Result<Void> delete(
-            @Valid @RequestBody MaterialApplicationDeleteCmd cmd,
-            @RequestAttribute("userId") Long userId) {
-        materialApplicationService.delete(cmd.getId(), userId);
+    @PostMapping("/submit")
+    public Result<Void> submit(
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody MaterialApplicationSubmitCmd cmd) {
+        materialApplicationService.submit(cmd.getId(), cmd.getWorkflowId(), userId);
         return Result.success();
     }
 
     /**
-     * 查询申请单详情
+     * 查询详情
      *
-     * <p>根据申请单ID查询详细信息，包括申请单基本信息、关联的素材列表、
-     * 审批状态等。</p>
+     * <p>查询单个申请单的详细信息。</p>
      *
      * @param qry 查询条件，包含申请单ID
-     * @return 申请单详情信息
+     * @return 申请单详细信息
      */
     @ApiOperation("查询申请单详情")
     @PostMapping("/getDetail")
@@ -158,7 +132,7 @@ public class MaterialApplicationController {
     }
 
     /**
-     * 查询草稿箱
+     * 查询草稿
      *
      * <p>分页查询当前用户保存的草稿申请单。</p>
      *
@@ -175,10 +149,9 @@ public class MaterialApplicationController {
     }
 
     /**
-     * 查询我的申请单
+     * 查询我的申请
      *
-     * <p>分页查询当前用户发起的所有申请单，包括草稿、待审批、已通过、
-     * 已驳回等状态的申请单。</p>
+     * <p>分页查询当前用户发起的所有申请单。</p>
      *
      * @param qry 查询条件，包含分页参数
      * @param userId 当前登录用户ID，由拦截器注入
@@ -195,8 +168,7 @@ public class MaterialApplicationController {
     /**
      * 复制申请单
      *
-     * <p>复制指定申请单创建一个新的草稿申请单。
-     * 仅已驳回状态的申请单可以复制。</p>
+     * <p>复制指定申请单创建一个新的草稿申请单。</p>
      *
      * @param id 要复制的申请单ID
      * @param userId 当前登录用户ID，由拦截器注入
@@ -204,10 +176,28 @@ public class MaterialApplicationController {
      */
     @ApiOperation("复制申请单")
     @PostMapping("/{id}/copy")
-    public Result<Long> copyApplication(
+    public Result<Long> copy(
             @PathVariable Long id,
             @RequestAttribute("userId") Long userId) {
         Long newApplicationId = materialApplicationService.copyApplication(id, userId);
         return Result.success(newApplicationId);
+    }
+
+    /**
+     * 删除申请单
+     *
+     * <p>删除指定的草稿申请单，仅草稿状态的申请单可以删除。</p>
+     *
+     * @param cmd 删除命令，包含要删除的申请单ID
+     * @param userId 当前登录用户ID，由拦截器注入
+     * @return 操作结果
+     */
+    @ApiOperation("删除申请单")
+    @PostMapping("/delete")
+    public Result<Void> delete(
+            @Valid @RequestBody MaterialApplicationDeleteCmd cmd,
+            @RequestAttribute("userId") Long userId) {
+        materialApplicationService.delete(cmd.getId(), userId);
+        return Result.success();
     }
 }

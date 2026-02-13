@@ -1,5 +1,7 @@
 package com.xuanjiao.infrastructure.deletion;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -40,11 +42,9 @@ public interface AssetDeletionApplicationMapper {
     Long selectCount(AssetDeletionApplicationQuery query);
 
     /**
-     * 分页查询
+     * 分页查询（使用 MyBatis-Plus 分页）
      */
-    List<AssetDeletionApplicationDO> selectListWithPagination(@Param("offset") int offset,
-                                                              @Param("limit") int limit,
-                                                              @Param("query") AssetDeletionApplicationQuery query);
+    IPage<AssetDeletionApplicationDO> selectPage(Page<AssetDeletionApplicationDO> page, @Param("query") AssetDeletionApplicationQuery query);
 
     /**
      * 插入记录

@@ -1,12 +1,13 @@
 package com.xuanjiao.app.deletion.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.dto.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.AssetDeletionAssetDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.deletion.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.dto.deletion.dto.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.dto.deletion.dto.AssetDeletionAssetDTO;
+import com.xuanjiao.client.dto.common.PageResult;
 import com.xuanjiao.domain.asset.entity.Asset;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.domain.deletion.entity.AssetDeletionApplication;
@@ -14,6 +15,10 @@ import com.xuanjiao.domain.deletion.entity.AssetDeletionAsset;
 import com.xuanjiao.domain.deletion.repository.AssetDeletionApplicationRepository;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
+import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationQuery;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
@@ -61,6 +66,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     private UserMapper userMapper;
 
     @Autowired
+    private AssetDeletionApplicationMapper deletionApplicationMapper;
+
+    @Autowired
+    private com.xuanjiao.infrastructure.dept.DeptMapper deptMapper;
+
+    @Autowired
     private WorkflowEngineService workflowEngineService;
 
     @Override
@@ -86,18 +97,31 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
         deletionApplicationRepository.save(application);
 
-        // 保存素材关联
+        // 保存素材关联（使用批量查询避免N+1）
         if (cmd.getAssetIds() != null && !cmd.getAssetIds().isEmpty()) {
-            List<AssetDeletionAsset> assets = new ArrayList<>();
+            // 批量查询所有素材（1次查询替代N次）
+            List<AssetDO> assets = assetMapper.selectByIds(cmd.getAssetIds());
+
+            // 构建素材Map方便查找
+            java.util.Map<Long, AssetDO> assetMap = assets.stream()
+                .collect(Collectors.toMap(AssetDO::getId, a -> a));
+
+            List<AssetDeletionAsset> deletionAssets = new ArrayList<>();
             for (Long assetId : cmd.getAssetIds()) {
-                AssetDO asset = assetMapper.selectById(assetId);
+                AssetDO asset = assetMap.get(assetId);
                 if (asset == null) {
                     throw new RuntimeException("素材不存在: " + assetId);
                 }
 
                 // 只能删除已通过审批的素材
+                if (asset.getDeleted() != null && asset.getDeleted() == 1) {
+                    throw new RuntimeException("该素材已被删除，无法删除: " + asset.getName());
+                }
                 if (!"APPROVED".equals(asset.getStatus())) {
-                    throw new RuntimeException("只能删除已通过审批的素材: " + asset.getName());
+                    String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
+                                     "PENDING".equals(asset.getStatus()) ? "待审批" :
+                                     "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
+                    throw new RuntimeException("只能删除已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
                 }
 
                 AssetDeletionAsset deletionAsset = new AssetDeletionAsset();
@@ -105,9 +129,9 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
                 deletionAsset.setAssetId(assetId);
                 deletionAsset.setAssetName(asset.getName());
                 deletionAsset.setAssetType(asset.getType());
-                assets.add(deletionAsset);
+                deletionAssets.add(deletionAsset);
             }
-            batchSaveDeletionAssets(assets);
+            batchSaveDeletionAssets(deletionAssets);
         }
 
         return convertToDTO(application);
@@ -138,18 +162,31 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 先清除之前关联的素材
         deleteDeletionAssetsByApplicationId(id);
 
-        // 保存新的素材关联
+        // 保存新的素材关联（使用批量查询避免N+1）
         if (cmd.getAssetIds() != null && !cmd.getAssetIds().isEmpty()) {
-            List<AssetDeletionAsset> assets = new ArrayList<>();
+            // 批量查询所有素材（1次查询替代N次）
+            List<AssetDO> assets = assetMapper.selectByIds(cmd.getAssetIds());
+
+            // 构建素材Map方便查找
+            java.util.Map<Long, AssetDO> assetMap = assets.stream()
+                .collect(Collectors.toMap(AssetDO::getId, a -> a));
+
+            List<AssetDeletionAsset> deletionAssets = new ArrayList<>();
             for (Long assetId : cmd.getAssetIds()) {
-                AssetDO asset = assetMapper.selectById(assetId);
+                AssetDO asset = assetMap.get(assetId);
                 if (asset == null) {
                     throw new RuntimeException("素材不存在: " + assetId);
                 }
 
                 // 只能删除已通过审批的素材
+                if (asset.getDeleted() != null && asset.getDeleted() == 1) {
+                    throw new RuntimeException("该素材已被删除，无法删除: " + asset.getName());
+                }
                 if (!"APPROVED".equals(asset.getStatus())) {
-                    throw new RuntimeException("只能删除已通过审批的素材: " + asset.getName());
+                    String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
+                                     "PENDING".equals(asset.getStatus()) ? "待审批" :
+                                     "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
+                    throw new RuntimeException("只能删除已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
                 }
 
                 AssetDeletionAsset deletionAsset = new AssetDeletionAsset();
@@ -157,9 +194,9 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
                 deletionAsset.setAssetId(assetId);
                 deletionAsset.setAssetName(asset.getName());
                 deletionAsset.setAssetType(asset.getType());
-                assets.add(deletionAsset);
+                deletionAssets.add(deletionAsset);
             }
-            batchSaveDeletionAssets(assets);
+            batchSaveDeletionAssets(deletionAssets);
         }
 
         return convertToDTO(application);
@@ -178,40 +215,49 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public PageResult<AssetDeletionApplicationDTO> getMyApplications(String title, String status,
                                                                      Integer pageNum, Integer pageSize,
                                                                      Long userId) {
-        // 分页查询
-        int offset = (pageNum - 1) * pageSize;
-        List<AssetDeletionApplication> applications = deletionApplicationRepository.findByApplicant(userId, offset, pageSize);
-        long total = deletionApplicationRepository.countByApplicant(userId);
+        // 使用 MyBatis-Plus 分页
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<AssetDeletionApplicationDO> page =
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize);
 
-        List<AssetDeletionApplicationDTO> dtoList = applications.stream()
-            .map(this::convertToDTO)
+        // 构建查询条件
+        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
+        query.setApplicantId(userId);
+        if (StringUtils.hasText(title)) {
+            query.setTitle(title);
+        }
+        if (StringUtils.hasText(status)) {
+            query.setStatus(status);
+        }
+
+        IPage<AssetDeletionApplicationDO> pageResult = deletionApplicationMapper.selectPage(page, query);
+
+        List<AssetDeletionApplicationDTO> dtoList = pageResult.getRecords().stream()
+            .map(this::convertDOToDTO)
             .collect(Collectors.toList());
 
-        return PageResult.of(dtoList, total, pageNum, pageSize);
+        return PageResult.of(dtoList, pageResult.getTotal(), pageNum, pageSize);
     }
 
     @Override
     public PageResult<AssetDeletionApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
-        // 查询草稿状态的申请（状态为DRAFT）
-        List<AssetDeletionApplication> applications = deletionApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
-        List<AssetDeletionApplication> filteredList = applications.stream()
-            .filter(app -> "DRAFT".equals(app.getStatus()))
+        // 使用 MyBatis-Plus 分页
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<AssetDeletionApplicationDO> page =
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize);
+
+        // 构建查询条件
+        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
+        query.setApplicantId(userId);
+        query.setStatus("DRAFT"); // 只查询草稿状态
+
+        IPage<AssetDeletionApplicationDO> pageResult = deletionApplicationMapper.selectPage(page, query);
+
+        // 转换并按标题筛选
+        List<AssetDeletionApplicationDTO> dtoList = pageResult.getRecords().stream()
+            .map(this::convertDOToDTO)
+            .filter(dto -> !StringUtils.hasText(title) || (dto.getTitle() != null && dto.getTitle().contains(title)))
             .collect(Collectors.toList());
 
-        // 按标题筛选
-        if (StringUtils.hasText(title)) {
-            filteredList = filteredList.stream()
-                .filter(app -> app.getTitle() != null && app.getTitle().contains(title))
-                .collect(Collectors.toList());
-        }
-
-        long total = deletionApplicationRepository.countByApplicant(userId);
-
-        List<AssetDeletionApplicationDTO> dtoList = filteredList.stream()
-            .map(this::convertToDTO)
-            .collect(Collectors.toList());
-
-        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
+        return PageResult.of(dtoList, pageResult.getTotal(), pageNum, pageSize);
     }
 
     @Override
@@ -402,20 +448,20 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 查询申请人信息
         UserDO applicant = userMapper.selectById(application.getApplicantId());
         if (applicant != null) {
-            dto.setApplicantName(applicant.getUsername());
+            dto.setApplicantName(applicant.getRealName());
         }
 
         // 查询部门信息
         if (application.getDeptId() != null) {
-            // 这里可以根据需要查询部门名称
-            // dto.setDeptName(deptService.getById(application.getDeptId()).getName());
+            DeptDO dept = deptMapper.selectById(application.getDeptId());
+            if (dept != null) {
+                dto.setDeptName(dept.getName());
+            }
         }
 
-        // 查询关联的素材
-        AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
-        query.setDeletionApplicationId(application.getId());
+        // 查询关联的素材（使用JOIN查询一次性获取所有素材详情）
         List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> deletionAssetDOs =
-            deletionAssetMapper.selectList(query);
+            deletionAssetMapper.findByDeletionApplicationIdWithAsset(application.getId());
 
         List<AssetDeletionAssetDTO> assetDTOs = new ArrayList<>();
         for (com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO deletionAssetDO : deletionAssetDOs) {
@@ -426,17 +472,28 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
             assetDTO.setAssetName(deletionAssetDO.getAssetName() != null ? deletionAssetDO.getAssetName() : "");
             assetDTO.setAssetType(deletionAssetDO.getAssetType() != null ? deletionAssetDO.getAssetType() : "");
 
-            // 查询素材详细信息
-            AssetDO asset = assetMapper.selectById(deletionAssetDO.getAssetId());
-            if (asset != null) {
-                assetDTO.setFilePath(asset.getFilePath());
-                assetDTO.setThumbnailPath(asset.getThumbnailPath());
-            }
+            // 素材详细信息已经通过JOIN查询获取
+            assetDTO.setFilePath(deletionAssetDO.getFilePath());
+            assetDTO.setThumbnailPath(deletionAssetDO.getThumbnailPath());
 
             assetDTOs.add(assetDTO);
         }
         dto.setAssets(assetDTOs);
 
         return dto;
+    }
+
+    /**
+     * 将 AssetDeletionApplicationDO 转换为 AssetDeletionApplicationDTO
+     * 用于 Mapper 查询结果转换
+     */
+    private AssetDeletionApplicationDTO convertDOToDTO(AssetDeletionApplicationDO applicationDO) {
+        if (applicationDO == null) return null;
+
+        // 转换为 Domain Entity
+        AssetDeletionApplication application = new AssetDeletionApplication();
+        BeanUtils.copyProperties(applicationDO, application);
+
+        return convertToDTO(application);
     }
 }

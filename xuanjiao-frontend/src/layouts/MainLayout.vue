@@ -60,7 +60,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getCurrentMenus } from '@/api/menu'
-import { getMyTasksCount } from '@/api/task'
+import { getMyTasksCount } from '@/api/approval'
 import { getUnreadCount } from '@/api/notification'
 import {
   Picture, Setting, Document, List,

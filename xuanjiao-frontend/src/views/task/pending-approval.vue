@@ -576,7 +576,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled } from '@element-plus/icons-vue'
-import { getPendingApproval, getTaskDetail, getInstanceDetail, approve, returnTask, restartSubWorkflow } from '@/api/task'
+import { getPendingApproval, getTaskDetail, getInstanceDetail, approve, returnTask, restartSubWorkflow } from '@/api/approval'
 import { selectNextStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers, getWorkflowById } from '@/api/workflow'
 import WorkOrderDetailDialog from '@/components/WorkOrderDetailDialog.vue'
 
@@ -630,6 +630,8 @@ const taskDetail = ref<any>({
   nextStageId: null,
   nextStageName: '',
   nextStageApproveType: '',
+  nextStageApproverConfigs: [],  // 修复会签显示问题：初始化审批人配置数组
+  nextStageApproverCount: 0,      // 修复会签显示问题：初始化审批人数量
   otherApprovers: [],
   selectedNextApprovers: [],
   approvalProgress: [],

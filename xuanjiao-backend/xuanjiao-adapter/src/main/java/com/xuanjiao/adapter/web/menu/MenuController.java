@@ -1,9 +1,9 @@
 package com.xuanjiao.adapter.web.menu;
 
 import com.xuanjiao.app.menu.MenuService;
-import com.xuanjiao.client.dto.MenuCmd;
-import com.xuanjiao.client.dto.MenuDTO;
-import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.menu.MenuAssignCmd;
+import com.xuanjiao.client.dto.menu.MenuCmd;
+import com.xuanjiao.client.dto.menu.dto.MenuDTO;
 import com.xuanjiao.client.dto.menu.MenuCreateCmd;
 import com.xuanjiao.client.dto.menu.MenuDeleteCmd;
 import com.xuanjiao.client.dto.menu.MenuGetCurrentQry;
@@ -11,13 +11,13 @@ import com.xuanjiao.client.dto.menu.MenuGetDetailQry;
 import com.xuanjiao.client.dto.menu.MenuGetRoleMenusQry;
 import com.xuanjiao.client.dto.menu.MenuGetTreeQry;
 import com.xuanjiao.client.dto.menu.MenuUpdateCmd;
+import com.xuanjiao.client.dto.common.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
@@ -155,8 +155,8 @@ public class MenuController {
      */
     @ApiOperation("分配角色菜单权限")
     @PostMapping("/assign")
-    public Result<Void> assignMenus(@RequestParam Long roleId, @RequestBody List<Long> menuIds) {
-        menuService.assignMenusToRole(roleId, menuIds);
+    public Result<Void> assignMenus(@Valid @RequestBody MenuAssignCmd cmd) {
+        menuService.assignMenusToRole(cmd.getRoleId(), cmd.getMenuIds());
         return Result.success();
     }
 

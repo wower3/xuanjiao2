@@ -1,6 +1,6 @@
 package com.xuanjiao.adapter.config;
 
-import com.xuanjiao.client.dto.Result;
+import com.xuanjiao.client.dto.common.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.ExceptionHandler;

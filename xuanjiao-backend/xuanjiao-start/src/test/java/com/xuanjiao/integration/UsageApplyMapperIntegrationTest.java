@@ -1,5 +1,6 @@
 package com.xuanjiao.integration;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyQuery;
@@ -10,8 +11,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,54 +40,6 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
-        UsageApplyQuery query = new UsageApplyQuery();
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        assertNotNull(list);
-        System.out.println("✓ UsageApply selectList (empty): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(3)
-    public void testSelectList_WithUserId() {
-        UsageApplyQuery query = new UsageApplyQuery();
-        query.setUserId(1L);
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        assertNotNull(list);
-        for (UsageApplyDO item : list) {
-            assertEquals(1L, item.getUserId());
-        }
-        System.out.println("✓ UsageApply selectList (userId=1): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(4)
-    public void testSelectList_WithStatus() {
-        UsageApplyQuery query = new UsageApplyQuery();
-        query.setStatus("APPROVED");
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        assertNotNull(list);
-        for (UsageApplyDO item : list) {
-            assertEquals("APPROVED", item.getStatus());
-        }
-        System.out.println("✓ UsageApply selectList (status=APPROVED): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(5)
-    public void testSelectList_WithDraft() {
-        UsageApplyQuery query = new UsageApplyQuery();
-        query.setDraft(1);
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        assertNotNull(list);
-        for (UsageApplyDO item : list) {
-            assertEquals(1, item.getDraft());
-        }
-        System.out.println("✓ UsageApply selectList (draft=1): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(6)
     public void testSelectCount() {
         UsageApplyQuery query = new UsageApplyQuery();
         Long count = usageApplyMapper.selectCount(query);
@@ -98,7 +49,7 @@ public class UsageApplyMapperIntegrationTest {
     }
 
     @Test
-    @Order(7)
+    @Order(3)
     public void testSelectCount_WithUserId() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(1L);
@@ -109,13 +60,51 @@ public class UsageApplyMapperIntegrationTest {
     }
 
     @Test
-    @Order(8)
+    @Order(4)
     public void testSelectPage() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(1L);
         Page<UsageApplyDO> page = new Page<>(1, 10);
-        Page<UsageApplyDO> result = usageApplyMapper.selectPage(page, query);
+        IPage<UsageApplyDO> result = usageApplyMapper.selectPage(page, query);
         assertNotNull(result);
         System.out.println("✓ UsageApply selectPage: " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(5)
+    public void testSelectPage_EmptyQuery() {
+        UsageApplyQuery query = new UsageApplyQuery();
+        Page<UsageApplyDO> page = new Page<>(1, 10);
+        IPage<UsageApplyDO> result = usageApplyMapper.selectPage(page, query);
+        assertNotNull(result);
+        System.out.println("✓ UsageApply selectPage (empty): " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(6)
+    public void testSelectPage_WithStatus() {
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setStatus("APPROVED");
+        Page<UsageApplyDO> page = new Page<>(1, 10);
+        IPage<UsageApplyDO> result = usageApplyMapper.selectPage(page, query);
+        assertNotNull(result);
+        for (UsageApplyDO item : result.getRecords()) {
+            assertEquals("APPROVED", item.getStatus());
+        }
+        System.out.println("✓ UsageApply selectPage (status=APPROVED): " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(7)
+    public void testSelectPage_WithDraft() {
+        UsageApplyQuery query = new UsageApplyQuery();
+        query.setDraft(1);
+        Page<UsageApplyDO> page = new Page<>(1, 10);
+        IPage<UsageApplyDO> result = usageApplyMapper.selectPage(page, query);
+        assertNotNull(result);
+        for (UsageApplyDO item : result.getRecords()) {
+            assertEquals(1, item.getDraft());
+        }
+        System.out.println("✓ UsageApply selectPage (draft=1): " + result.getRecords().size() + " records, total: " + result.getTotal());
     }
 }

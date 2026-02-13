@@ -54,22 +54,4 @@ public interface AssetDeletionApplicationRepository {
      * @return 匹配的删除申请列表
      */
     List<AssetDeletionApplication> findByApplicantAndStatus(Long applicantId, String status);
-
-    /**
-     * 根据申请人分页查找删除申请列表
-     *
-     * @param applicantId 申请人ID
-     * @param offset 分页偏移量
-     * @param limit 分页大小
-     * @return 该申请人的删除申请列表
-     */
-    List<AssetDeletionApplication> findByApplicant(Long applicantId, int offset, int limit);
-
-    /**
-     * 统计申请人的删除申请数量
-     *
-     * @param applicantId 申请人ID
-     * @return 申请数量
-     */
-    long countByApplicant(Long applicantId);
 }

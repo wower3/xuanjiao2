@@ -275,7 +275,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled, VideoCamera } from '@element-plus/icons-vue'
-import { getInstanceDetail } from '@/api/task'
+import { getInstanceDetail } from '@/api/approval'
 import { getNotificationRecords } from '@/api/notification'
 
 interface Props {

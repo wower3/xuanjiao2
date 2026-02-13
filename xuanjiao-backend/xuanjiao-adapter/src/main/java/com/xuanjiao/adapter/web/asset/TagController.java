@@ -1,8 +1,9 @@
 package com.xuanjiao.adapter.web.asset;
 
 import com.xuanjiao.app.asset.TagService;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.TagDTO;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.tag.TagCreateCmd;
+import com.xuanjiao.client.dto.tag.dto.TagDTO;
 import com.xuanjiao.client.dto.asset.TagDeleteCmd;
 import com.xuanjiao.client.dto.asset.TagGetListByCategoryQry;
 import com.xuanjiao.client.dto.asset.TagGetListQry;
@@ -11,7 +12,6 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
@@ -60,9 +60,8 @@ public class TagController {
     @ApiOperation("创建标签")
     @PostMapping("/create")
     public Result<TagDTO> create(
-            @RequestParam String name,
-            @RequestParam(required = false) String category) {
-        return Result.success(tagService.create(name, category));
+            @Valid @RequestBody TagCreateCmd cmd) {
+        return Result.success(tagService.create(cmd.getName(), cmd.getCategory()));
     }
 
     /**

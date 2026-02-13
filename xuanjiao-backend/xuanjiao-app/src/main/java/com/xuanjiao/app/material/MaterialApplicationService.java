@@ -1,8 +1,8 @@
 package com.xuanjiao.app.material;
 
-import com.xuanjiao.client.dto.MaterialApplicationCmd;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.material.MaterialApplicationCmd;
+import com.xuanjiao.client.dto.material.dto.MaterialApplicationDTO;
+import com.xuanjiao.client.dto.common.PageResult;
 
 /**
  * 素材录入申请服务接口

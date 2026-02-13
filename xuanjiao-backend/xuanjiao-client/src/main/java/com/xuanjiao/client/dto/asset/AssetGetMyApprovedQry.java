@@ -1,8 +1,8 @@
 package com.xuanjiao.client.dto.asset;
 
+import com.xuanjiao.client.dto.common.BasePageQry;
 import lombok.Data;
-
-import javax.validation.constraints.Min;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询用户已录入的素材查询对象
@@ -14,7 +14,8 @@ import javax.validation.constraints.Min;
  * @since 1.0.0
  */
 @Data
-public class AssetGetMyApprovedQry {
+@EqualsAndHashCode(callSuper = true)
+public class AssetGetMyApprovedQry extends BasePageQry {
 
     /**
      * 素材名称（模糊查询）
@@ -25,16 +26,4 @@ public class AssetGetMyApprovedQry {
      * 素材类型（IMAGE-图片、VIDEO-视频、DOCUMENT-文档）
      */
     private String type;
-
-    /**
-     * 当前页码（从1开始，默认为1）
-     */
-    @Min(value = 1, message = "页码最小为1")
-    private Integer pageNum = 1;
-
-    /**
-     * 每页记录数（默认为10）
-     */
-    @Min(value = 1, message = "每页数量最小为1")
-    private Integer pageSize = 10;
 }

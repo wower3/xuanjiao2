@@ -1,8 +1,8 @@
 package com.xuanjiao.adapter.web.role;
 
 import com.xuanjiao.app.role.RoleService;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.RoleDTO;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.role.dto.RoleDTO;
 import com.xuanjiao.client.dto.role.RoleCreateCmd;
 import com.xuanjiao.client.dto.role.RoleDeleteCmd;
 import com.xuanjiao.client.dto.role.RoleGetDetailQry;

@@ -1,8 +1,7 @@
 package com.xuanjiao.app.usage;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageLogDTO;
-import java.util.Map;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.usage.dto.UsageLogDTO;
 
 /**
  * 素材使用日志服务接口
@@ -60,7 +59,7 @@ public interface UsageLogService {
      * @param pageSize 每页大小
      * @return 分页结果，包含日志详情、用户信息、素材信息等
      */
-    PageResult<Map<String, Object>> query(String action, int pageNum, int pageSize);
+    PageResult<UsageLogDTO> query(String action, int pageNum, int pageSize);
 
     /**
      * 获取素材的使用日志

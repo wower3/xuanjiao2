@@ -862,11 +862,17 @@ async function handleSubmit() {
         guaranteeDeclaration: form.guaranteeDeclaration ? 1 : 0
       }
       const res = await createMaterialApplication(submitData)
+      console.log('创建申请响应:', res)
+      console.log('创建申请响应.data:', res.data)
       applicationId.value = res.data.id
+      // 验证 id 是否正确获取
+      if (!applicationId.value) {
+        throw new Error('创建申请失败：未获取到申请ID')
+      }
     }
 
     // 提交审批（创建审批实例）
-    const submitRes = await submitMaterialApplication(applicationId.value!, boundWorkflow.value.id)
+    const submitRes = await submitMaterialApplication({ id: applicationId.value!, workflowId: boundWorkflow.value.id })
     const instanceId = submitRes.data
 
     // 如果有第一层审批人需要选择，先选择审批人

@@ -63,23 +63,6 @@ public class AssetDeletionApplicationRepositoryImpl implements AssetDeletionAppl
         return list.stream().map(this::convert).collect(Collectors.toList());
     }
 
-    @Override
-    public List<AssetDeletionApplication> findByApplicant(Long applicantId, int offset, int limit) {
-        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
-        query.setApplicantId(applicantId);
-        query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
-        List<AssetDeletionApplicationDO> list = assetDeletionApplicationMapper.selectListWithPagination(offset, limit, query);
-        return list.stream().map(this::convert).collect(Collectors.toList());
-    }
-
-    @Override
-    public long countByApplicant(Long applicantId) {
-        AssetDeletionApplicationQuery query = new AssetDeletionApplicationQuery();
-        query.setApplicantId(applicantId);
-        return assetDeletionApplicationMapper.selectCount(query);
-    }
-
     private AssetDeletionApplication convert(AssetDeletionApplicationDO applicationDO) {
         if (applicationDO == null) return null;
         AssetDeletionApplication application = new AssetDeletionApplication();

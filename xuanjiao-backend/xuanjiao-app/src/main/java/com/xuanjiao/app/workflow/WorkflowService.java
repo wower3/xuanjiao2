@@ -1,6 +1,6 @@
 package com.xuanjiao.app.workflow;
 
-import com.xuanjiao.client.dto.WorkflowDTO;
+import com.xuanjiao.client.dto.workflow.dto.WorkflowDTO;
 import java.util.List;
 
 /**

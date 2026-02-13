@@ -1,6 +1,8 @@
 package com.xuanjiao.client.dto.notification;
 
+import com.xuanjiao.client.dto.common.BasePageQry;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 通知分页查询对象
@@ -11,17 +13,8 @@ import lombok.Data;
  * @since 1.0.0
  */
 @Data
-public class NotificationPageQry {
-
-    /**
-     * 当前页码（从1开始，默认为1）
-     */
-    private Integer pageNum = 1;
-
-    /**
-     * 每页记录数（默认为10）
-     */
-    private Integer pageSize = 10;
+@EqualsAndHashCode(callSuper = true)
+public class NotificationPageQry extends BasePageQry {
 
     /**
      * 通知类型（SYSTEM-系统通知、APPROVAL-审批通知等）

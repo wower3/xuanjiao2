@@ -1,11 +1,11 @@
 package com.xuanjiao.adapter.web.usage;
 
 import com.xuanjiao.app.usage.UsageApplyService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.UsageApplyCmd;
-import com.xuanjiao.client.dto.UsageApplyDTO;
-import com.xuanjiao.client.dto.UsageApplyQueryCmd;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.common.Result;
+import com.xuanjiao.client.dto.usage.UsageApplyCmd;
+import com.xuanjiao.client.dto.usage.dto.UsageApplyDTO;
+import com.xuanjiao.client.dto.usage.UsageApplyQry;
 import com.xuanjiao.client.dto.usage.UsageApplyCanUseAssetQry;
 import com.xuanjiao.client.dto.usage.UsageApplyCreateDraftCmd;
 import com.xuanjiao.client.dto.usage.UsageApplyDeleteCmd;
@@ -13,6 +13,7 @@ import com.xuanjiao.client.dto.usage.UsageApplyGetDetailQry;
 import com.xuanjiao.client.dto.usage.UsageApplyGetDraftsQry;
 import com.xuanjiao.client.dto.usage.UsageApplyGetMyApplicationsQry;
 import com.xuanjiao.client.dto.usage.UsageApplyUpdateCmd;
+import com.xuanjiao.client.dto.usage.UsageApplySubmitCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -91,7 +92,7 @@ public class UsageApplyController {
     @ApiOperation("查询我的申请列表（旧API，按条件查询）")
     @GetMapping("/my-applications")
     public Result<PageResult<UsageApplyDTO>> queryMyApplications(
-            UsageApplyQueryCmd cmd,
+            UsageApplyQry cmd,
             @RequestAttribute("userId") Long userId) {
         return Result.success(usageApplyService.queryMyApplications(cmd, userId));
     }
@@ -148,18 +149,16 @@ public class UsageApplyController {
      * <p>将草稿状态的素材使用申请提交到指定的审批流程。
      * 提交后申请单状态变为待审批，开始审批流程。</p>
      *
-     * @param id 申请单ID
-     * @param workflowId 审批流程ID
+     * @param cmd 提交命令，包含申请单ID和审批流程ID
      * @param userId 当前登录用户ID，由拦截器注入
      * @return 审批实例ID
      */
     @ApiOperation("提交使用申请")
-    @PostMapping("/{id}/submit")
+    @PostMapping("/submit")
     public Result<Long> submit(
-            @PathVariable Long id,
-            @RequestParam Long workflowId,
-            @RequestAttribute("userId") Long userId) {
-        Long instanceId = usageApplyService.submit(id, workflowId, userId);
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody UsageApplySubmitCmd cmd) {
+        Long instanceId = usageApplyService.submit(cmd.getId(), cmd.getWorkflowId(), userId);
         return Result.success(instanceId);
     }
 

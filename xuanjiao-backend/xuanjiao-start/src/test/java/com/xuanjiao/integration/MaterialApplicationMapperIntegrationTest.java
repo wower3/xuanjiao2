@@ -1,5 +1,7 @@
 package com.xuanjiao.integration;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationQuery;
@@ -11,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,72 +41,6 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
-        MaterialApplicationQuery query = new MaterialApplicationQuery();
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        assertNotNull(list);
-        System.out.println("✓ MaterialApplication selectList (empty): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(3)
-    public void testSelectList_WithApplicantId() {
-        MaterialApplicationQuery query = new MaterialApplicationQuery();
-        query.setApplicantId(1L);
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        assertNotNull(list);
-        if (!list.isEmpty()) {
-            for (MaterialApplicationDO item : list) {
-                assertEquals(1L, item.getApplicantId());
-            }
-            System.out.println("✓ MaterialApplication selectList (applicantId=1): " + list.size() + " records");
-        } else {
-            System.out.println("⚠ MaterialApplication selectList (applicantId=1): No records found");
-        }
-    }
-
-    @Test
-    @Order(4)
-    public void testSelectList_WithStatus() {
-        MaterialApplicationQuery query = new MaterialApplicationQuery();
-        query.setStatus("DRAFT");
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        assertNotNull(list);
-        if (!list.isEmpty()) {
-            for (MaterialApplicationDO item : list) {
-                assertEquals("DRAFT", item.getStatus());
-            }
-            System.out.println("✓ MaterialApplication selectList (status=DRAFT): " + list.size() + " records");
-        } else {
-            System.out.println("⚠ MaterialApplication selectList (status=DRAFT): No records found");
-        }
-    }
-
-    @Test
-    @Order(5)
-    public void testSelectList_WithOrderBy() {
-        MaterialApplicationQuery query = new MaterialApplicationQuery();
-        query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        assertNotNull(list);
-        System.out.println("✓ MaterialApplication selectList (orderBy create_time DESC): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(6)
-    public void testSelectList_WithPagination() {
-        MaterialApplicationQuery query = new MaterialApplicationQuery();
-        query.setOffset(0);
-        query.setLimit(10);
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
-        assertNotNull(list);
-        assertTrue(list.size() <= 10);
-        System.out.println("✓ MaterialApplication selectList (pagination): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(7)
     public void testSelectCount() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         Long count = materialApplicationMapper.selectCount(query);
@@ -115,7 +50,7 @@ public class MaterialApplicationMapperIntegrationTest {
     }
 
     @Test
-    @Order(8)
+    @Order(3)
     public void testSelectCount_WithApplicantId() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setApplicantId(1L);
@@ -126,7 +61,65 @@ public class MaterialApplicationMapperIntegrationTest {
     }
 
     @Test
-    @Order(9)
+    @Order(4)
+    public void testSelectPage() {
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        Page<MaterialApplicationDO> page = new Page<>(1, 10);
+        IPage<MaterialApplicationDO> result = materialApplicationMapper.selectPage(page, query);
+        assertNotNull(result);
+        System.out.println("✓ MaterialApplication selectPage (empty): " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(5)
+    public void testSelectPage_WithApplicantId() {
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(1L);
+        Page<MaterialApplicationDO> page = new Page<>(1, 10);
+        IPage<MaterialApplicationDO> result = materialApplicationMapper.selectPage(page, query);
+        assertNotNull(result);
+        if (!result.getRecords().isEmpty()) {
+            for (MaterialApplicationDO item : result.getRecords()) {
+                assertEquals(1L, item.getApplicantId());
+            }
+            System.out.println("✓ MaterialApplication selectPage (applicantId=1): " + result.getRecords().size() + " records, total: " + result.getTotal());
+        } else {
+            System.out.println("⚠ MaterialApplication selectPage (applicantId=1): No records found");
+        }
+    }
+
+    @Test
+    @Order(6)
+    public void testSelectPage_WithStatus() {
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setStatus("DRAFT");
+        Page<MaterialApplicationDO> page = new Page<>(1, 10);
+        IPage<MaterialApplicationDO> result = materialApplicationMapper.selectPage(page, query);
+        assertNotNull(result);
+        if (!result.getRecords().isEmpty()) {
+            for (MaterialApplicationDO item : result.getRecords()) {
+                assertEquals("DRAFT", item.getStatus());
+            }
+            System.out.println("✓ MaterialApplication selectPage (status=DRAFT): " + result.getRecords().size() + " records, total: " + result.getTotal());
+        } else {
+            System.out.println("⚠ MaterialApplication selectPage (status=DRAFT): No records found");
+        }
+    }
+
+    @Test
+    @Order(7)
+    public void testSelectPage_WithOrderBy() {
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        Page<MaterialApplicationDO> page = new Page<>(1, 10);
+        IPage<MaterialApplicationDO> result = materialApplicationMapper.selectPage(page, query);
+        assertNotNull(result);
+        System.out.println("✓ MaterialApplication selectPage (orderBy create_time DESC): " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(8)
     public void testInsertAndDelete() {
         // 插入一条新记录
         MaterialApplicationDO newApplication = new MaterialApplicationDO();
@@ -166,15 +159,16 @@ public class MaterialApplicationMapperIntegrationTest {
     }
 
     @Test
-    @Order(10)
+    @Order(9)
     public void testUpdateById() {
-        // First, get an existing application
+        // First, get an existing application using selectPage
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setStatus("DRAFT");
-        List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
+        Page<MaterialApplicationDO> page = new Page<>(1, 10);
+        IPage<MaterialApplicationDO> result = materialApplicationMapper.selectPage(page, query);
 
-        if (!list.isEmpty()) {
-            MaterialApplicationDO application = list.get(0);
+        if (!result.getRecords().isEmpty()) {
+            MaterialApplicationDO application = result.getRecords().get(0);
             Long originalId = application.getId();
             String originalTitle = application.getTitle();
 

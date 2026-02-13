@@ -475,7 +475,7 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // 提交审批，获取实例ID
-    const submitRes = await submitDeletionApplication(currentId.value, boundWorkflow.value.id)
+    const submitRes = await submitDeletionApplication({ id: currentId.value, workflowId: boundWorkflow.value.id })
     const instanceId = submitRes.data
 
     if (!instanceId) {

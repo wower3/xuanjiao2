@@ -15,6 +15,22 @@
         <result column="create_time" property="createTime"/>
     </resultMap>
 
+    <!-- Result Map with User (JOIN查询结果) -->
+    <resultMap id="UsageLogWithUserResultMap" type="com.xuanjiao.infrastructure.dataobject.UsageLogWithUserDO">
+        <id column="id" property="id"/>
+        <result column="asset_id" property="assetId"/>
+        <result column="user_id" property="userId"/>
+        <result column="action" property="action"/>
+        <result column="ip" property="ip"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="usage_description" property="usageDescription"/>
+        <result column="usage_publish_channel" property="usagePublishChannel"/>
+        <result column="create_time" property="createTime"/>
+        <!-- 关联的用户字段 -->
+        <result column="username" property="username"/>
+        <result column="real_name" property="realName"/>
+    </resultMap>
+
     <!-- Base Column List -->
     <sql id="Base_Column_List">
         id, asset_id, user_id, action, ip, dept_name, usage_description, usage_publish_channel, create_time
@@ -25,32 +41,6 @@
         SELECT <include refid="Base_Column_List"/>
         FROM usage_log
         WHERE id = #{id}
-    </select>
-
-    <!-- Select List with Dynamic Conditions -->
-    <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM usage_log
-        <where>
-            <if test="id != null">AND id = #{id}</if>
-            <if test="assetId != null">AND asset_id = #{assetId}</if>
-            <if test="userId != null">AND user_id = #{userId}</if>
-            <if test="action != null and action != ''">AND action = #{action}</if>
-            <if test="ip != null and ip != ''">AND ip = #{ip}</if>
-            <if test="deptName != null and deptName != ''">AND dept_name = #{deptName}</if>
-        </where>
-        <if test="orderByField != null and orderByField != ''">
-            ORDER BY ${orderByField}
-            <if test="orderByDirection != null and orderByDirection != ''">
-                ${orderByDirection}
-            </if>
-        </if>
-        <if test="orderByField == null or orderByField == ''">
-            ORDER BY create_time DESC
-        </if>
-        <if test="offset != null and limit != null">
-            LIMIT #{offset}, #{limit}
-        </if>
     </select>
 
     <!-- Select Count -->
@@ -115,5 +105,32 @@
     <delete id="deleteById">
         DELETE FROM usage_log WHERE id = #{id}
     </delete>
+
+    <!-- 分页查询使用日志（JOIN 用户，避免 N+1） -->
+    <select id="selectPageWithUser" resultMap="UsageLogWithUserResultMap">
+        SELECT
+            l.id, l.asset_id, l.user_id, l.action, l.ip, l.dept_name,
+            l.usage_description, l.usage_publish_channel, l.create_time,
+            u.username, u.real_name
+        FROM usage_log l
+        LEFT JOIN sys_user u ON l.user_id = u.id
+        <where>
+            <if test="query.id != null">AND l.id = #{query.id}</if>
+            <if test="query.assetId != null">AND l.asset_id = #{query.assetId}</if>
+            <if test="query.userId != null">AND l.user_id = #{query.userId}</if>
+            <if test="query.action != null and query.action != ''">AND l.action = #{query.action}</if>
+            <if test="query.ip != null and query.ip != ''">AND l.ip = #{query.ip}</if>
+            <if test="query.deptName != null and query.deptName != ''">AND l.dept_name = #{query.deptName}</if>
+        </where>
+        <if test="query.orderByField != null and query.orderByField != ''">
+            ORDER BY ${query.orderByField}
+            <if test="query.orderByDirection != null and query.orderByDirection != ''">
+                ${query.orderByDirection}
+            </if>
+        </if>
+        <if test="query.orderByField == null or query.orderByField == ''">
+            ORDER BY l.create_time DESC
+        </if>
+    </select>
 
 </mapper>

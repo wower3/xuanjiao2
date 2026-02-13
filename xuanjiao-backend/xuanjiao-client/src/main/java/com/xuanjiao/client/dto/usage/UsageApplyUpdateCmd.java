@@ -31,8 +31,8 @@ public class UsageApplyUpdateCmd {
     private String title;
 
     /**
-     * 素材配置列表
+     * 素材配置配置列表
      */
     @Valid
-    private List<com.xuanjiao.client.dto.UsageApplyCmd.AssetUsageConfig> assetConfigs;
+    private List<com.xuanjiao.client.dto.usage.UsageApplyCmd.AssetUsageConfig> assetConfigs;
 }

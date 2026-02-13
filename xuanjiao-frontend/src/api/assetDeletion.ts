@@ -8,10 +8,8 @@ export function updateDeletionApplication(id: number, data: any) {
   return request.post('/deletion/update', { id, ...data })
 }
 
-export function submitDeletionApplication(id: number, workflowId: number) {
-  return request.post(`/deletion/${id}/submit`, null, {
-    params: { workflowId }
-  })
+export function submitDeletionApplication(data: { id: number; workflowId: number }) {
+  return request.post('/deletion/submit', data)
 }
 
 export function deleteDeletionApplication(id: number) {

@@ -26,13 +26,10 @@ export function updateMaterialApplication(id: number, data: any) {
 
 /**
  * 提交素材录入申请到审批
- * @param id 申请ID
- * @param workflowId 审批流程ID
+ * @param data 提交数据（包含申请ID和审批流程ID）
  */
-export function submitMaterialApplication(id: number, workflowId: number) {
-  return request.post(`/material-application/${id}/submit`, null, {
-    params: { workflowId }
-  })
+export function submitMaterialApplication(data: { id: number; workflowId: number }) {
+  return request.post('/material-application/submit', data)
 }
 
 /**

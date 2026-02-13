@@ -22,6 +22,27 @@
         <result column="deleted" property="deleted" jdbcType="INTEGER"/>
     </resultMap>
 
+    <!-- 结果映射：使用申请 + 用户 + 部门（JOIN查询结果） -->
+    <resultMap id="UsageApplyWithUserResultMap" type="com.xuanjiao.infrastructure.dataobject.UsageApplyWithUserDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="dept_id" property="deptId" jdbcType="BIGINT"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="draft" property="draft" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <!-- 关联的用户字段 -->
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="real_name" property="realName" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="phone" property="phone" jdbcType="VARCHAR"/>
+        <result column="user_status" property="userStatus" jdbcType="INTEGER"/>
+        <!-- 关联的部门字段 -->
+        <result column="dept_name" property="deptName" jdbcType="VARCHAR"/>
+    </resultMap>
+
     <!-- 基础字段列表（数据库字段，下划线命名） - 禁止 SELECT * -->
     <sql id="Base_Column_List">
         id, user_id, title, purpose, scope, workflow_id, status, approval_instance_id,
@@ -38,62 +59,6 @@
             AND deleted = 0
         </where>
         LIMIT 1
-    </select>
-
-    <!-- 动态条件查询 -->
-    <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM usage_apply
-        <where>
-            <!-- deleted 参数处理 -->
-            <if test="deleted != null">
-                deleted = #{deleted}
-            </if>
-            <if test="deleted == null">
-                deleted = 0
-            </if>
-
-            <!-- 单值参数 -->
-            <if test="userId != null">
-                AND user_id = #{userId}
-            </if>
-            <if test="status != null and status != ''">
-                AND status = #{status}
-            </if>
-            <if test="draft != null">
-                AND draft = #{draft}
-            </if>
-            <if test="deptId != null">
-                AND dept_id = #{deptId}
-            </if>
-
-            <!-- IN 查询 -->
-            <if test="statusList != null and statusList.size() > 0">
-                AND status IN
-                <foreach collection="statusList" item="status" open="(" separator="," close=")">
-                    #{status}
-                </foreach>
-            </if>
-
-            <!-- 字符串模糊查询 -->
-            <if test="titleKeyword != null and titleKeyword != ''">
-                AND title LIKE CONCAT('%', #{titleKeyword}, '%')
-            </if>
-        </where>
-        <choose>
-            <when test="orderByField != null and orderByField != ''">
-                ORDER BY ${orderByField}
-                <if test="orderByDirection != null and orderByDirection != ''">
-                    ${orderByDirection}
-                </if>
-            </when>
-            <otherwise>
-                ORDER BY create_time DESC
-            </otherwise>
-        </choose>
-        <if test="offset != null and limit != null">
-            LIMIT #{offset}, #{limit}
-        </if>
     </select>
 
     <!-- 统计查询 -->
@@ -252,4 +217,64 @@
             id = #{id}
         </where>
     </update>
+
+    <!-- 分页查询使用申请（JOIN 用户和部门，避免 N+1） -->
+    <select id="selectPageWithUser" resultMap="UsageApplyWithUserResultMap">
+        SELECT
+            a.id, a.title, a.user_id, a.dept_id, a.workflow_id, a.status, a.draft,
+            a.create_time, a.update_time,
+            u.username, u.real_name, u.email, u.phone, u.status AS user_status,
+            d.name AS dept_name
+        FROM usage_apply a
+        LEFT JOIN sys_user u ON a.user_id = u.id
+        LEFT JOIN sys_dept d ON a.dept_id = d.id
+        <where>
+            <!-- deleted 参数处理 -->
+            <if test="query.deleted != null">
+                a.deleted = #{query.deleted}
+            </if>
+            <if test="query.deleted == null">
+                a.deleted = 0
+            </if>
+
+            <!-- 单值参数 -->
+            <if test="query.userId != null">
+                AND a.user_id = #{query.userId}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND a.status = #{query.status}
+            </if>
+            <if test="query.draft != null">
+                AND a.draft = #{query.draft}
+            </if>
+            <if test="query.deptId != null">
+                AND a.dept_id = #{query.deptId}
+            </if>
+
+            <!-- IN 查询 -->
+            <if test="query.statusList != null and query.statusList.size() > 0">
+                AND a.status IN
+                <foreach collection="query.statusList" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <!-- 字符串模糊查询 -->
+            <if test="query.titleKeyword != null and query.titleKeyword != ''">
+                AND a.title LIKE CONCAT('%', #{query.titleKeyword}, '%')
+            </if>
+        </where>
+        <choose>
+            <when test="query.orderByField != null and query.orderByField != ''">
+                ORDER BY ${query.orderByField}
+                <if test="query.orderByDirection != null and query.orderByDirection != ''">
+                    ${query.orderByDirection}
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY a.create_time DESC
+            </otherwise>
+        </choose>
+    </select>
+
 </mapper>

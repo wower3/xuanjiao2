@@ -1,6 +1,6 @@
 package com.xuanjiao.app.role;
 
-import com.xuanjiao.client.dto.RoleDTO;
+import com.xuanjiao.client.dto.role.dto.RoleDTO;
 import java.util.List;
 
 /**

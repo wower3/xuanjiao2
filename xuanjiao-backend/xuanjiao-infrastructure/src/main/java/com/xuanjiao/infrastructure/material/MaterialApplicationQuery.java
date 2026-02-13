@@ -57,16 +57,6 @@ public class MaterialApplicationQuery {
     private String orderByDirection;
 
     /**
-     * 分页偏移量
-     */
-    private Integer offset;
-
-    /**
-     * 分页大小
-     */
-    private Integer limit;
-
-    /**
      * 申请人ID列表（IN查询）
      */
     private List<Long> applicantIds;

@@ -1,13 +1,13 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.notification.NotificationService;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.dto.common.PageResult;
 import com.xuanjiao.client.dto.notification.BatchCreateNotificationCmd;
 import com.xuanjiao.client.dto.notification.BatchMarkReadCmd;
 import com.xuanjiao.client.dto.notification.CreateNotificationCmd;
 import com.xuanjiao.client.dto.notification.DeleteNotificationCmd;
 import com.xuanjiao.client.dto.notification.MarkReadCmd;
-import com.xuanjiao.client.dto.notification.NotificationDTO;
+import com.xuanjiao.client.dto.notification.dto.NotificationDTO;
 import com.xuanjiao.client.dto.notification.NotificationPageQry;
 import com.xuanjiao.client.dto.notification.NotifyUsersCmd;
 import org.junit.jupiter.api.MethodOrderer;

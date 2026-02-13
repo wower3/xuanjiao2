@@ -1,8 +1,8 @@
 package com.xuanjiao.client.dto.log;
 
+import com.xuanjiao.client.dto.common.BasePageQry;
 import lombok.Data;
-
-import javax.validation.constraints.Min;
+import lombok.EqualsAndHashCode;
 
 /**
  * 查询日志查询对象
@@ -13,22 +13,11 @@ import javax.validation.constraints.Min;
  * @since 1.0.0
  */
 @Data
-public class LogQueryLogsQry {
+@EqualsAndHashCode(callSuper = true)
+public class LogQueryLogsQry extends BasePageQry {
 
     /**
      * 操作类型（LOGIN-登录、LOGOUT-登出、DOWNLOAD-下载等）
      */
     private String action;
-
-    /**
-     * 当前页码（从1开始，默认为1）
-     */
-    @Min(value = 1, message = "页码最小为1")
-    private Integer pageNum = 1;
-
-    /**
-     * 每页记录数（默认为10）
-     */
-    @Min(value = 1, message = "每页数量最小为1")
-    private Integer pageSize = 10;
 }

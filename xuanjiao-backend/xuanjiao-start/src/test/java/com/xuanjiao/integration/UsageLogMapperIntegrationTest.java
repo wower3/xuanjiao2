@@ -1,5 +1,6 @@
 package com.xuanjiao.integration;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.usage.UsageLogMapper;
 import com.xuanjiao.infrastructure.usage.UsageLogQuery;
@@ -10,8 +11,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,43 +39,6 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
-        UsageLogQuery query = new UsageLogQuery();
-        List<UsageLogDO> list = usageLogMapper.selectList(query);
-        assertNotNull(list);
-        System.out.println("✓ UsageLog selectList (empty): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(3)
-    public void testSelectList_WithAssetId() {
-        UsageLogQuery query = new UsageLogQuery();
-        query.setAssetId(1L);
-        query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
-        List<UsageLogDO> list = usageLogMapper.selectList(query);
-        assertNotNull(list);
-        for (UsageLogDO item : list) {
-            assertEquals(1L, item.getAssetId());
-        }
-        System.out.println("✓ UsageLog selectList (assetId=1): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(4)
-    public void testSelectList_WithAction() {
-        UsageLogQuery query = new UsageLogQuery();
-        query.setAction("DOWNLOAD");
-        List<UsageLogDO> list = usageLogMapper.selectList(query);
-        assertNotNull(list);
-        for (UsageLogDO item : list) {
-            assertEquals("DOWNLOAD", item.getAction());
-        }
-        System.out.println("✓ UsageLog selectList (action=DOWNLOAD): " + list.size() + " records");
-    }
-
-    @Test
-    @Order(5)
     public void testSelectCount() {
         UsageLogQuery query = new UsageLogQuery();
         Long count = usageLogMapper.selectCount(query);
@@ -86,7 +48,7 @@ public class UsageLogMapperIntegrationTest {
     }
 
     @Test
-    @Order(6)
+    @Order(3)
     public void testSelectCount_WithAssetIdAndAction() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAssetId(1L);
@@ -98,18 +60,18 @@ public class UsageLogMapperIntegrationTest {
     }
 
     @Test
-    @Order(7)
+    @Order(4)
     public void testSelectPage() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAction("DOWNLOAD");
         Page<UsageLogDO> page = new Page<>(1, 10);
-        Page<UsageLogDO> result = usageLogMapper.selectPage(page, query);
+        IPage<UsageLogDO> result = usageLogMapper.selectPage(page, query);
         assertNotNull(result);
         System.out.println("✓ UsageLog selectPage: " + result.getRecords().size() + " records, total: " + result.getTotal());
     }
 
     @Test
-    @Order(8)
+    @Order(5)
     public void testSelectPage_WithAssetId() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAssetId(1L);
@@ -117,8 +79,32 @@ public class UsageLogMapperIntegrationTest {
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
         Page<UsageLogDO> page = new Page<>(1, 10);
-        Page<UsageLogDO> result = usageLogMapper.selectPage(page, query);
+        IPage<UsageLogDO> result = usageLogMapper.selectPage(page, query);
         assertNotNull(result);
         System.out.println("✓ UsageLog selectPage (assetId=1, action=DOWNLOAD): " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(6)
+    public void testSelectPage_EmptyQuery() {
+        UsageLogQuery query = new UsageLogQuery();
+        Page<UsageLogDO> page = new Page<>(1, 10);
+        IPage<UsageLogDO> result = usageLogMapper.selectPage(page, query);
+        assertNotNull(result);
+        System.out.println("✓ UsageLog selectPage (empty): " + result.getRecords().size() + " records, total: " + result.getTotal());
+    }
+
+    @Test
+    @Order(7)
+    public void testSelectPage_WithAction() {
+        UsageLogQuery query = new UsageLogQuery();
+        query.setAction("DOWNLOAD");
+        Page<UsageLogDO> page = new Page<>(1, 10);
+        IPage<UsageLogDO> result = usageLogMapper.selectPage(page, query);
+        assertNotNull(result);
+        for (UsageLogDO item : result.getRecords()) {
+            assertEquals("DOWNLOAD", item.getAction());
+        }
+        System.out.println("✓ UsageLog selectPage (action=DOWNLOAD): " + result.getRecords().size() + " records, total: " + result.getTotal());
     }
 }

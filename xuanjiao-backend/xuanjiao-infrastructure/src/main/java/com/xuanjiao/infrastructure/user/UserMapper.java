@@ -1,6 +1,9 @@
 package com.xuanjiao.infrastructure.user;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.UserWithDeptRoleDO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -74,4 +77,21 @@ public interface UserMapper {
      * @return 用户ID列表
      */
     List<Long> selectUserIdsByRoleId(@Param("roleId") Long roleId);
+
+    /**
+     * 查询用户列表（JOIN 部门和角色，避免 N+1）
+     *
+     * @param query 查询条件
+     * @return 用户详情列表
+     */
+    List<UserWithDeptRoleDO> selectListWithDeptRole(UserQuery query);
+
+    /**
+     * 分页查询用户列表（JOIN 部门和角色）
+     *
+     * @param page 分页对象
+     * @param query 查询条件
+     * @return 分页结果
+     */
+    IPage<UserWithDeptRoleDO> selectPageWithDeptRole(Page<UserWithDeptRoleDO> page, @Param("query") UserQuery query);
 }

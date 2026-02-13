@@ -191,7 +191,7 @@ import {
   markAllAsRead,
   notifyUsers
 } from '@/api/notification'
-import { getInstanceDetail } from '@/api/task'
+import { getInstanceDetail } from '@/api/approval'
 import { useUserStore } from '@/stores/user'
 import UserSelector from '@/components/UserSelector.vue'
 import WorkOrderDetailDialog from '@/components/WorkOrderDetailDialog.vue'

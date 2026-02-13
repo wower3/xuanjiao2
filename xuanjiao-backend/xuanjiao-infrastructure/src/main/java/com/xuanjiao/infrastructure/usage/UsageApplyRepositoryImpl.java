@@ -1,11 +1,13 @@
 package com.xuanjiao.infrastructure.usage;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.domain.usage.entity.UsageApply;
 import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
 import com.xuanjiao.domain.usage.repository.UsageApplyRepository;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
+import com.xuanjiao.infrastructure.dataobject.UsageApplyWithUserDO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -40,42 +42,17 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
     }
 
     @Override
-    public List<UsageApply> findByCondition(String status, int offset, int limit) {
-        UsageApplyQuery query = new UsageApplyQuery();
-        query.setStatus(status);
-        query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
-        query.setOffset(offset);
-        query.setLimit(limit);
-
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        return list.stream()
-                .map(this::convert)
-                .peek(this::loadAssets)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public long countByCondition(String status) {
-        UsageApplyQuery query = new UsageApplyQuery();
-        if (StringUtils.hasText(status)) {
-            query.setStatus(status);
-        }
-        return usageApplyMapper.selectCount(query);
-    }
-
-    @Override
     public List<UsageApply> findByUserId(Long userId, int offset, int limit) {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(userId);
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
-        query.setOffset(offset);
-        query.setLimit(limit);
 
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        return list.stream()
-                .map(this::convert)
+        // 使用 MyBatis-Plus 分页
+        Page<UsageApplyWithUserDO> page = new Page<>(offset / limit + 1, limit);
+        IPage<UsageApplyWithUserDO> pageResult = usageApplyMapper.selectPageWithUser(page, query);
+        return pageResult.getRecords().stream()
+                .map(this::convertFromDetailDO)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
     }
@@ -87,12 +64,12 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
         query.setDraft(1);
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
-        query.setOffset(offset);
-        query.setLimit(limit);
 
-        List<UsageApplyDO> list = usageApplyMapper.selectList(query);
-        return list.stream()
-                .map(this::convert)
+        // 使用 MyBatis-Plus 分页
+        Page<UsageApplyWithUserDO> page = new Page<>(offset / limit + 1, limit);
+        IPage<UsageApplyWithUserDO> pageResult = usageApplyMapper.selectPageWithUser(page, query);
+        return pageResult.getRecords().stream()
+                .map(this::convertFromDetailDO)
                 .peek(this::loadAssets)
                 .collect(Collectors.toList());
     }
@@ -140,6 +117,34 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
         if (usageApplyDO == null) return null;
         UsageApply usageApply = new UsageApply();
         BeanUtils.copyProperties(usageApplyDO, usageApply);
+        return usageApply;
+    }
+
+    /**
+     * 将 UsageApplyWithUserDO 转换为 UsageApply
+     * 用于 JOIN 查询结果，避免 N+1 问题
+     *
+     * @param detailDO 使用申请详情数据对象
+     * @return 使用申请实体
+     */
+    private UsageApply convertFromDetailDO(UsageApplyWithUserDO detailDO) {
+        if (detailDO == null) return null;
+        UsageApply usageApply = new UsageApply();
+        usageApply.setId(detailDO.getId());
+        usageApply.setTitle(detailDO.getTitle());
+        usageApply.setUserId(detailDO.getUserId());
+        usageApply.setDeptId(detailDO.getDeptId());
+        usageApply.setWorkflowId(detailDO.getWorkflowId());
+        usageApply.setStatus(detailDO.getStatus());
+        usageApply.setDraft(detailDO.getDraft());
+        usageApply.setCreateTime(detailDO.getCreateTime());
+        usageApply.setUpdateTime(detailDO.getUpdateTime());
+
+        // 设置用户名称（从 JOIN 结果中获取）
+        if (detailDO.getRealName() != null) {
+            usageApply.setUsername(detailDO.getRealName());
+        }
+
         return usageApply;
     }
 

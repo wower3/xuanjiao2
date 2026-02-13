@@ -1,9 +1,9 @@
 package com.xuanjiao.client.dto.user;
 
+import com.xuanjiao.client.dto.common.BasePageQry;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
 import java.util.List;
 
 /**
@@ -15,7 +15,8 @@ import java.util.List;
  * @since 1.0.0
  */
 @Data
-public class UserGetListWithFilterQry {
+@EqualsAndHashCode(callSuper = true)
+public class UserGetListWithFilterQry extends BasePageQry {
 
     /**
      * 角色ID列表筛选
@@ -36,17 +37,4 @@ public class UserGetListWithFilterQry {
      * 关键词搜索（匹配姓名/用户名）
      */
     private String keyword;
-
-    /**
-     * 当前页码（从1开始，默认为1）
-     */
-    @Min(value = 1, message = "页码最小为1")
-    private Integer pageNum = 1;
-
-    /**
-     * 每页记录数（默认为20，最大为100）
-     */
-    @Min(value = 1, message = "每页大小最小为1")
-    @Max(value = 100, message = "每页大小最大为100")
-    private Integer pageSize = 20;
 }

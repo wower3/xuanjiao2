@@ -1,8 +1,9 @@
 package com.xuanjiao.client.dto.log;
 
+import com.xuanjiao.client.dto.common.BasePageQry;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -14,23 +15,12 @@ import javax.validation.constraints.NotNull;
  * @since 1.0.0
  */
 @Data
-public class LogGetAssetUsageLogsQry {
+@EqualsAndHashCode(callSuper = true)
+public class LogGetAssetUsageLogsQry extends BasePageQry {
 
     /**
      * 素材ID
      */
     @NotNull(message = "素材ID不能为空")
     private Long assetId;
-
-    /**
-     * 当前页码（从1开始，默认为1）
-     */
-    @Min(value = 1, message = "页码最小为1")
-    private Integer pageNum = 1;
-
-    /**
-     * 每页记录数（默认为10）
-     */
-    @Min(value = 1, message = "每页数量最小为1")
-    private Integer pageSize = 10;
 }

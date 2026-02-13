@@ -1,10 +1,12 @@
 package com.xuanjiao.app.usage.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.app.usage.UsageLogService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageLogDTO;
+import com.xuanjiao.client.dto.common.PageResult;
+import com.xuanjiao.client.dto.usage.dto.UsageLogDTO;
 import com.xuanjiao.infrastructure.dataobject.UsageLogDO;
+import com.xuanjiao.infrastructure.dataobject.UsageLogWithUserDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.usage.UsageLogMapper;
 import com.xuanjiao.infrastructure.usage.UsageLogQuery;
@@ -12,9 +14,7 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -59,16 +59,17 @@ public class UsageLogServiceImpl implements UsageLogService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> query(String action, int pageNum, int pageSize) {
+    public PageResult<UsageLogDTO> query(String action, int pageNum, int pageSize) {
         UsageLogQuery query = new UsageLogQuery();
         if (StringUtils.hasText(action)) {
             query.setAction(action);
         }
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
-        Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
-        List<Map<String, Object>> list = page.getRecords().stream().map(this::toMap).collect(Collectors.toList());
-        return PageResult.of(list, page.getTotal(), pageNum, pageSize);
+        Page<UsageLogWithUserDO> page = new Page<>(pageNum, pageSize);
+        IPage<UsageLogWithUserDO> pageResult = logMapper.selectPageWithUser(page, query);
+        List<UsageLogDTO> list = pageResult.getRecords().stream().map(this::convertFromDetailDO).collect(Collectors.toList());
+        return PageResult.of(list, pageResult.getTotal(), pageNum, pageSize);
     }
 
     @Override
@@ -78,22 +79,39 @@ public class UsageLogServiceImpl implements UsageLogService {
         query.setAction("DOWNLOAD");
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
-        Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
-        List<UsageLogDTO> list = page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
-        return PageResult.of(list, page.getTotal(), pageNum, pageSize);
+        Page<UsageLogWithUserDO> page = new Page<>(pageNum, pageSize);
+        IPage<UsageLogWithUserDO> pageResult = logMapper.selectPageWithUser(page, query);
+        List<UsageLogDTO> list = pageResult.getRecords().stream().map(this::convertFromDetailDO).collect(Collectors.toList());
+        return PageResult.of(list, pageResult.getTotal(), pageNum, pageSize);
     }
 
-    private Map<String, Object> toMap(UsageLogDO log) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", log.getId());
-        map.put("assetId", log.getAssetId());
-        map.put("userId", log.getUserId());
-        map.put("action", log.getAction());
-        map.put("ip", log.getIp());
-        map.put("createTime", log.getCreateTime());
-        return map;
+    /**
+     * 将 UsageLogWithUserDO 转换为 UsageLogDTO
+     * 用于 JOIN 查询结果，避免 N+1 问题
+     *
+     * @param log 使用日志详情数据对象
+     * @return 使用日志DTO
+     */
+    private UsageLogDTO convertFromDetailDO(UsageLogWithUserDO log) {
+        if (log == null) return null;
+        UsageLogDTO dto = new UsageLogDTO();
+        dto.setId(log.getId());
+        dto.setAssetId(log.getAssetId());
+        dto.setUserId(log.getUserId());
+        dto.setAction(log.getAction());
+        dto.setIp(log.getIp());
+        dto.setDeptName(log.getDeptName());
+        dto.setUsageDescription(log.getUsageDescription());
+        dto.setUsagePublishChannel(log.getUsagePublishChannel());
+        dto.setCreateTime(log.getCreateTime());
+        // 用户信息已经包含在 log 中
+        dto.setUsername(log.getRealName());
+        return dto;
     }
 
+    /**
+     * 保留旧方法用于兼容性（现在已不再使用）
+     */
     private UsageLogDTO toDTO(UsageLogDO log) {
         UsageLogDTO dto = new UsageLogDTO();
         dto.setId(log.getId());
