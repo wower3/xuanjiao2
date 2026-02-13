@@ -75,4 +75,10 @@ public class WorkflowDO {
      */
     @TableLogic
     private Integer deleted;
+
+    /**
+     * 角色名称（非数据库字段，用于JOIN查询）
+     */
+    @TableField(exist = false)
+    private String roleName;
 }

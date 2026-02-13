@@ -63,33 +63,12 @@ public class WorkflowServiceImpl implements WorkflowService {
         WorkflowQuery query = new WorkflowQuery();
         query.setOrderByField("id");
         query.setOrderByDirection("DESC");
-        List<WorkflowDO> list = workflowMapper.selectList(query);
+        // 使用JOIN查询一次性获取流程列表和角色名称，不需要加载阶段和审批人
+        List<WorkflowDO> list = workflowMapper.selectListWithRoleName(query);
         return list.stream().map(workflow -> {
             WorkflowDTO dto = convert(workflow);
-            // 加载绑定的角色名称
-            if (workflow.getBoundRoleId() != null) {
-                RoleDO role = roleMapper.selectById(workflow.getBoundRoleId());
-                if (role != null) {
-                    dto.setRoleName(role.getName());
-                }
-            }
-            // 加载阶段和审批人信息（包括子流程配置）
-            WorkflowStageQuery stageQuery = new WorkflowStageQuery();
-            stageQuery.setWorkflowId(workflow.getId());
-            stageQuery.setOrderByField("stage_order");
-            stageQuery.setOrderByDirection("ASC");
-            List<WorkflowStageDO> stages = stageMapper.selectList(stageQuery);
-            List<WorkflowStageDTO> stageDTOs = new ArrayList<>();
-            for (WorkflowStageDO stage : stages) {
-                WorkflowStageDTO stageDTO = convertStage(stage);
-                // 查询该阶段的所有审批人（包括普通审批人和子流程）
-                StageApproverQuery approverQuery = new StageApproverQuery();
-                approverQuery.setStageId(stage.getId());
-                List<StageApproverDO> approvers = approverMapper.selectList(approverQuery);
-                stageDTO.setApprovers(approvers.stream().map(this::convertApprover).collect(Collectors.toList()));
-                stageDTOs.add(stageDTO);
-            }
-            dto.setStages(stageDTOs);
+            // 从JOIN结果直接获取角色名称，无需单独查询
+            dto.setRoleName(workflow.getRoleName());
             return dto;
         }).collect(Collectors.toList());
     }

@@ -34,6 +34,14 @@ public interface WorkflowMapper {
     List<WorkflowDO> selectList(WorkflowQuery query);
 
     /**
+     * 查询工作流列表（带角色名称，通过JOIN）
+     *
+     * @param query 查询条件
+     * @return 工作流数据对象列表，包含角色名称
+     */
+    List<WorkflowDO> selectListWithRoleName(WorkflowQuery query);
+
+    /**
      * 动态条件统计工作流数量
      *
      * @param query 查询条件
