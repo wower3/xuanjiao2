@@ -60,11 +60,6 @@ const router = createRouter({
           component: () => import('@/views/task/draft-box.vue')
         },
         {
-          path: 'task/in-progress',
-          name: 'WorkflowInProgress',
-          component: () => import('@/views/task/workflow-in-progress.vue')
-        },
-        {
           path: 'task/material-approval',
           name: 'MaterialApproval',
           component: () => import('@/views/task/material-approval.vue')
