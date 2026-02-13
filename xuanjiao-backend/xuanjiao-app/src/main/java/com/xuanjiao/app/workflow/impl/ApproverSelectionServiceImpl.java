@@ -24,8 +24,10 @@ import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.workflow.StageApproverMapper;
 import com.xuanjiao.infrastructure.workflow.StageApproverQuery;
+import com.xuanjiao.infrastructure.workflow.StageApproverWithDetailsDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.user.UserQuery;
+import com.xuanjiao.infrastructure.user.UserWithDetailsDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
@@ -579,50 +581,49 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         result.put("stageName", firstStage.getName());
         result.put("approveType", firstStage.getApproveType());
 
-        // 获取该阶段的审批人配置（排除子流程）
+        // 获取该阶段的审批人配置（排除子流程）- 使用JOIN查询避免N+1问题
         StageApproverQuery approverQuery = new StageApproverQuery();
         approverQuery.setStageId(firstStage.getId());
         approverQuery.setSubWorkflowIdNull(true); // 使用 IS NULL 查询，排除子流程配置
-        approverQuery.setOrderByField("id");
-        approverQuery.setOrderByDirection("ASC");
-        List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(approverQuery);
+        // 使用selectWithDetails一次性获取审批人配置及关联的用户/角色/部门信息
+        List<StageApproverWithDetailsDO> approverConfigs = stageApproverMapper.selectWithDetails(approverQuery);
 
         // 为每个配置获取可用用户
         List<Map<String, Object>> configs = new ArrayList<>();
-        for (StageApproverDO config : approverConfigs) {
+        for (StageApproverWithDetailsDO config : approverConfigs) {
             Map<String, Object> configInfo = new HashMap<>();
             configInfo.put("configId", config.getId());
             configInfo.put("approverType", config.getApproverType());
             configInfo.put("approverId", config.getApproverId());
             configInfo.put("checkSecondaryDept", config.getCheckSecondaryDept());
 
-            // 设置审批人类型名称
+            // 设置审批人类型名称 - 直接从JOIN查询结果获取，无需额外查询
             String approverTypeName = "";
             String approverName = "";
             if ("USER".equals(config.getApproverType())) {
-                UserDO user = userMapper.selectById(config.getApproverId());
-                if (user != null) {
+                // USER类型：从JOIN结果获取
+                if (config.getRealName() != null || config.getUsername() != null) {
                     approverTypeName = "指定用户";
-                    approverName = user.getRealName() != null ? user.getRealName() : user.getUsername();
+                    approverName = config.getRealName() != null ? config.getRealName() : config.getUsername();
                 }
             } else if ("ROLE".equals(config.getApproverType())) {
-                RoleDO role = roleMapper.selectById(config.getApproverId());
-                if (role != null) {
+                // ROLE类型：从JOIN结果获取（通过approverId关联）
+                if (config.getRoleName() != null) {
                     approverTypeName = "指定角色";
-                    approverName = role.getName();
+                    approverName = config.getRoleName();
                 }
             } else if ("DEPT".equals(config.getApproverType())) {
-                DeptDO dept = deptMapper.selectById(config.getApproverId());
-                if (dept != null) {
+                // DEPT类型：从JOIN结果获取
+                if (config.getDeptName() != null) {
                     approverTypeName = "指定部门";
-                    approverName = dept.getName();
+                    approverName = config.getDeptName();
                 }
             }
             configInfo.put("approverTypeName", approverTypeName);
             configInfo.put("approverName", approverName);
 
-            // 获取该配置的可用用户
-            List<Map<String, Object>> availableUsers = getAvailableUsersForConfig(config, applicantId, keyword);
+            // 获取该配置的可用用户 - 使用优化的方法
+            List<Map<String, Object>> availableUsers = getAvailableUsersForConfigOptimized(config, applicantId, keyword);
             configInfo.put("availableUsers", availableUsers);
 
             configs.add(configInfo);
@@ -896,7 +897,25 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     /**
      * 获取指定配置的可用用户列表
      */
+    /**
+     * 获取指定配置的可用用户列表（优化版，使用JOIN查询）
+     */
+    /**
+     * 获取指定配置的可用用户列表（兼容旧版StageApproverDO）
+     */
     private List<Map<String, Object>> getAvailableUsersForConfig(StageApproverDO config, Long applicantId, String keyword) {
+        // 转换为优化版需要的StageApproverWithDetailsDO
+        StageApproverWithDetailsDO detailsDO = new StageApproverWithDetailsDO();
+        detailsDO.setApproverType(config.getApproverType());
+        detailsDO.setApproverId(config.getApproverId());
+        detailsDO.setCheckSecondaryDept(config.getCheckSecondaryDept());
+        return getAvailableUsersForConfigOptimized(detailsDO, applicantId, keyword);
+    }
+
+    /**
+     * 获取指定配置的可用用户列表（优化版，使用JOIN查询）
+     */
+    private List<Map<String, Object>> getAvailableUsersForConfigOptimized(StageApproverWithDetailsDO config, Long applicantId, String keyword) {
         List<Map<String, Object>> users = new ArrayList<>();
 
         if ("USER".equals(config.getApproverType())) {
@@ -904,19 +923,20 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
             UserDO user = userMapper.selectById(config.getApproverId());
             if (user != null) {
                 if (keyword == null || keyword.trim().isEmpty()) {
-                    users.add(convertUserToMap(user));
+                    users.add(convertUserToMapWithDetails(user));
                 } else {
                     // 支持模糊搜索
                     if ((user.getUsername() != null && user.getUsername().toLowerCase().contains(keyword.toLowerCase())) ||
                         (user.getRealName() != null && user.getRealName().toLowerCase().contains(keyword.toLowerCase()))) {
-                        users.add(convertUserToMap(user));
+                        users.add(convertUserToMapWithDetails(user));
                     }
                 }
             }
         } else if ("ROLE".equals(config.getApproverType())) {
-            // 指定角色：返回该角色下的所有用户
+            // 指定角色：返回该角色下的所有用户 - 使用JOIN查询
             UserQuery userQuery = new UserQuery();
             userQuery.setRoleId(config.getApproverId());
+            userQuery.setStatus(1); // 只查询启用的用户
 
             // 如果需要校验二级部门
             if (config.getCheckSecondaryDept() != null && config.getCheckSecondaryDept() == 1) {
@@ -933,23 +953,26 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
                 userQuery.setKeyword(keyword.trim());
             }
 
-            List<UserDO> roleUsers = userMapper.selectList(userQuery);
-            for (UserDO user : roleUsers) {
-                users.add(convertUserToMap(user));
+            // 使用JOIN查询一次性获取用户及部门/角色信息
+            List<UserWithDetailsDO> roleUsers = userMapper.selectListWithDetails(userQuery);
+            for (UserWithDetailsDO user : roleUsers) {
+                users.add(convertUserWithDetailsToMap(user));
             }
         } else if ("DEPT".equals(config.getApproverType())) {
-            // 指定部门：返回该部门下的所有用户
+            // 指定部门：返回该部门下的所有用户 - 使用JOIN查询
             UserQuery userQuery = new UserQuery();
             userQuery.setDeptId(config.getApproverId());
+            userQuery.setStatus(1); // 只查询启用的用户
 
             // 支持模糊搜索
             if (keyword != null && !keyword.trim().isEmpty()) {
                 userQuery.setKeyword(keyword.trim());
             }
 
-            List<UserDO> deptUsers = userMapper.selectList(userQuery);
-            for (UserDO user : deptUsers) {
-                users.add(convertUserToMap(user));
+            // 使用JOIN查询一次性获取用户及部门/角色信息
+            List<UserWithDetailsDO> deptUsers = userMapper.selectListWithDetails(userQuery);
+            for (UserWithDetailsDO user : deptUsers) {
+                users.add(convertUserWithDetailsToMap(user));
             }
         }
 
@@ -957,9 +980,9 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     }
 
     /**
-     * 将用户DO转换为Map
+     * 将用户DO转换为Map（使用JOIN查询结果，无需额外查询）
      */
-    private Map<String, Object> convertUserToMap(UserDO user) {
+    private Map<String, Object> convertUserToMapWithDetails(UserDO user) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", user.getId());
         map.put("username", user.getUsername());
@@ -967,7 +990,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         map.put("deptId", user.getDeptId());
         map.put("roleId", user.getRoleId());
 
-        // 获取部门名称
+        // 使用JOIN查询结果或单独查询
         if (user.getDeptId() != null) {
             DeptDO dept = deptMapper.selectById(user.getDeptId());
             map.put("deptName", dept != null ? dept.getName() : null);
@@ -979,6 +1002,22 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
             map.put("roleName", role != null ? role.getName() : null);
         }
 
+        return map;
+    }
+
+    /**
+     * 将用户详情DO转换为Map（直接从JOIN结果获取，无需额外查询）
+     */
+    private Map<String, Object> convertUserWithDetailsToMap(UserWithDetailsDO user) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", user.getId());
+        map.put("username", user.getUsername());
+        map.put("realName", user.getRealName());
+        map.put("deptId", user.getDeptId());
+        map.put("roleId", user.getRoleId());
+        // 直接从JOIN结果获取部门名称和角色名称，无需额外查询
+        map.put("deptName", user.getDeptName());
+        map.put("roleName", user.getRoleName());
         return map;
     }
 

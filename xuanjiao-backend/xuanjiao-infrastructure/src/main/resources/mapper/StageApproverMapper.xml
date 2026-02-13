@@ -104,4 +104,54 @@
         </where>
     </delete>
 
+    <!-- ==================== 优化的JOIN查询方法（解决N+1问题） ==================== -->
+
+    <!-- ResultMap with Details -->
+    <resultMap id="WithDetailsResultMap" type="com.xuanjiao.infrastructure.workflow.StageApproverWithDetailsDO">
+        <id column="id" property="id"/>
+        <result column="stage_id" property="stageId"/>
+        <result column="approver_type" property="approverType"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="check_secondary_dept" property="checkSecondaryDept"/>
+        <result column="sub_workflow_id" property="subWorkflowId"/>
+        <result column="username" property="username"/>
+        <result column="real_name" property="realName"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="role_id" property="roleId"/>
+        <result column="role_name" property="roleName"/>
+        <result column="dept_name" property="deptName"/>
+        <result column="sub_workflow_name" property="subWorkflowName"/>
+    </resultMap>
+
+    <!-- 查询阶段审批人配置（带关联详情，JOIN查询避免N+1） -->
+    <select id="selectWithDetails" resultMap="WithDetailsResultMap">
+        SELECT
+            sa.id,
+            sa.stage_id,
+            sa.approver_type,
+            sa.approver_id,
+            sa.check_secondary_dept,
+            sa.sub_workflow_id,
+            u.username,
+            u.real_name,
+            u.dept_id,
+            u.role_id,
+            r.name AS role_name,
+            d.name AS dept_name,
+            sub_w.name AS sub_workflow_name
+        FROM stage_approver sa
+        LEFT JOIN sys_user u ON sa.approver_type = 'USER' AND sa.approver_id = u.id AND u.deleted = 0
+        LEFT JOIN sys_role r ON (sa.approver_type = 'ROLE' AND sa.approver_id = r.id AND r.deleted = 0)
+            OR (sa.approver_type = 'USER' AND u.role_id = r.id AND r.deleted = 0)
+        LEFT JOIN sys_dept d ON (sa.approver_type = 'DEPT' AND sa.approver_id = d.id AND d.deleted = 0)
+            OR (sa.approver_type = 'USER' AND u.dept_id = d.id AND d.deleted = 0)
+        LEFT JOIN workflow sub_w ON sa.sub_workflow_id = sub_w.id AND sub_w.deleted = 0
+        <where>
+            <if test="stageId != null">AND sa.stage_id = #{stageId}</if>
+            <if test="subWorkflowIdNull != null and subWorkflowIdNull == true">AND sa.sub_workflow_id IS NULL</if>
+            <if test="subWorkflowIdNotNull != null and subWorkflowIdNotNull == true">AND sa.sub_workflow_id IS NOT NULL</if>
+        </where>
+        ORDER BY sa.id ASC
+    </select>
+
 </mapper>

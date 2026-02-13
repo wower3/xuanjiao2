@@ -72,4 +72,14 @@ public interface StageApproverMapper {
      * @return 影响行数
      */
     int delete(StageApproverQuery query);
+
+    /**
+     * 查询阶段审批人配置（带关联详情，JOIN查询避免N+1问题）
+     *
+     * <p>一次性获取审批人配置及关联的用户/角色/部门/子流程信息。</p>
+     *
+     * @param query 查询条件（stageId, subWorkflowIdNull, subWorkflowIdNotNull）
+     * @return 审批人配置列表（含关联详情）
+     */
+    List<StageApproverWithDetailsDO> selectWithDetails(StageApproverQuery query);
 }

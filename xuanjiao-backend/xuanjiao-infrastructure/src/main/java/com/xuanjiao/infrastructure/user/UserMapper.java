@@ -74,4 +74,14 @@ public interface UserMapper {
      * @return 用户ID列表
      */
     List<Long> selectUserIdsByRoleId(@Param("roleId") Long roleId);
+
+    /**
+     * 条件查询用户列表（带部门/角色名称，JOIN查询避免N+1问题）
+     *
+     * <p>一次性获取用户及其部门、角色信息。</p>
+     *
+     * @param query 查询条件
+     * @return 用户详情列表（含部门名称、角色名称）
+     */
+    List<UserWithDetailsDO> selectListWithDetails(UserQuery query);
 }
