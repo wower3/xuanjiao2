@@ -5,7 +5,7 @@ import com.xuanjiao.client.dept.DeptDTO;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.dept.DeptQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ public class DeptServiceImpl implements DeptService {
     @Override
     public void save(DeptDTO dto) {
         DeptDO dept = new DeptDO();
-        BeanUtils.copyProperties(dto, dept);
+        ConvertUtils.copyProperties(dto, dept);
 
         // 生成部门编号
         if (dept.getCode() == null || dept.getCode().isEmpty()) {
@@ -80,7 +80,7 @@ public class DeptServiceImpl implements DeptService {
     @Override
     public void update(DeptDTO dto) {
         DeptDO dept = new DeptDO();
-        BeanUtils.copyProperties(dto, dept);
+        ConvertUtils.copyProperties(dto, dept);
         deptMapper.updateById(dept);
     }
 
@@ -118,7 +118,7 @@ public class DeptServiceImpl implements DeptService {
     private DeptDTO convert(DeptDO entity) {
         if (entity == null) return null;
         DeptDTO dto = new DeptDTO();
-        BeanUtils.copyProperties(entity, dto);
+        ConvertUtils.copyProperties(entity, dto);
         return dto;
     }
 }

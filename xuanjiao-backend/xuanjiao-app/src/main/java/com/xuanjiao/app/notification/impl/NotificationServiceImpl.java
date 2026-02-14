@@ -25,7 +25,7 @@ import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.notification.NotificationMapper;
 import com.xuanjiao.infrastructure.notification.NotificationRecordDO;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -196,7 +196,7 @@ public class NotificationServiceImpl implements NotificationService {
             return null;
         }
         NotificationDTO dto = new NotificationDTO();
-        BeanUtils.copyProperties(notification, dto);
+        ConvertUtils.copyProperties(notification, dto);
         return dto;
     }
 

@@ -31,7 +31,7 @@ import com.xuanjiao.app.log.OperationLogService;
 import com.xuanjiao.app.usage.UsageApplyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -288,14 +288,14 @@ public class AssetServiceImpl implements AssetService {
     private AssetDTO convert(Asset asset) {
         if (asset == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(asset, dto);
+        ConvertUtils.copyProperties(asset, dto);
         return dto;
     }
 
     private AssetDTO convertWithTags(Asset asset) {
         if (asset == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(asset, dto);
+        ConvertUtils.copyProperties(asset, dto);
 
         // Load tags
         if (asset.getId() != null) {
@@ -311,7 +311,7 @@ public class AssetServiceImpl implements AssetService {
                     List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
                     dto.setTags(tags.stream().map(tag -> {
                         TagDTO tagDTO = new TagDTO();
-                        BeanUtils.copyProperties(tag, tagDTO);
+                        ConvertUtils.copyProperties(tag, tagDTO);
                         return tagDTO;
                     }).collect(Collectors.toList()));
                 }
@@ -428,7 +428,7 @@ public class AssetServiceImpl implements AssetService {
     private AssetDTO convertDOToDTO(com.xuanjiao.infrastructure.dataobject.AssetDO assetDO) {
         if (assetDO == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(assetDO, dto);
+        ConvertUtils.copyProperties(assetDO, dto);
         return dto;
     }
 

@@ -22,7 +22,7 @@ import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -383,7 +383,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         for (AssetDeletionAsset asset : assets) {
             com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO assetDO =
                 new com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO();
-            BeanUtils.copyProperties(asset, assetDO);
+            ConvertUtils.copyProperties(asset, assetDO);
             deletionAssetMapper.insert(assetDO);
         }
     }
@@ -402,7 +402,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
      */
     private AssetDeletionApplicationDTO convertToDTO(AssetDeletionApplication application) {
         AssetDeletionApplicationDTO dto = new AssetDeletionApplicationDTO();
-        BeanUtils.copyProperties(application, dto);
+        ConvertUtils.copyProperties(application, dto);
 
         // 查询申请人信息
         UserDO applicant = userMapper.selectById(application.getApplicantId());

@@ -25,7 +25,7 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationWithDetailsDO;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -361,7 +361,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
                 List<AssetDTO> assetDTOs = new ArrayList<>();
                 for (AssetDO asset : assets) {
                     AssetDTO assetDTO = new AssetDTO();
-                    BeanUtils.copyProperties(asset, assetDTO);
+                    ConvertUtils.copyProperties(asset, assetDTO);
                     assetDTO.setTags(tagsMap.get(asset.getId()));
                     assetDTOs.add(assetDTO);
                 }
@@ -375,7 +375,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     private MaterialApplicationDTO convert(MaterialApplication application) {
         if (application == null) return null;
         MaterialApplicationDTO dto = new MaterialApplicationDTO();
-        BeanUtils.copyProperties(application, dto);
+        ConvertUtils.copyProperties(application, dto);
 
         logger.info("MaterialApplication.convert - applicationId: {}, title: {}", application.getId(), application.getTitle());
 
@@ -483,7 +483,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     private AssetDTO convertAsset(AssetDO assetDO) {
         if (assetDO == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(assetDO, dto);
+        ConvertUtils.copyProperties(assetDO, dto);
 
         // 填充标签
         AssetTagQuery tagQuery = new AssetTagQuery();
@@ -498,7 +498,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
                 List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
                 dto.setTags(tags.stream().map(tag -> {
                     com.xuanjiao.client.asset.TagDTO tagDTO = new com.xuanjiao.client.asset.TagDTO();
-                    BeanUtils.copyProperties(tag, tagDTO);
+                    ConvertUtils.copyProperties(tag, tagDTO);
                     return tagDTO;
                 }).collect(Collectors.toList()));
             }
@@ -517,7 +517,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     private AssetDTO convertAssetWithPreloadedTags(AssetDO assetDO, Map<Long, List<TagDO>> tagsMap) {
         if (assetDO == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(assetDO, dto);
+        ConvertUtils.copyProperties(assetDO, dto);
 
         // 使用预加载的标签
         if (tagsMap != null && tagsMap.containsKey(assetDO.getId())) {
@@ -525,7 +525,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             if (tags != null && !tags.isEmpty()) {
                 dto.setTags(tags.stream().map(tag -> {
                     com.xuanjiao.client.asset.TagDTO tagDTO = new com.xuanjiao.client.asset.TagDTO();
-                    BeanUtils.copyProperties(tag, tagDTO);
+                    ConvertUtils.copyProperties(tag, tagDTO);
                     return tagDTO;
                 }).collect(Collectors.toList()));
             }
@@ -566,7 +566,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         for (AssetDO originalAsset : originalAssets) {
             AssetDO newAsset = new AssetDO();
-            BeanUtils.copyProperties(originalAsset, newAsset);
+            ConvertUtils.copyProperties(originalAsset, newAsset);
             newAsset.setId(null);
             newAsset.setApplicationId(saved.getId());
             newAsset.setStatus("DRAFT");

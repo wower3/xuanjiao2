@@ -9,7 +9,7 @@ import com.xuanjiao.infrastructure.menu.MenuMapper;
 import com.xuanjiao.infrastructure.menu.MenuQuery;
 import com.xuanjiao.infrastructure.role.RoleMenuMapper;
 import com.xuanjiao.infrastructure.role.RoleMenuQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +58,7 @@ public class MenuServiceImpl implements MenuService {
     @Transactional
     public void save(MenuCmd cmd) {
         MenuDO menuDO = new MenuDO();
-        BeanUtils.copyProperties(cmd, menuDO);
+        ConvertUtils.copyProperties(cmd, menuDO);
         menuMapper.insert(menuDO);
     }
 
@@ -66,7 +66,7 @@ public class MenuServiceImpl implements MenuService {
     @Transactional
     public void update(MenuCmd cmd) {
         MenuDO menuDO = new MenuDO();
-        BeanUtils.copyProperties(cmd, menuDO);
+        ConvertUtils.copyProperties(cmd, menuDO);
         menuMapper.updateById(menuDO);
     }
 
@@ -168,7 +168,7 @@ public class MenuServiceImpl implements MenuService {
     private MenuDTO convert(MenuDO menuDO) {
         if (menuDO == null) return null;
         MenuDTO dto = new MenuDTO();
-        BeanUtils.copyProperties(menuDO, dto);
+        ConvertUtils.copyProperties(menuDO, dto);
         return dto;
     }
 }

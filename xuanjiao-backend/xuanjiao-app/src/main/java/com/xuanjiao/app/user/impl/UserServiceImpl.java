@@ -14,7 +14,7 @@ import com.xuanjiao.infrastructure.dept.DeptQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.user.UserQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -140,7 +140,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void create(UserDTO dto) {
         UserDO user = new UserDO();
-        BeanUtils.copyProperties(dto, user);
+        ConvertUtils.copyProperties(dto, user);
         // 默认密码123456，MD5加密
         user.setPassword(DigestUtil.md5Hex("123456"));
         user.setStatus(1);
@@ -250,7 +250,7 @@ public class UserServiceImpl implements UserService {
     private UserDTO convert(UserDO entity) {
         if (entity == null) return null;
         UserDTO dto = new UserDTO();
-        BeanUtils.copyProperties(entity, dto);
+        ConvertUtils.copyProperties(entity, dto);
 
         // 填充角色信息
         if (entity.getRoleId() != null) {

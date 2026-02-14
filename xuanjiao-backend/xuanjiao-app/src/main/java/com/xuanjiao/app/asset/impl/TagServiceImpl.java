@@ -5,7 +5,7 @@ import com.xuanjiao.client.asset.TagDTO;
 import com.xuanjiao.infrastructure.dataobject.TagDO;
 import com.xuanjiao.infrastructure.asset.TagMapper;
 import com.xuanjiao.infrastructure.asset.TagQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -68,7 +68,7 @@ public class TagServiceImpl implements TagService {
     private TagDTO convert(TagDO tagDO) {
         if (tagDO == null) return null;
         TagDTO dto = new TagDTO();
-        BeanUtils.copyProperties(tagDO, dto);
+        ConvertUtils.copyProperties(tagDO, dto);
         return dto;
     }
 }

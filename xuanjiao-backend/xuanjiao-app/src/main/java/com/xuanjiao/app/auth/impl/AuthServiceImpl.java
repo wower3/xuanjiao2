@@ -11,7 +11,7 @@ import com.xuanjiao.domain.user.entity.User;
 import com.xuanjiao.domain.user.repository.UserRepository;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 
@@ -54,7 +54,7 @@ public class AuthServiceImpl implements AuthService {
         LoginResultDTO result = new LoginResultDTO();
         result.setToken(token);
         UserDTO userDTO = new UserDTO();
-        BeanUtils.copyProperties(user, userDTO);
+        ConvertUtils.copyProperties(user, userDTO);
 
         // 填充角色信息
         if (user.getRoleId() != null) {

@@ -18,7 +18,7 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyQuery;
 import com.xuanjiao.infrastructure.usage.UsageApplyWithDetailsDO;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -432,7 +432,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     private UsageApplyDTO convert(UsageApply usageApply) {
         if (usageApply == null) return null;
         UsageApplyDTO dto = new UsageApplyDTO();
-        BeanUtils.copyProperties(usageApply, dto);
+        ConvertUtils.copyProperties(usageApply, dto);
 
         // 填充用户名称
         if (usageApply.getUserId() != null) {
@@ -470,7 +470,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     private UsageApplyDTO convertWithDetails(UsageApplyWithDetailsDO details) {
         if (details == null) return null;
         UsageApplyDTO dto = new UsageApplyDTO();
-        BeanUtils.copyProperties(details, dto);
+        ConvertUtils.copyProperties(details, dto);
 
         // 直接从JOIN结果获取申请人姓名，无需额外查询
         dto.setUsername(details.getApplicantName());

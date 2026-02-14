@@ -6,7 +6,7 @@ import com.xuanjiao.client.role.RoleDTO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.role.RoleQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.util.List;
@@ -56,7 +56,7 @@ public class RoleServiceImpl implements RoleService {
         validateRoleType(dto.getRoleType(), null);
 
         RoleDO role = new RoleDO();
-        BeanUtils.copyProperties(dto, role);
+        ConvertUtils.copyProperties(dto, role);
         role.setStatus(1);
         roleMapper.insert(role);
         // 分配菜单权限
@@ -70,7 +70,7 @@ public class RoleServiceImpl implements RoleService {
         // 校验 roleType 格式和唯一性（排除当前角色自身）
         validateRoleType(dto.getRoleType(), dto.getId());
         RoleDO role = new RoleDO();
-        BeanUtils.copyProperties(dto, role);
+        ConvertUtils.copyProperties(dto, role);
         roleMapper.updateById(role);
         // 更新菜单权限
         if (dto.getMenuIds() != null) {
@@ -96,7 +96,7 @@ public class RoleServiceImpl implements RoleService {
     private RoleDTO convert(RoleDO entity) {
         if (entity == null) return null;
         RoleDTO dto = new RoleDTO();
-        BeanUtils.copyProperties(entity, dto);
+        ConvertUtils.copyProperties(entity, dto);
         return dto;
     }
 

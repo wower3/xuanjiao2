@@ -20,7 +20,7 @@ import com.xuanjiao.infrastructure.workflow.StageApproverWithDetailsDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
@@ -123,7 +123,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional
     public WorkflowDTO save(WorkflowDTO dto) {
         WorkflowDO workflow = new WorkflowDO();
-        BeanUtils.copyProperties(dto, workflow);
+        ConvertUtils.copyProperties(dto, workflow);
         workflowMapper.insert(workflow);
         saveStages(workflow.getId(), dto.getStages());
         // 返回新创建的流程（包含ID）
@@ -134,7 +134,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional
     public void update(WorkflowDTO dto) {
         WorkflowDO workflow = new WorkflowDO();
-        BeanUtils.copyProperties(dto, workflow);
+        ConvertUtils.copyProperties(dto, workflow);
         workflowMapper.updateById(workflow);
         // 先查询旧的阶段ID
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
@@ -372,13 +372,13 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     private WorkflowDTO convert(WorkflowDO entity) {
         WorkflowDTO dto = new WorkflowDTO();
-        BeanUtils.copyProperties(entity, dto);
+        ConvertUtils.copyProperties(entity, dto);
         return dto;
     }
 
     private WorkflowStageDTO convertStage(WorkflowStageDO entity) {
         WorkflowStageDTO dto = new WorkflowStageDTO();
-        BeanUtils.copyProperties(entity, dto);
+        ConvertUtils.copyProperties(entity, dto);
         return dto;
     }
 
