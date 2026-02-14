@@ -245,3 +245,71 @@ ConvertUtils.copyProperties(source, target);
 2. **保留方法**：包含业务逻辑（如关联查询）的转换方法保留在原 Service 中，不抽到工具类。
 
 3. **Controller 层**：手动赋值方式暂不统一，保持现有代码风格。
+
+---
+
+## 八、实施步骤
+
+### 1. 创建 xuanjiao-common 模块
+
+```bash
+# 1.1 创建目录结构
+mkdir -p xuanjiao-backend/xuanjiao-common/src/main/java/com/xuanjiao/common
+
+# 1.2 创建 pom.xml（见上文）
+# 1.3 创建 ConvertUtils.java（见上文）
+```
+
+### 2. 修改父 pom.xml
+
+在 `<modules>` 中添加（放在最前面）：
+```xml
+<module>xuanjiao-common</module>
+```
+
+### 3. 添加模块依赖
+
+在 xuanjiao-app、xuanjiao-infrastructure 的 pom.xml 中添加：
+```xml
+<dependency>
+    <groupId>com.xuanjiao</groupId>
+    <artifactId>xuanjiao-common</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+### 4. 批量替换代码
+
+统一替换（21 个文件）：
+```java
+// 替换前
+import org.springframework.beans.BeanUtils;
+BeanUtils.copyProperties(source, target);
+
+// 替换后
+import com.xuanjiao.common.ConvertUtils;
+ConvertUtils.copyProperties(source, target);
+```
+
+## 九、验证规则
+
+### 1. 单元测试
+- 工具类必须编写单元测试
+- 覆盖主要场景：基本复制、忽略 null、包含 null、source 为 null、部分字段匹配
+
+### 2. 编译验证
+- 每完成一部分修改后，必须执行 `mvn compile` 验证编译通过
+- 确认编译通过后再提交 commit
+
+### 3. 提交规则
+- 按模块分批提交（如：App 层、Infrastructure 层）
+- 每批修改完成后立即提交 commit
+- 提交信息格式：`refactor: [模块] 使用 ConvertUtils 替换 BeanUtils`
+
+### 4. 本次实施记录
+
+| 步骤 | 内容 | Commit |
+|------|------|--------|
+| 1 | 创建 xuanjiao-common 模块 + 单元测试 | f55c3d8 |
+| 2 | App 层 12 个文件替换 | 57bc43c |
+| 3 | Infrastructure 层 8 个文件替换 | 927ae81 |
