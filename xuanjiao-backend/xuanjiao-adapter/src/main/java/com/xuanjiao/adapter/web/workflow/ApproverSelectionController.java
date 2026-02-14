@@ -1,11 +1,11 @@
 package com.xuanjiao.adapter.web.workflow;
 
 import com.xuanjiao.app.workflow.ApproverSelectionService;
-import com.xuanjiao.client.dto.ApprovalProgressDTO;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.workflow.WorkflowGetApprovalProgressQry;
-import com.xuanjiao.client.dto.workflow.WorkflowGetFirstStageApproversQry;
-import com.xuanjiao.client.dto.workflow.WorkflowGetSubWorkflowFirstStageApproversQry;
+import com.xuanjiao.client.ApprovalProgressDTO;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.workflow.WorkflowGetApprovalProgressQry;
+import com.xuanjiao.client.workflow.WorkflowGetFirstStageApproversQry;
+import com.xuanjiao.client.workflow.WorkflowGetSubWorkflowFirstStageApproversQry;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;

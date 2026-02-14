@@ -2,8 +2,8 @@ package com.xuanjiao.app.usage.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.app.usage.UsageLogService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageLogDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.UsageLogDTO;
 import com.xuanjiao.infrastructure.dataobject.UsageLogDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.usage.UsageLogMapper;

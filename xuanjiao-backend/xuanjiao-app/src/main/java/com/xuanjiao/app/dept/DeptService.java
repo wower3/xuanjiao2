@@ -1,6 +1,6 @@
 package com.xuanjiao.app.dept;
 
-import com.xuanjiao.client.dto.DeptDTO;
+import com.xuanjiao.client.DeptDTO;
 import java.util.List;
 
 /**

@@ -1,8 +1,8 @@
 package com.xuanjiao.app.user;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UserDTO;
-import com.xuanjiao.client.dto.user.UserGetListWithFilterQry;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.UserDTO;
+import com.xuanjiao.client.user.UserGetListWithFilterQry;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 
 import java.util.List;

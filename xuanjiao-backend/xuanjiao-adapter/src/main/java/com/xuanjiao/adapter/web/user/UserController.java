@@ -1,15 +1,15 @@
 package com.xuanjiao.adapter.web.user;
 
 import com.xuanjiao.app.user.UserService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.UserDTO;
-import com.xuanjiao.client.dto.user.UserCreateCmd;
-import com.xuanjiao.client.dto.user.UserDeleteCmd;
-import com.xuanjiao.client.dto.user.UserGetDefaultFilterDeptQry;
-import com.xuanjiao.client.dto.user.UserGetListQry;
-import com.xuanjiao.client.dto.user.UserGetListWithFilterQry;
-import com.xuanjiao.client.dto.user.UserUpdateCmd;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.UserDTO;
+import com.xuanjiao.client.user.UserCreateCmd;
+import com.xuanjiao.client.user.UserDeleteCmd;
+import com.xuanjiao.client.user.UserGetDefaultFilterDeptQry;
+import com.xuanjiao.client.user.UserGetListQry;
+import com.xuanjiao.client.user.UserGetListWithFilterQry;
+import com.xuanjiao.client.user.UserUpdateCmd;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;

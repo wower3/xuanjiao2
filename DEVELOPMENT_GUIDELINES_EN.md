@@ -125,7 +125,7 @@ xuanjiao-frontend/
 - Mapper Interface: `com.xuanjiao.infrastructure.{module}`
 - Repository Interface: `com.xuanjiao.domain.{module}.repository`
 - Entity: `com.xuanjiao.domain.{module}.entity`
-- DTO: `com.xuanjiao.client.dto` or `com.xuanjiao.client.dto.{module}`
+- DTO: `com.xuanjiao.client` or `com.xuanjiao.client.{module}`
 
 #### Class Naming
 - Controller: `{Module}Controller`

@@ -1,9 +1,9 @@
 package com.xuanjiao.app.usage;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageApplyCmd;
-import com.xuanjiao.client.dto.UsageApplyDTO;
-import com.xuanjiao.client.dto.UsageApplyQueryCmd;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.UsageApplyCmd;
+import com.xuanjiao.client.UsageApplyDTO;
+import com.xuanjiao.client.UsageApplyQueryCmd;
 
 /**
  * 素材使用申请服务接口

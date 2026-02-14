@@ -1,6 +1,6 @@
 package com.xuanjiao.app.asset;
 
-import com.xuanjiao.client.dto.TagDTO;
+import com.xuanjiao.client.TagDTO;
 
 import java.util.List;
 

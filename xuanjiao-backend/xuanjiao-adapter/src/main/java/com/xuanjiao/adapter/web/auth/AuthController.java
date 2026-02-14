@@ -1,10 +1,10 @@
 package com.xuanjiao.adapter.web.auth;
 
 import com.xuanjiao.app.auth.AuthService;
-import com.xuanjiao.client.dto.LoginCmd;
-import com.xuanjiao.client.dto.LoginResultDTO;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.auth.LogoutCmd;
+import com.xuanjiao.client.LoginCmd;
+import com.xuanjiao.client.LoginResultDTO;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.auth.LogoutCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;

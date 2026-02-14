@@ -1,16 +1,16 @@
 package com.xuanjiao.adapter.web.material;
 
 import com.xuanjiao.app.material.MaterialApplicationService;
-import com.xuanjiao.client.dto.MaterialApplicationCmd;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.material.MaterialApplicationCreateCmd;
-import com.xuanjiao.client.dto.material.MaterialApplicationDeleteCmd;
-import com.xuanjiao.client.dto.material.MaterialApplicationGetDetailQry;
-import com.xuanjiao.client.dto.material.MaterialApplicationGetDraftsQry;
-import com.xuanjiao.client.dto.material.MaterialApplicationGetMyApplicationsQry;
-import com.xuanjiao.client.dto.material.MaterialApplicationUpdateCmd;
+import com.xuanjiao.client.MaterialApplicationCmd;
+import com.xuanjiao.client.MaterialApplicationDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.material.MaterialApplicationCreateCmd;
+import com.xuanjiao.client.material.MaterialApplicationDeleteCmd;
+import com.xuanjiao.client.material.MaterialApplicationGetDetailQry;
+import com.xuanjiao.client.material.MaterialApplicationGetDraftsQry;
+import com.xuanjiao.client.material.MaterialApplicationGetMyApplicationsQry;
+import com.xuanjiao.client.material.MaterialApplicationUpdateCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;

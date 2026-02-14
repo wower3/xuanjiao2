@@ -1,8 +1,8 @@
 package com.xuanjiao.app.workflow;
 
 import com.xuanjiao.app.workflow.impl.WorkflowServiceImpl;
-import com.xuanjiao.client.dto.WorkflowDTO;
-import com.xuanjiao.client.dto.WorkflowStageDTO;
+import com.xuanjiao.client.WorkflowDTO;
+import com.xuanjiao.client.WorkflowStageDTO;
 import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
 import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;

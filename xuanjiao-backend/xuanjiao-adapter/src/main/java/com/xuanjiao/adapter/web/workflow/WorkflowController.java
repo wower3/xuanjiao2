@@ -1,15 +1,15 @@
 package com.xuanjiao.adapter.web.workflow;
 
 import com.xuanjiao.app.workflow.WorkflowService;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.WorkflowDTO;
-import com.xuanjiao.client.dto.workflow.WorkflowBindRoleCmd;
-import com.xuanjiao.client.dto.workflow.WorkflowDeleteCmd;
-import com.xuanjiao.client.dto.workflow.WorkflowGetDetailQry;
-import com.xuanjiao.client.dto.workflow.WorkflowGetListQry;
-import com.xuanjiao.client.dto.workflow.WorkflowUnbindRoleCmd;
-import com.xuanjiao.client.dto.workflow.WorkflowUpdateCmd;
-import com.xuanjiao.client.dto.workflow.WorkflowUpdateStatusCmd;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.WorkflowDTO;
+import com.xuanjiao.client.workflow.WorkflowBindRoleCmd;
+import com.xuanjiao.client.workflow.WorkflowDeleteCmd;
+import com.xuanjiao.client.workflow.WorkflowGetDetailQry;
+import com.xuanjiao.client.workflow.WorkflowGetListQry;
+import com.xuanjiao.client.workflow.WorkflowUnbindRoleCmd;
+import com.xuanjiao.client.workflow.WorkflowUpdateCmd;
+import com.xuanjiao.client.workflow.WorkflowUpdateStatusCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;

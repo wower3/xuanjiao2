@@ -125,7 +125,7 @@ xuanjiao-frontend/
 - Mapper 接口: `com.xuanjiao.infrastructure.{module}`
 - Repository 接口: `com.xuanjiao.domain.{module}.repository`
 - Entity: `com.xuanjiao.domain.{module}.entity`
-- DTO: `com.xuanjiao.client.dto` 或 `com.xuanjiao.client.dto.{module}`
+- DTO: `com.xuanjiao.client` 或 `com.xuanjiao.client.{module}`
 
 #### 类命名
 - Controller: `{Module}Controller`

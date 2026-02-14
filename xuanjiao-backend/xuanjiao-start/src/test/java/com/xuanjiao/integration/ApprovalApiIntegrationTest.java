@@ -1,8 +1,8 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.approval.ApprovalService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.approval.PendingTaskDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.approval.PendingTaskDTO;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.MethodOrderer;

@@ -1,7 +1,7 @@
 package com.xuanjiao.app.asset;
 
 import com.xuanjiao.app.asset.impl.AssetServiceImpl;
-import com.xuanjiao.client.dto.AssetDTO;
+import com.xuanjiao.client.AssetDTO;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.asset.AssetTagMapper;
@@ -105,7 +105,7 @@ public class AssetServiceImplTest {
                     return page;
                 });
 
-        com.xuanjiao.client.dto.PageResult<AssetDTO> result = assetService.getMyApprovedAssets("测试", "IMAGE", 1, 10, 1L);
+        com.xuanjiao.client.PageResult<AssetDTO> result = assetService.getMyApprovedAssets("测试", "IMAGE", 1, 10, 1L);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
@@ -136,7 +136,7 @@ public class AssetServiceImplTest {
                     return page;
                 });
 
-        com.xuanjiao.client.dto.PageResult<AssetDTO> result = assetService.getMyApprovedAssets(null, null, 1, 10, 1L);
+        com.xuanjiao.client.PageResult<AssetDTO> result = assetService.getMyApprovedAssets(null, null, 1, 10, 1L);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());

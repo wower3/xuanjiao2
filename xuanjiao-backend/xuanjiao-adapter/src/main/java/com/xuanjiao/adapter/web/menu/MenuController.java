@@ -1,16 +1,16 @@
 package com.xuanjiao.adapter.web.menu;
 
 import com.xuanjiao.app.menu.MenuService;
-import com.xuanjiao.client.dto.MenuCmd;
-import com.xuanjiao.client.dto.MenuDTO;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.menu.MenuCreateCmd;
-import com.xuanjiao.client.dto.menu.MenuDeleteCmd;
-import com.xuanjiao.client.dto.menu.MenuGetCurrentQry;
-import com.xuanjiao.client.dto.menu.MenuGetDetailQry;
-import com.xuanjiao.client.dto.menu.MenuGetRoleMenusQry;
-import com.xuanjiao.client.dto.menu.MenuGetTreeQry;
-import com.xuanjiao.client.dto.menu.MenuUpdateCmd;
+import com.xuanjiao.client.MenuCmd;
+import com.xuanjiao.client.MenuDTO;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.menu.MenuCreateCmd;
+import com.xuanjiao.client.menu.MenuDeleteCmd;
+import com.xuanjiao.client.menu.MenuGetCurrentQry;
+import com.xuanjiao.client.menu.MenuGetDetailQry;
+import com.xuanjiao.client.menu.MenuGetRoleMenusQry;
+import com.xuanjiao.client.menu.MenuGetTreeQry;
+import com.xuanjiao.client.menu.MenuUpdateCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;

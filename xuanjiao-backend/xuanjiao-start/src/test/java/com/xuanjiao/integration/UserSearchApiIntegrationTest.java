@@ -1,8 +1,8 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.user.UserService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.user.UserGetListWithFilterQry;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.user.UserGetListWithFilterQry;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;

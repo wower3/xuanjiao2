@@ -1,9 +1,9 @@
 package com.xuanjiao.app.approval;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.approval.FlowItemDTO;
-import com.xuanjiao.client.dto.approval.MyAppliedDTO;
-import com.xuanjiao.client.dto.approval.PendingTaskDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.approval.FlowItemDTO;
+import com.xuanjiao.client.approval.MyAppliedDTO;
+import com.xuanjiao.client.approval.PendingTaskDTO;
 
 import java.util.Map;
 

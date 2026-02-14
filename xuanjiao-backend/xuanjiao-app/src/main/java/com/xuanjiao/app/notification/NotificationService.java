@@ -1,16 +1,16 @@
 package com.xuanjiao.app.notification;
 
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.notification.BatchCreateNotificationCmd;
-import com.xuanjiao.client.dto.notification.BatchDeleteNotificationCmd;
-import com.xuanjiao.client.dto.notification.BatchMarkReadCmd;
-import com.xuanjiao.client.dto.notification.CreateNotificationCmd;
-import com.xuanjiao.client.dto.notification.DeleteNotificationCmd;
-import com.xuanjiao.client.dto.notification.GetNotificationRecordsQry;
-import com.xuanjiao.client.dto.notification.MarkReadCmd;
-import com.xuanjiao.client.dto.notification.NotificationDTO;
-import com.xuanjiao.client.dto.notification.NotificationPageQry;
-import com.xuanjiao.client.dto.notification.NotifyUsersCmd;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.notification.BatchCreateNotificationCmd;
+import com.xuanjiao.client.notification.BatchDeleteNotificationCmd;
+import com.xuanjiao.client.notification.BatchMarkReadCmd;
+import com.xuanjiao.client.notification.CreateNotificationCmd;
+import com.xuanjiao.client.notification.DeleteNotificationCmd;
+import com.xuanjiao.client.notification.GetNotificationRecordsQry;
+import com.xuanjiao.client.notification.MarkReadCmd;
+import com.xuanjiao.client.notification.NotificationDTO;
+import com.xuanjiao.client.notification.NotificationPageQry;
+import com.xuanjiao.client.notification.NotifyUsersCmd;
 import com.xuanjiao.infrastructure.notification.NotificationRecordDO;
 
 import java.util.List;

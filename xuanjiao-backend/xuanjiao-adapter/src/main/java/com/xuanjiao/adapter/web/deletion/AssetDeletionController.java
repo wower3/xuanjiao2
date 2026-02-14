@@ -1,14 +1,14 @@
 package com.xuanjiao.adapter.web.deletion;
 
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
-import com.xuanjiao.client.dto.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.deletion.DeletionDeleteCmd;
-import com.xuanjiao.client.dto.deletion.DeletionGetDetailQry;
-import com.xuanjiao.client.dto.deletion.DeletionGetMyApplicationsQry;
-import com.xuanjiao.client.dto.deletion.DeletionUpdateCmd;
+import com.xuanjiao.client.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.deletion.DeletionDeleteCmd;
+import com.xuanjiao.client.deletion.DeletionGetDetailQry;
+import com.xuanjiao.client.deletion.DeletionGetMyApplicationsQry;
+import com.xuanjiao.client.deletion.DeletionUpdateCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;

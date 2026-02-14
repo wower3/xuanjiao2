@@ -1,11 +1,11 @@
 package com.xuanjiao.adapter.web.usage;
 
 import com.xuanjiao.app.usage.UsageLogService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.UsageLogDTO;
-import com.xuanjiao.client.dto.log.LogGetAssetUsageLogsQry;
-import com.xuanjiao.client.dto.log.LogQueryLogsQry;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.UsageLogDTO;
+import com.xuanjiao.client.log.LogGetAssetUsageLogsQry;
+import com.xuanjiao.client.log.LogQueryLogsQry;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;

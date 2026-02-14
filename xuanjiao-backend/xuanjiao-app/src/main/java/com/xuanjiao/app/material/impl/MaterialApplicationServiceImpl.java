@@ -3,11 +3,11 @@ package com.xuanjiao.app.material.impl;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.asset.AssetService;
-import com.xuanjiao.client.dto.AssetDTO;
-import com.xuanjiao.client.dto.MaterialApplicationCmd;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.TagDTO;
+import com.xuanjiao.client.AssetDTO;
+import com.xuanjiao.client.MaterialApplicationCmd;
+import com.xuanjiao.client.MaterialApplicationDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.TagDTO;
 import com.xuanjiao.domain.material.entity.MaterialApplication;
 import com.xuanjiao.domain.material.repository.MaterialApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
@@ -496,7 +496,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             if (!tagIds.isEmpty()) {
                 List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
                 dto.setTags(tags.stream().map(tag -> {
-                    com.xuanjiao.client.dto.TagDTO tagDTO = new com.xuanjiao.client.dto.TagDTO();
+                    com.xuanjiao.client.TagDTO tagDTO = new com.xuanjiao.client.TagDTO();
                     BeanUtils.copyProperties(tag, tagDTO);
                     return tagDTO;
                 }).collect(Collectors.toList()));
@@ -523,7 +523,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             List<TagDO> tags = tagsMap.get(assetDO.getId());
             if (tags != null && !tags.isEmpty()) {
                 dto.setTags(tags.stream().map(tag -> {
-                    com.xuanjiao.client.dto.TagDTO tagDTO = new com.xuanjiao.client.dto.TagDTO();
+                    com.xuanjiao.client.TagDTO tagDTO = new com.xuanjiao.client.TagDTO();
                     BeanUtils.copyProperties(tag, tagDTO);
                     return tagDTO;
                 }).collect(Collectors.toList()));

@@ -1,14 +1,14 @@
 package com.xuanjiao.adapter.web.role;
 
 import com.xuanjiao.app.role.RoleService;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.RoleDTO;
-import com.xuanjiao.client.dto.role.RoleCreateCmd;
-import com.xuanjiao.client.dto.role.RoleDeleteCmd;
-import com.xuanjiao.client.dto.role.RoleGetDetailQry;
-import com.xuanjiao.client.dto.role.RoleGetListQry;
-import com.xuanjiao.client.dto.role.RoleGetRoleMenusQry;
-import com.xuanjiao.client.dto.role.RoleUpdateCmd;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.RoleDTO;
+import com.xuanjiao.client.role.RoleCreateCmd;
+import com.xuanjiao.client.role.RoleDeleteCmd;
+import com.xuanjiao.client.role.RoleGetDetailQry;
+import com.xuanjiao.client.role.RoleGetListQry;
+import com.xuanjiao.client.role.RoleGetRoleMenusQry;
+import com.xuanjiao.client.role.RoleUpdateCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;

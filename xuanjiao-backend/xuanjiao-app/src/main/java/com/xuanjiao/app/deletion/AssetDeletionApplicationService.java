@@ -1,8 +1,8 @@
 package com.xuanjiao.app.deletion;
 
-import com.xuanjiao.client.dto.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.PageResult;
 
 /**
  * 素材删除申请服务接口

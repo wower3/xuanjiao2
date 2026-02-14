@@ -1,13 +1,13 @@
 package com.xuanjiao.adapter.web.dept;
 
 import com.xuanjiao.app.dept.DeptService;
-import com.xuanjiao.client.dto.DeptDTO;
-import com.xuanjiao.client.dto.Result;
-import com.xuanjiao.client.dto.dept.DeptDeleteCmd;
-import com.xuanjiao.client.dto.dept.DeptGetDetailQry;
-import com.xuanjiao.client.dto.dept.DeptGetListQry;
-import com.xuanjiao.client.dto.dept.DeptGetTreeQry;
-import com.xuanjiao.client.dto.dept.DeptUpdateCmd;
+import com.xuanjiao.client.DeptDTO;
+import com.xuanjiao.client.Result;
+import com.xuanjiao.client.dept.DeptDeleteCmd;
+import com.xuanjiao.client.dept.DeptGetDetailQry;
+import com.xuanjiao.client.dept.DeptGetListQry;
+import com.xuanjiao.client.dept.DeptGetTreeQry;
+import com.xuanjiao.client.dept.DeptUpdateCmd;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -1,7 +1,7 @@
 package com.xuanjiao.app.asset;
 
 import com.xuanjiao.app.asset.impl.TagServiceImpl;
-import com.xuanjiao.client.dto.TagDTO;
+import com.xuanjiao.client.TagDTO;
 import com.xuanjiao.infrastructure.asset.TagMapper;
 import com.xuanjiao.infrastructure.asset.TagQuery;
 import com.xuanjiao.infrastructure.dataobject.TagDO;
