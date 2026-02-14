@@ -8,15 +8,13 @@
           <el-button type="primary" @click="$router.push('/workflow/design')">新建流程</el-button>
         </div>
       </template>
-      <el-form :inline="true">
-        <el-form-item label="流程类型">
-          <el-select v-model="typeFilter" placeholder="全部" clearable @change="loadData">
-            <el-option label="素材录入审批" value="ASSET_UPLOAD" />
-            <el-option label="素材使用审批" value="ASSET_USAGE" />
-            <el-option label="素材删除审批" value="ASSET_DELETION" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+      <div class="filter-bar">
+        <el-select v-model="typeFilter" placeholder="全部" clearable @change="loadData">
+          <el-option label="素材录入审批" value="ASSET_UPLOAD" />
+          <el-option label="素材使用审批" value="ASSET_USAGE" />
+          <el-option label="素材删除审批" value="ASSET_DELETION" />
+        </el-select>
+      </div>
       <el-table :data="list" v-loading="loading">
         <el-table-column prop="name" label="流程名称" />
         <el-table-column prop="description" label="描述" />
@@ -250,4 +248,6 @@ onMounted(() => {
 
 <style scoped>
 .header { display: flex; justify-content: space-between; align-items: center; }
+.filter-bar { margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.filter-bar .el-select { width: 160px; }
 </style>
