@@ -16,6 +16,10 @@
     <dependencies>
         <dependency>
             <groupId>com.xuanjiao</groupId>
+            <artifactId>xuanjiao-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.xuanjiao</groupId>
             <artifactId>xuanjiao-domain</artifactId>
         </dependency>
         <dependency>
