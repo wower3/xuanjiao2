@@ -1,8 +1,8 @@
 package com.xuanjiao.app.workflow;
 
-import com.xuanjiao.client.ApproverSelectionDTO;
-import com.xuanjiao.client.ApprovalProgressDTO;
-import com.xuanjiao.client.WorkflowDTO;
+import com.xuanjiao.client.workflow.ApproverSelectionDTO;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
+import com.xuanjiao.client.workflow.WorkflowDTO;
 
 import java.util.List;
 import java.util.Map;

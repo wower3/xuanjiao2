@@ -1,8 +1,8 @@
 package com.xuanjiao.app.menu;
 
 import com.xuanjiao.app.menu.impl.MenuServiceImpl;
-import com.xuanjiao.client.MenuCmd;
-import com.xuanjiao.client.MenuDTO;
+import com.xuanjiao.client.menu.MenuCmd;
+import com.xuanjiao.client.menu.MenuDTO;
 import com.xuanjiao.infrastructure.dataobject.MenuDO;
 import com.xuanjiao.infrastructure.menu.MenuMapper;
 import com.xuanjiao.infrastructure.menu.MenuQuery;

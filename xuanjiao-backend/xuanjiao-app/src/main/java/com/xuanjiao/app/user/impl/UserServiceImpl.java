@@ -4,7 +4,7 @@ import cn.hutool.crypto.digest.DigestUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.client.PageResult;
-import com.xuanjiao.client.UserDTO;
+import com.xuanjiao.client.user.UserDTO;
 import com.xuanjiao.client.user.UserGetListWithFilterQry;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;

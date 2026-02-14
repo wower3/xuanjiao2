@@ -2,7 +2,7 @@ package com.xuanjiao.adapter.web.asset;
 
 import com.xuanjiao.app.asset.TagService;
 import com.xuanjiao.client.Result;
-import com.xuanjiao.client.TagDTO;
+import com.xuanjiao.client.asset.TagDTO;
 import com.xuanjiao.client.asset.TagDeleteCmd;
 import com.xuanjiao.client.asset.TagGetListByCategoryQry;
 import com.xuanjiao.client.asset.TagGetListQry;

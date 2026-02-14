@@ -3,7 +3,7 @@ package com.xuanjiao.adapter.web.user;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.Result;
-import com.xuanjiao.client.UserDTO;
+import com.xuanjiao.client.user.UserDTO;
 import com.xuanjiao.client.user.UserCreateCmd;
 import com.xuanjiao.client.user.UserDeleteCmd;
 import com.xuanjiao.client.user.UserGetDefaultFilterDeptQry;

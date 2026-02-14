@@ -1,7 +1,7 @@
 package com.xuanjiao.app.material;
 
-import com.xuanjiao.client.MaterialApplicationCmd;
-import com.xuanjiao.client.MaterialApplicationDTO;
+import com.xuanjiao.client.material.MaterialApplicationCmd;
+import com.xuanjiao.client.material.MaterialApplicationDTO;
 import com.xuanjiao.client.PageResult;
 
 /**

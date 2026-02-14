@@ -1,4 +1,4 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.usage;
 
 import lombok.Data;
 import java.time.LocalDateTime;

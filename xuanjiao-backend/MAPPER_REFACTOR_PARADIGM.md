@@ -548,7 +548,7 @@ xuanjiao-app/src/test/java/com/xuanjiao/app/{module}/
 ```java
 package com.xuanjiao.app.user;
 
-import com.xuanjiao.client.UserDTO;
+import com.xuanjiao.client.user.UserDTO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.user.UserQuery;

@@ -3,7 +3,7 @@ package com.xuanjiao.adapter.web.usage;
 import com.xuanjiao.app.usage.UsageLogService;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.Result;
-import com.xuanjiao.client.UsageLogDTO;
+import com.xuanjiao.client.usage.UsageLogDTO;
 import com.xuanjiao.client.log.LogGetAssetUsageLogsQry;
 import com.xuanjiao.client.log.LogQueryLogsQry;
 import io.swagger.annotations.Api;

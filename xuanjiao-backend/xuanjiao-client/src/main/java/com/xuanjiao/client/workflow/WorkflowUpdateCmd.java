@@ -1,6 +1,6 @@
 package com.xuanjiao.client.workflow;
 
-import com.xuanjiao.client.WorkflowStageDTO;
+import com.xuanjiao.client.workflow.WorkflowStageDTO;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;

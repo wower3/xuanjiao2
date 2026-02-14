@@ -1,8 +1,8 @@
 package com.xuanjiao.adapter.web.auth;
 
 import com.xuanjiao.app.auth.AuthService;
-import com.xuanjiao.client.LoginCmd;
-import com.xuanjiao.client.LoginResultDTO;
+import com.xuanjiao.client.auth.LoginCmd;
+import com.xuanjiao.client.auth.LoginResultDTO;
 import com.xuanjiao.client.Result;
 import com.xuanjiao.client.auth.LogoutCmd;
 import io.swagger.annotations.Api;

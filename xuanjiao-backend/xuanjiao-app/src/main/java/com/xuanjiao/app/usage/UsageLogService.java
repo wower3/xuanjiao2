@@ -1,7 +1,7 @@
 package com.xuanjiao.app.usage;
 
 import com.xuanjiao.client.PageResult;
-import com.xuanjiao.client.UsageLogDTO;
+import com.xuanjiao.client.usage.UsageLogDTO;
 import java.util.Map;
 
 /**

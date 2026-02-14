@@ -1,4 +1,4 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.role;
 
 import lombok.Data;
 import java.util.List;

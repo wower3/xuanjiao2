@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
 import com.xuanjiao.app.approval.ApprovalService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.ApprovalProgressDTO;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.approval.FlowItemDTO;
 import com.xuanjiao.client.approval.MyAppliedDTO;

@@ -3,7 +3,7 @@ package com.xuanjiao.app.usage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.app.usage.impl.UsageLogServiceImpl;
 import com.xuanjiao.client.PageResult;
-import com.xuanjiao.client.UsageLogDTO;
+import com.xuanjiao.client.usage.UsageLogDTO;
 import com.xuanjiao.infrastructure.dataobject.UsageLogDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.usage.UsageLogMapper;

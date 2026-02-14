@@ -1,8 +1,8 @@
 package com.xuanjiao.adapter.web.deletion;
 
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
-import com.xuanjiao.client.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.deletion.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.deletion.AssetDeletionApplicationDTO;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.Result;
 import com.xuanjiao.client.deletion.DeletionDeleteCmd;

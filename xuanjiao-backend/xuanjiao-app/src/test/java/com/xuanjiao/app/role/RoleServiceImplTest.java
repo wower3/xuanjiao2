@@ -2,7 +2,7 @@ package com.xuanjiao.app.role;
 
 import com.xuanjiao.app.menu.MenuService;
 import com.xuanjiao.app.role.impl.RoleServiceImpl;
-import com.xuanjiao.client.RoleDTO;
+import com.xuanjiao.client.role.RoleDTO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.role.RoleQuery;

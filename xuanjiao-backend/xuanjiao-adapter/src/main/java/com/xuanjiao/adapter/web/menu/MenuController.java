@@ -1,8 +1,8 @@
 package com.xuanjiao.adapter.web.menu;
 
 import com.xuanjiao.app.menu.MenuService;
-import com.xuanjiao.client.MenuCmd;
-import com.xuanjiao.client.MenuDTO;
+import com.xuanjiao.client.menu.MenuCmd;
+import com.xuanjiao.client.menu.MenuDTO;
 import com.xuanjiao.client.Result;
 import com.xuanjiao.client.menu.MenuCreateCmd;
 import com.xuanjiao.client.menu.MenuDeleteCmd;

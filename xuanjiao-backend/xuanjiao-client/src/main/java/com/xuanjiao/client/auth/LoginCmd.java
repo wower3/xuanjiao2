@@ -1,4 +1,4 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.auth;
 
 import lombok.Data;
 import javax.validation.constraints.NotBlank;

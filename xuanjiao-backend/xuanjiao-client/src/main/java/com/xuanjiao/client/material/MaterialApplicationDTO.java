@@ -1,8 +1,10 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.material;
 
 import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.xuanjiao.client.asset.AssetDTO;
 
 /**
  * 素材录入申请数据传输对象

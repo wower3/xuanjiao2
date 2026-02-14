@@ -2,7 +2,7 @@ package com.xuanjiao.adapter.web.workflow;
 
 import com.xuanjiao.app.workflow.WorkflowService;
 import com.xuanjiao.client.Result;
-import com.xuanjiao.client.WorkflowDTO;
+import com.xuanjiao.client.workflow.WorkflowDTO;
 import com.xuanjiao.client.workflow.WorkflowBindRoleCmd;
 import com.xuanjiao.client.workflow.WorkflowDeleteCmd;
 import com.xuanjiao.client.workflow.WorkflowGetDetailQry;

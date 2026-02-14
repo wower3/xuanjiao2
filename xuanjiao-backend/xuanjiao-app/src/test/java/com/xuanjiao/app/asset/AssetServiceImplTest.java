@@ -1,7 +1,8 @@
 package com.xuanjiao.app.asset;
 
 import com.xuanjiao.app.asset.impl.AssetServiceImpl;
-import com.xuanjiao.client.AssetDTO;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
+import com.xuanjiao.client.asset.AssetDTO;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.asset.AssetTagMapper;

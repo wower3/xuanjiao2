@@ -1,7 +1,7 @@
 package com.xuanjiao.app.auth;
 
-import com.xuanjiao.client.LoginCmd;
-import com.xuanjiao.client.LoginResultDTO;
+import com.xuanjiao.client.auth.LoginCmd;
+import com.xuanjiao.client.auth.LoginResultDTO;
 
 /**
  * 认证服务接口

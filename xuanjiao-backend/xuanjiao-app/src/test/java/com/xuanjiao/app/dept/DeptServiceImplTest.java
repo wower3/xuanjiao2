@@ -1,7 +1,7 @@
 package com.xuanjiao.app.dept;
 
 import com.xuanjiao.app.dept.impl.DeptServiceImpl;
-import com.xuanjiao.client.DeptDTO;
+import com.xuanjiao.client.dept.DeptDTO;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.dept.DeptQuery;

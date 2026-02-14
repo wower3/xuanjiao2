@@ -1,4 +1,4 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.deletion;
 
 import java.time.LocalDateTime;
 import java.util.List;

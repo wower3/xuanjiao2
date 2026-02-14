@@ -1,4 +1,4 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.workflow;
 
 import lombok.Data;
 

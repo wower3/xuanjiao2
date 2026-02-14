@@ -2,8 +2,8 @@ package com.xuanjiao.integration;
 
 import com.xuanjiao.app.usage.UsageApplyService;
 import com.xuanjiao.client.PageResult;
-import com.xuanjiao.client.UsageApplyCmd;
-import com.xuanjiao.client.UsageApplyDTO;
+import com.xuanjiao.client.usage.UsageApplyCmd;
+import com.xuanjiao.client.usage.UsageApplyDTO;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.MethodOrderer;

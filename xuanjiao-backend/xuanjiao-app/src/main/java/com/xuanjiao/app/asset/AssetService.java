@@ -1,8 +1,9 @@
 package com.xuanjiao.app.asset;
 
-import com.xuanjiao.client.AssetDTO;
-import com.xuanjiao.client.AssetQueryCmd;
-import com.xuanjiao.client.AssetUploadCmd;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
+import com.xuanjiao.client.asset.AssetDTO;
+import com.xuanjiao.client.asset.AssetQueryCmd;
+import com.xuanjiao.client.asset.AssetUploadCmd;
 import com.xuanjiao.client.PageResult;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;

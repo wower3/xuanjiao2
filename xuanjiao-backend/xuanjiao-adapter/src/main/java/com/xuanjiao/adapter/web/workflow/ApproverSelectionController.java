@@ -1,7 +1,7 @@
 package com.xuanjiao.adapter.web.workflow;
 
 import com.xuanjiao.app.workflow.ApproverSelectionService;
-import com.xuanjiao.client.ApprovalProgressDTO;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
 import com.xuanjiao.client.Result;
 import com.xuanjiao.client.workflow.WorkflowGetApprovalProgressQry;
 import com.xuanjiao.client.workflow.WorkflowGetFirstStageApproversQry;

@@ -1,8 +1,8 @@
 package com.xuanjiao.adapter.web.material;
 
 import com.xuanjiao.app.material.MaterialApplicationService;
-import com.xuanjiao.client.MaterialApplicationCmd;
-import com.xuanjiao.client.MaterialApplicationDTO;
+import com.xuanjiao.client.material.MaterialApplicationCmd;
+import com.xuanjiao.client.material.MaterialApplicationDTO;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.Result;
 import com.xuanjiao.client.material.MaterialApplicationCreateCmd;

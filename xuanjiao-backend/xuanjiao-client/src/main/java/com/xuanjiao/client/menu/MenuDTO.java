@@ -1,20 +1,23 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.menu;
 
 import lombok.Data;
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * 菜单命令对象
+ * 菜单数据传输对象
  *
- * <p>封装创建或更新菜单所需的参数信息。</p>
+ * <p>用于在前后端之间传输菜单信息，支持树形结构展示。
+ * 包含菜单基本信息、路由配置和子菜单列表。</p>
  *
  * @author xuanjiao
  * @since 1.0.0
  */
 @Data
-public class MenuCmd {
+public class MenuDTO {
 
     /**
-     * 菜单ID（更新时必填）
+     * 菜单ID
      */
     private Long id;
 
@@ -57,4 +60,19 @@ public class MenuCmd {
      * 菜单状态（1-启用、0-禁用）
      */
     private Integer status;
+
+    /**
+     * 创建时间
+     */
+    private LocalDateTime createTime;
+
+    /**
+     * 更新时间
+     */
+    private LocalDateTime updateTime;
+
+    /**
+     * 子菜单列表（用于构建菜单树）
+     */
+    private List<MenuDTO> children;
 }

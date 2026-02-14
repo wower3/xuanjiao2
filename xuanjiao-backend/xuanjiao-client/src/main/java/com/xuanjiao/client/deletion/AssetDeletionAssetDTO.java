@@ -1,4 +1,4 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.deletion;
 
 /**
  * 素材删除申请-素材关联数据传输对象

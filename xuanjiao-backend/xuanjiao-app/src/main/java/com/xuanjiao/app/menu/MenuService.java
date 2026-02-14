@@ -1,7 +1,7 @@
 package com.xuanjiao.app.menu;
 
-import com.xuanjiao.client.MenuDTO;
-import com.xuanjiao.client.MenuCmd;
+import com.xuanjiao.client.menu.MenuDTO;
+import com.xuanjiao.client.menu.MenuCmd;
 
 import java.util.List;
 

@@ -1,9 +1,9 @@
 package com.xuanjiao.app.workflow.impl;
 
 import com.xuanjiao.app.workflow.WorkflowService;
-import com.xuanjiao.client.WorkflowDTO;
-import com.xuanjiao.client.WorkflowStageDTO;
-import com.xuanjiao.client.StageApproverDTO;
+import com.xuanjiao.client.workflow.WorkflowDTO;
+import com.xuanjiao.client.workflow.WorkflowStageDTO;
+import com.xuanjiao.client.workflow.StageApproverDTO;
 import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
 import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.dataobject.StageApproverDO;

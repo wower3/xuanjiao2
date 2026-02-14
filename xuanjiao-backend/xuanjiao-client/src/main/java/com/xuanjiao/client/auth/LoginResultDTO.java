@@ -1,6 +1,8 @@
-package com.xuanjiao.client;
+package com.xuanjiao.client.auth;
 
 import lombok.Data;
+
+import com.xuanjiao.client.user.UserDTO;
 
 /**
  * 登录结果数据传输对象
