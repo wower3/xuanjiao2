@@ -4,7 +4,7 @@ import com.xuanjiao.domain.log.entity.OperationLog;
 import com.xuanjiao.domain.log.repository.OperationLogRepository;
 import com.xuanjiao.infrastructure.dataobject.OperationLogDO;
 import com.xuanjiao.infrastructure.log.OperationLogMapper;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 
 import javax.annotation.Resource;
@@ -18,7 +18,7 @@ public class OperationLogRepositoryImpl implements OperationLogRepository {
     @Override
     public OperationLog save(OperationLog log) {
         OperationLogDO logDO = new OperationLogDO();
-        BeanUtils.copyProperties(log, logDO);
+        ConvertUtils.copyProperties(log, logDO);
         operationLogMapper.insert(logDO);
         log.setId(logDO.getId());
         return log;

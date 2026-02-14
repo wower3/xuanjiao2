@@ -3,7 +3,7 @@ package com.xuanjiao.infrastructure.user;
 import com.xuanjiao.domain.user.entity.User;
 import com.xuanjiao.domain.user.repository.UserRepository;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 import javax.annotation.Resource;
 
@@ -56,7 +56,7 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public void save(User user) {
         UserDO userDO = new UserDO();
-        BeanUtils.copyProperties(user, userDO);
+        ConvertUtils.copyProperties(user, userDO);
         userMapper.insert(userDO);
         user.setId(userDO.getId());
     }
@@ -69,7 +69,7 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public void update(User user) {
         UserDO userDO = new UserDO();
-        BeanUtils.copyProperties(user, userDO);
+        ConvertUtils.copyProperties(user, userDO);
         userMapper.updateById(userDO);
     }
 
@@ -84,7 +84,7 @@ public class UserRepositoryImpl implements UserRepository {
             return null;
         }
         User user = new User();
-        BeanUtils.copyProperties(userDO, user);
+        ConvertUtils.copyProperties(userDO, user);
         return user;
     }
 }

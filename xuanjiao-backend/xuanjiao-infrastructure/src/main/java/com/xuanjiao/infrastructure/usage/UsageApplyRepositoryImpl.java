@@ -8,7 +8,7 @@ import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyDO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -115,7 +115,7 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
     @Override
     public void save(UsageApply usageApply) {
         UsageApplyDO usageApplyDO = new UsageApplyDO();
-        BeanUtils.copyProperties(usageApply, usageApplyDO);
+        ConvertUtils.copyProperties(usageApply, usageApplyDO);
         // 显式设置deleted字段，确保不为NULL
         usageApplyDO.setDeleted(0);
         usageApplyMapper.insert(usageApplyDO);
@@ -125,7 +125,7 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
     @Override
     public void update(UsageApply usageApply) {
         UsageApplyDO usageApplyDO = new UsageApplyDO();
-        BeanUtils.copyProperties(usageApply, usageApplyDO);
+        ConvertUtils.copyProperties(usageApply, usageApplyDO);
         usageApplyMapper.updateById(usageApplyDO);
     }
 
@@ -139,7 +139,7 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
     private UsageApply convert(UsageApplyDO usageApplyDO) {
         if (usageApplyDO == null) return null;
         UsageApply usageApply = new UsageApply();
-        BeanUtils.copyProperties(usageApplyDO, usageApply);
+        ConvertUtils.copyProperties(usageApplyDO, usageApply);
         return usageApply;
     }
 

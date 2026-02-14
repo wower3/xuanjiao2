@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.domain.asset.entity.Asset;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
@@ -158,7 +158,7 @@ public class AssetRepositoryImpl implements AssetRepository {
     @Override
     public void save(Asset asset) {
         AssetDO assetDO = new AssetDO();
-        BeanUtils.copyProperties(asset, assetDO);
+        ConvertUtils.copyProperties(asset, assetDO);
         assetMapper.insert(assetDO);
         asset.setId(assetDO.getId());
     }
@@ -171,7 +171,7 @@ public class AssetRepositoryImpl implements AssetRepository {
     @Override
     public void update(Asset asset) {
         AssetDO assetDO = new AssetDO();
-        BeanUtils.copyProperties(asset, assetDO);
+        ConvertUtils.copyProperties(asset, assetDO);
         assetMapper.updateById(assetDO);
     }
 
@@ -196,7 +196,7 @@ public class AssetRepositoryImpl implements AssetRepository {
             return null;
         }
         Asset asset = new Asset();
-        BeanUtils.copyProperties(assetDO, asset);
+        ConvertUtils.copyProperties(assetDO, asset);
         return asset;
     }
 }
