@@ -39,6 +39,11 @@ public class MyAppliedDTO {
     private Long businessId;
 
     /**
+     * 申请单ID（与businessId相同，用于前端兼容）
+     */
+    private Long applicationId;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;

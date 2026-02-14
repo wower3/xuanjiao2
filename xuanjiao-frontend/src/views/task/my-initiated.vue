@@ -195,14 +195,15 @@ async function handleCopyApplication(row: any) {
     let targetPage = ''
 
     // 根据工单类型调用不同的复制 API
+    // 注意：使用applicationId（业务申请单ID），而不是id（审批实例ID）
     if (row.businessType === 'MATERIAL_ENTRY') {
-      newApplicationId = await copyApplication(row.applicationId || row.id)
+      newApplicationId = await copyApplication(row.applicationId)
       targetPage = '素材录入'
     } else if (row.businessType === 'ASSET_USAGE') {
-      newApplicationId = await copyUsageApplication(row.applicationId || row.id)
+      newApplicationId = await copyUsageApplication(row.applicationId)
       targetPage = '素材使用'
     } else if (row.businessType === 'ASSET_DELETION') {
-      newApplicationId = await copyDeletionApplication(row.applicationId || row.id)
+      newApplicationId = await copyDeletionApplication(row.applicationId)
       targetPage = '素材删除'
     } else {
       ElMessage.error('不支持的工单类型')

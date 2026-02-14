@@ -183,7 +183,7 @@ public class AssetServiceImpl implements AssetService {
                 }
             }
 
-            return convert(asset);
+            return convertWithTags(asset);
         } catch (IOException e) {
             throw new RuntimeException("文件上传失败", e);
         }

@@ -19,7 +19,12 @@ import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
 import com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO;
 import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.AssetTagDO;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
+import com.xuanjiao.infrastructure.dataobject.TagDO;
+import com.xuanjiao.infrastructure.asset.TagMapper;
+import com.xuanjiao.infrastructure.asset.AssetTagMapper;
+import com.xuanjiao.infrastructure.asset.AssetTagQuery;
 import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
@@ -110,6 +115,12 @@ public class ApprovalServiceImpl implements ApprovalService {
     private AssetDeletionApplicationMapper assetDeletionApplicationMapper;
     @Resource
     private AssetDeletionAssetMapper assetDeletionAssetMapper;
+
+    @Resource
+    private AssetTagMapper assetTagMapper;
+
+    @Resource
+    private TagMapper tagMapper;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -233,6 +244,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         dto.setStatus(item.getStatus());
         dto.setBusinessType(item.getBusinessType());
         dto.setBusinessId(item.getBusinessId());
+        dto.setApplicationId(item.getBusinessId()); // 与businessId相同，用于前端兼容
         dto.setCreateTime(item.getCreateTime());
         dto.setApplicantId(item.getApplicantId());
         dto.setApplicantName(item.getApplicantName());
@@ -414,6 +426,33 @@ public class ApprovalServiceImpl implements ApprovalService {
                     map.put("assetStatus", firstAsset.getStatus());
                     map.put("assetCount", assets.size()); // 素材数量
 
+                    // 批量查询素材标签
+                    List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+                    List<AssetTagDO> assetTags = assetTagMapper.selectByAssetIds(assetIds);
+
+                    // 批量查询标签详情
+                    List<Long> tagIds = assetTags.stream()
+                        .map(AssetTagDO::getTagId)
+                        .distinct()
+                        .collect(Collectors.toList());
+                    List<TagDO> tags = tagIds.isEmpty() ? new ArrayList<>() : tagMapper.selectBatchIds(tagIds);
+
+                    // 转换为 Map 以便快速查找
+                    Map<Long, TagDO> tagMap = tags.stream()
+                        .collect(Collectors.toMap(TagDO::getId, t -> t));
+
+                    // 按素材ID分组标签
+                    Map<Long, List<Map<String, Object>>> tagsMap = assetTags.stream()
+                        .collect(Collectors.groupingBy(AssetTagDO::getAssetId,
+                            Collectors.mapping(tag -> {
+                                Map<String, Object> tagInfo = new HashMap<>();
+                                TagDO tagDetail = tagMap.get(tag.getTagId());
+                                tagInfo.put("id", tagDetail.getId());
+                                tagInfo.put("name", tagDetail.getName());
+                                return tagInfo;
+                            },
+                            Collectors.toList())));
+
                     // 构建素材列表（包含完整信息）
                     List<Map<String, Object>> assetList = new ArrayList<>();
                     for (AssetDO asset : assets) {
@@ -429,6 +468,8 @@ public class ApprovalServiceImpl implements ApprovalService {
                         // 申请单填写信息
                         assetInfo.put("description", asset.getDescription());
                         assetInfo.put("publishChannel", asset.getPublishChannel());
+                        // 添加标签
+                        assetInfo.put("tags", tagsMap.getOrDefault(asset.getId(), new ArrayList<>()));
                         // 附件文件路径
                         assetInfo.put("copyrightFilePath", asset.getCopyrightFilePath());
                         assetList.add(assetInfo);
