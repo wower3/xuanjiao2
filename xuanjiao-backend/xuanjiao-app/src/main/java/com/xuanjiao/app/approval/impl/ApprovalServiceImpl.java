@@ -375,8 +375,6 @@ public class ApprovalServiceImpl implements ApprovalService {
             dto.setBusinessName(item.getMaterialApplicationTitle());
             dto.setAssetCount(item.getAssetCount());
             dto.setAssetType(item.getAssetType());
-        } else if ("ASSET".equals(item.getBusinessType())) {
-            // 素材类型，直接使用businessName
         } else if ("ASSET_USAGE".equals(item.getBusinessType())) {
             dto.setApplicationId(item.getUsageApplyId());
             dto.setApplicationTitle(item.getUsageApplyTitle());
@@ -476,17 +474,6 @@ public class ApprovalServiceImpl implements ApprovalService {
                     }
                     map.put("assetList", assetList);
                 }
-            }
-        } else if ("ASSET".equals(instance.getBusinessType())) {
-            AssetDO asset = assetMapper.selectById(instance.getBusinessId());
-            if (asset != null) {
-                map.put("businessName", asset.getName());
-                // 业务详情
-                map.put("assetType", asset.getType());
-                map.put("assetStatus", asset.getStatus());
-                map.put("filePath", asset.getFilePath());
-                map.put("thumbnailPath", asset.getThumbnailPath());
-                map.put("fileSize", asset.getFileSize());
             }
         } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
             // 通过中间表查询关联的素材
@@ -826,12 +813,7 @@ public class ApprovalServiceImpl implements ApprovalService {
             }
 
             // 获取业务名称和申请人信息
-            if ("ASSET".equals(instance.getBusinessType())) {
-                AssetDO asset = assetMapper.selectById(instance.getBusinessId());
-                if (asset != null) {
-                    result.put("businessName", asset.getName());
-                }
-            } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
+            if ("ASSET_USAGE".equals(instance.getBusinessType())) {
                 // 通过中间表查询关联的素材
                 List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
                 if (applyAssets != null && !applyAssets.isEmpty()) {

@@ -25,11 +25,6 @@ public interface UsageApplyMapper {
     UsageApplyDO selectById(@Param("id") Long id);
 
     /**
-     * 自定义查询：根据素材ID和用户ID查询
-     */
-    UsageApplyDO selectByAssetAndUser(@Param("assetId") Long assetId, @Param("userId") Long userId, @Param("status") String status);
-
-    /**
      * 动态条件查询列表
      */
     List<UsageApplyDO> selectList(UsageApplyQuery query);

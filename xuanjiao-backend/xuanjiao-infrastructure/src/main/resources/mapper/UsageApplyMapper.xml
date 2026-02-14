@@ -191,19 +191,6 @@
         </choose>
     </select>
 
-    <!-- 自定义查询：根据素材ID和用户ID查询 -->
-    <select id="selectByAssetAndUser" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM usage_apply
-        <where>
-            asset_id = #{assetId}
-            AND user_id = #{userId}
-            AND status = #{status}
-            AND deleted = 0
-        </where>
-        LIMIT 1
-    </select>
-
     <!-- 插入 -->
     <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.UsageApplyDO"
             useGeneratedKeys="true" keyProperty="id">
