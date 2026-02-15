@@ -6,7 +6,6 @@ import com.xuanjiao.client.user.UserGetListWithFilterQry;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -151,5 +150,5 @@ public interface UserService {
      * @param qry 查询条件，包含角色ID列表、部门ID、关键词、分页参数等
      * @return 分页结果，包含用户基本信息、角色信息、部门信息
      */
-    PageResult<Map<String, Object>> searchUsers(Long userId, UserGetListWithFilterQry qry);
+    PageResult<UserDTO> searchUsers(Long userId, UserGetListWithFilterQry qry);
 }

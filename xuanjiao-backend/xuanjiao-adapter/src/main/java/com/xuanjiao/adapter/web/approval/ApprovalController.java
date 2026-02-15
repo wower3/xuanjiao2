@@ -12,6 +12,8 @@ import com.xuanjiao.client.approval.ApprovalGetMyAppliedQry;
 import com.xuanjiao.client.approval.ApprovalGetMyFlowItemsQry;
 import com.xuanjiao.client.approval.ApprovalGetMyTasksQry;
 import com.xuanjiao.client.approval.ApprovalGetTaskDetailQry;
+import com.xuanjiao.client.approval.InstanceDetailDTO;
+import com.xuanjiao.client.approval.TaskDetailDTO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -172,7 +174,7 @@ public class ApprovalController {
      */
     @ApiOperation("获取审批任务详情")
     @PostMapping("/getTaskDetail")
-    public Result<Map<String, Object>> getTaskDetail(@Valid @RequestBody ApprovalGetTaskDetailQry qry) {
+    public Result<TaskDetailDTO> getTaskDetail(@Valid @RequestBody ApprovalGetTaskDetailQry qry) {
         return Result.success(approvalService.getTaskDetail(qry.getId()));
     }
 
@@ -187,7 +189,7 @@ public class ApprovalController {
      */
     @ApiOperation("获取审批实例详情")
     @PostMapping("/getInstanceDetail")
-    public Result<Map<String, Object>> getInstanceDetail(@Valid @RequestBody ApprovalGetInstanceDetailQry qry) {
+    public Result<InstanceDetailDTO> getInstanceDetail(@Valid @RequestBody ApprovalGetInstanceDetailQry qry) {
         return Result.success(approvalService.getInstanceDetail(qry.getId()));
     }
 

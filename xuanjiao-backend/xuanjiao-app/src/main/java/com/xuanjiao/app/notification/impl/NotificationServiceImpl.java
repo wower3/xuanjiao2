@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +90,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> getNotificationPageWithWorkOrder(NotificationPageQry qry) {
+    public PageResult<NotificationDTO> getNotificationPageWithWorkOrder(NotificationPageQry qry) {
         Notification query = new Notification();
         query.setRecipientId(qry.getRecipientId());
         query.setNotificationType(qry.getNotificationType());
@@ -97,8 +98,13 @@ public class NotificationServiceImpl implements NotificationService {
         query.setSourceType(qry.getSourceType());
 
         int offset = (qry.getPageNum() - 1) * qry.getPageSize();
-        List<Map<String, Object>> list = notificationRepository.selectPageWithWorkOrder(query, offset, qry.getPageSize(), qry.getKeyword());
+        List<Map<String, Object>> mapList = notificationRepository.selectPageWithWorkOrder(query, offset, qry.getPageSize(), qry.getKeyword());
         long total = notificationRepository.selectCountWithKeyword(query, qry.getKeyword());
+
+        // 将 Map 转换为 NotificationDTO
+        List<NotificationDTO> list = mapList.stream()
+                .map(this::convertMapToDTO)
+                .collect(Collectors.toList());
 
         return PageResult.of(list, total, qry.getPageNum(), qry.getPageSize());
     }
@@ -235,6 +241,77 @@ public class NotificationServiceImpl implements NotificationService {
         } catch (Exception e) {
             return new HashMap<>();
         }
+    }
+
+    /**
+     * 将Map转换为NotificationDTO（包含工单信息）
+     */
+    private NotificationDTO convertMapToDTO(Map<String, Object> map) {
+        if (map == null) {
+            return null;
+        }
+        NotificationDTO dto = new NotificationDTO();
+        // 基础字段
+        dto.setId(getLongValue(map, "id"));
+        dto.setTitle((String) map.get("title"));
+        dto.setContent((String) map.get("content"));
+        dto.setNotificationType((String) map.get("notificationType"));
+        dto.setSourceType((String) map.get("sourceType"));
+        dto.setSourceId(getLongValue(map, "sourceId"));
+        dto.setSenderId(getLongValue(map, "senderId"));
+        dto.setSenderName((String) map.get("senderName"));
+        dto.setRecipientId(getLongValue(map, "recipientId"));
+        dto.setIsRead(getIntegerValue(map, "isRead"));
+        dto.setReadTime(getLocalDateTimeValue(map, "readTime"));
+        dto.setCreateTime(getLocalDateTimeValue(map, "createTime"));
+        // 类型文本
+        dto.setNotificationTypeText((String) map.get("notificationTypeText"));
+        dto.setSourceTypeText((String) map.get("sourceTypeText"));
+        // 工单相关字段
+        dto.setInstanceId(getLongValue(map, "instanceId"));
+        dto.setInstanceStatus((String) map.get("instanceStatus"));
+        dto.setWorkflowId(getLongValue(map, "workflowId"));
+        dto.setWorkflowName((String) map.get("workflowName"));
+        dto.setApplicantId(getLongValue(map, "applicantId"));
+        dto.setApplicantName((String) map.get("applicantName"));
+        dto.setBusinessTitle((String) map.get("businessTitle"));
+        dto.setDisplayWorkOrderId((String) map.get("displayWorkOrderId"));
+        dto.setDisplayTitle((String) map.get("displayTitle"));
+        dto.setStatusText((String) map.get("statusText"));
+        return dto;
+    }
+
+    private Long getLongValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return null;
+    }
+
+    private Integer getIntegerValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return null;
+    }
+
+    private LocalDateTime getLocalDateTimeValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof LocalDateTime) {
+            return (LocalDateTime) value;
+        }
+        return null;
     }
 
     /**

@@ -12,9 +12,7 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import javax.annotation.Resource;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -59,7 +57,7 @@ public class UsageLogServiceImpl implements UsageLogService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> query(String action, int pageNum, int pageSize) {
+    public PageResult<UsageLogDTO> query(String action, int pageNum, int pageSize) {
         UsageLogQuery query = new UsageLogQuery();
         if (StringUtils.hasText(action)) {
             query.setAction(action);
@@ -67,7 +65,7 @@ public class UsageLogServiceImpl implements UsageLogService {
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
         Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
-        List<Map<String, Object>> list = page.getRecords().stream().map(this::toMap).collect(Collectors.toList());
+        List<UsageLogDTO> list = page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
     }
 
@@ -81,17 +79,6 @@ public class UsageLogServiceImpl implements UsageLogService {
         Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<UsageLogDTO> list = page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
-    }
-
-    private Map<String, Object> toMap(UsageLogDO log) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", log.getId());
-        map.put("assetId", log.getAssetId());
-        map.put("userId", log.getUserId());
-        map.put("action", log.getAction());
-        map.put("ip", log.getIp());
-        map.put("createTime", log.getCreateTime());
-        return map;
     }
 
     private UsageLogDTO toDTO(UsageLogDO log) {

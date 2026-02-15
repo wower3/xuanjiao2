@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -146,7 +145,7 @@ public class UserController {
      */
     @ApiOperation("搜索用户（支持角色/部门/姓名筛选，带分页）")
     @PostMapping("/search")
-    public Result<PageResult<Map<String, Object>>> searchUsers(
+    public Result<PageResult<UserDTO>> searchUsers(
             @RequestAttribute(value = "userId", required = false) Long userId,
             @Valid @RequestBody UserGetListWithFilterQry qry) {
         return Result.success(userService.searchUsers(userId, qry));

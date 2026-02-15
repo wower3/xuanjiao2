@@ -1,6 +1,9 @@
 package com.xuanjiao.client.workflow;
 
+import com.xuanjiao.client.user.UserDTO;
 import lombok.Data;
+
+import java.util.List;
 
 /**
  * 阶段审批人数据传输对象
@@ -40,6 +43,11 @@ public class StageApproverDTO {
     private String approverName;
 
     /**
+     * 审批人类型名称（如：指定用户、指定角色、指定部门）
+     */
+    private String approverTypeName;
+
+    /**
      * 是否校验二级部门
      *
      * <p>仅当approver_type=ROLE时有效：0-否，1-是</p>
@@ -57,4 +65,9 @@ public class StageApproverDTO {
      * 子流程名称（前端显示用）
      */
     private String subWorkflowName;
+
+    /**
+     * 可选用户列表（仅在任务详情接口中使用）
+     */
+    private List<UserDTO> availableUsers;
 }

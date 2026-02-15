@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.validation.Valid;
-import java.util.Map;
 
 /**
  * 使用日志控制器
@@ -57,7 +56,7 @@ public class UsageLogController {
      */
     @ApiOperation("查询日志")
     @PostMapping("/queryLogs")
-    public Result<PageResult<Map<String, Object>>> list(@Valid @RequestBody LogQueryLogsQry qry) {
+    public Result<PageResult<UsageLogDTO>> list(@Valid @RequestBody LogQueryLogsQry qry) {
         return Result.success(logService.query(qry.getAction(), qry.getPageNum(), qry.getPageSize()));
     }
 

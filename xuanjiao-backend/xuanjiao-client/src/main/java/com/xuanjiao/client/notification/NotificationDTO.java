@@ -85,4 +85,56 @@ public class NotificationDTO {
      * 来源类型文本（前端显示用，通过Service转换后填充）
      */
     private String sourceTypeText;
+
+    // ========== 工单相关字段 ==========
+
+    /**
+     * 审批实例ID
+     */
+    private Long instanceId;
+
+    /**
+     * 审批实例状态
+     */
+    private String instanceStatus;
+
+    /**
+     * 流程定义ID
+     */
+    private Long workflowId;
+
+    /**
+     * 流程名称
+     */
+    private String workflowName;
+
+    /**
+     * 申请人ID
+     */
+    private Long applicantId;
+
+    /**
+     * 申请人姓名
+     */
+    private String applicantName;
+
+    /**
+     * 业务标题（素材名称/使用申请标题等）
+     */
+    private String businessTitle;
+
+    /**
+     * 显示用的工单ID
+     */
+    private String displayWorkOrderId;
+
+    /**
+     * 显示用的标题
+     */
+    private String displayTitle;
+
+    /**
+     * 状态文本（通过Service转换后填充）
+     */
+    private String statusText;
 }
