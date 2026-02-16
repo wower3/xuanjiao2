@@ -2,6 +2,7 @@ package com.xuanjiao.integration;
 
 import com.xuanjiao.app.approval.ApprovalService;
 import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.approval.InstanceDetailDTO;
 import com.xuanjiao.client.approval.PendingTaskDTO;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ public class ApprovalApiIntegrationTest {
             return;
         }
 
-        Map<String, Object> result = approvalService.getInstanceDetail(instanceId);
+        InstanceDetailDTO result = approvalService.getInstanceDetail(instanceId);
         assertNotNull(result);
         System.out.println("✓ Approval API: getInstanceDetail - instanceId=" + instanceId);
     }

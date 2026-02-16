@@ -110,9 +110,9 @@
           </el-descriptions>
 
           <!-- 素材列表 -->
-          <div v-if="taskDetail.assetList && taskDetail.assetList.length > 0" style="margin-top: 15px">
+          <div v-if="taskDetail.assets && taskDetail.assets.length > 0" style="margin-top: 15px">
             <div class="asset-list-header">素材清单</div>
-            <el-table :data="taskDetail.assetList" size="small" border>
+            <el-table :data="taskDetail.assets" size="small" border>
               <el-table-column prop="id" label="素材ID" width="80" />
               <el-table-column prop="name" label="素材名称" min-width="150" />
               <el-table-column prop="type" label="类型" width="80" />

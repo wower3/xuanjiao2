@@ -66,9 +66,6 @@ public class TagServiceImpl implements TagService {
     }
 
     private TagDTO convert(TagDO tagDO) {
-        if (tagDO == null) return null;
-        TagDTO dto = new TagDTO();
-        ConvertUtils.copyProperties(tagDO, dto);
-        return dto;
+        return ConvertUtils.copyProperties(tagDO, TagDTO.class);
     }
 }

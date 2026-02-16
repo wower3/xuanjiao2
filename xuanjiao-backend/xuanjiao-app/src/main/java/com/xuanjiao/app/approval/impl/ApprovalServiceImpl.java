@@ -530,7 +530,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                         assetInfo.put("copyrightFilePath", asset.getCopyrightFilePath());
                         assetList.add(assetInfo);
                     }
-                    map.put("assetList", assetList);
+                    map.put("assets", assetList);
                 }
             }
         } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
@@ -591,7 +591,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                             assetList.add(assetInfo);
                         }
                     }
-                    map.put("assetList", assetList);
+                    map.put("assets", assetList);
                 }
             }
         }

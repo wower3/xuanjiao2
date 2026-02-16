@@ -70,15 +70,10 @@ public class UsageApplyAssetRepositoryImpl implements UsageApplyAssetRepository 
     }
 
     private UsageApplyAsset convert(UsageApplyAssetDO usageApplyAssetDO) {
-        if (usageApplyAssetDO == null) return null;
-        UsageApplyAsset usageApplyAsset = new UsageApplyAsset();
-        ConvertUtils.copyProperties(usageApplyAssetDO, usageApplyAsset);
-        return usageApplyAsset;
+        return ConvertUtils.copyProperties(usageApplyAssetDO, UsageApplyAsset.class);
     }
 
     private UsageApplyAssetDO convertToDO(UsageApplyAsset usageApplyAsset) {
-        UsageApplyAssetDO usageApplyAssetDO = new UsageApplyAssetDO();
-        ConvertUtils.copyProperties(usageApplyAsset, usageApplyAssetDO);
-        return usageApplyAssetDO;
+        return ConvertUtils.copyProperties(usageApplyAsset, UsageApplyAssetDO.class);
     }
 }

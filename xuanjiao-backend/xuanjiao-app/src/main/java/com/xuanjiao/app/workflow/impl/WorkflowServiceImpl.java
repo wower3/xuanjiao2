@@ -371,15 +371,11 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     private WorkflowDTO convert(WorkflowDO entity) {
-        WorkflowDTO dto = new WorkflowDTO();
-        ConvertUtils.copyProperties(entity, dto);
-        return dto;
+        return ConvertUtils.copyProperties(entity, WorkflowDTO.class);
     }
 
     private WorkflowStageDTO convertStage(WorkflowStageDO entity) {
-        WorkflowStageDTO dto = new WorkflowStageDTO();
-        ConvertUtils.copyProperties(entity, dto);
-        return dto;
+        return ConvertUtils.copyProperties(entity, WorkflowStageDTO.class);
     }
 
     private StageApproverDTO convertApprover(StageApproverDO entity) {

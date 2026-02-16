@@ -137,10 +137,7 @@ public class UsageApplyRepositoryImpl implements UsageApplyRepository {
     }
 
     private UsageApply convert(UsageApplyDO usageApplyDO) {
-        if (usageApplyDO == null) return null;
-        UsageApply usageApply = new UsageApply();
-        ConvertUtils.copyProperties(usageApplyDO, usageApply);
-        return usageApply;
+        return ConvertUtils.copyProperties(usageApplyDO, UsageApply.class);
     }
 
     private void loadAssets(UsageApply usageApply) {

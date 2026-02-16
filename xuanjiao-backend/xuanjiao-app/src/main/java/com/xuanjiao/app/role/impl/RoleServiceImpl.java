@@ -94,10 +94,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     private RoleDTO convert(RoleDO entity) {
-        if (entity == null) return null;
-        RoleDTO dto = new RoleDTO();
-        ConvertUtils.copyProperties(entity, dto);
-        return dto;
+        return ConvertUtils.copyProperties(entity, RoleDTO.class);
     }
 
     /**

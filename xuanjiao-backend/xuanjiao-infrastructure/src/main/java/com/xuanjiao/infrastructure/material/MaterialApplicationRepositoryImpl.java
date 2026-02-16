@@ -78,9 +78,6 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
     }
 
     private MaterialApplication convert(MaterialApplicationDO applicationDO) {
-        if (applicationDO == null) return null;
-        MaterialApplication application = new MaterialApplication();
-        ConvertUtils.copyProperties(applicationDO, application);
-        return application;
+        return ConvertUtils.copyProperties(applicationDO, MaterialApplication.class);
     }
 }

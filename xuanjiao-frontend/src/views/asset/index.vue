@@ -21,14 +21,14 @@
           <el-input v-model="query.name" placeholder="素材名称" clearable @change="handleQueryChange" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="query.type" placeholder="全部" clearable @change="handleQueryChange">
+          <el-select v-model="typeFilter" placeholder="全部" clearable @change="loadData">
             <el-option label="视频" value="VIDEO" />
             <el-option label="图片" value="IMAGE" />
             <el-option label="文档" value="DOCUMENT" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" placeholder="全部" clearable @change="handleQueryChange">
+          <el-select v-model="statusFilter" placeholder="全部" clearable @change="loadData">
             <el-option label="待审批" value="PENDING" />
             <el-option label="已通过" value="APPROVED" />
             <el-option label="草稿" value="DRAFT" />
@@ -232,7 +232,9 @@ const loading = ref(false)
 const cleanupLoading = ref(false)
 const list = ref([])
 const total = ref(0)
-const query = reactive({ name: '', type: '', status: '', pageNum: 1, pageSize: 10 })
+const query = reactive({ name: '', pageNum: 1, pageSize: 10 })
+const typeFilter = ref('')
+const statusFilter = ref('')
 const showPreview = ref(false)
 const previewAsset = ref<any>(null)
 const previewUrl = ref('')
@@ -261,8 +263,8 @@ const usageDetailsQuery = reactive({ pageNum: 1, pageSize: 10 })
 function initQueryFromUrl() {
   const routeQuery = router.currentRoute.value.query
   if (routeQuery.name) query.name = routeQuery.name as string
-  if (routeQuery.type) query.type = routeQuery.type as string
-  if (routeQuery.status) query.status = routeQuery.status as string
+  if (routeQuery.type) typeFilter.value = routeQuery.type as string
+  if (routeQuery.status) statusFilter.value = routeQuery.status as string
   if (routeQuery.pageNum) query.pageNum = parseInt(routeQuery.pageNum as string)
   if (routeQuery.pageSize) query.pageSize = parseInt(routeQuery.pageSize as string)
 }
@@ -273,8 +275,8 @@ function updateUrlQuery() {
     query: {
       ...router.currentRoute.value.query,
       name: query.name || undefined,
-      type: query.type || undefined,
-      status: query.status || undefined,
+      type: typeFilter.value || undefined,
+      status: statusFilter.value || undefined,
       pageNum: query.pageNum.toString(),
       pageSize: query.pageSize.toString()
     }
@@ -292,7 +294,13 @@ async function loadData() {
   loading.value = true
   updateUrlQuery()
   try {
-    const res = await getAssetList(query)
+    const res = await getAssetList({
+      name: query.name,
+      type: typeFilter.value,
+      status: statusFilter.value,
+      pageNum: query.pageNum,
+      pageSize: query.pageSize
+    })
     list.value = res.data.list
     total.value = res.data.total
   } finally {
@@ -461,6 +469,11 @@ onMounted(() => {
 .header-actions { display: flex; gap: 10px; }
 .clickable-rows :deep(.el-table__body tr) { cursor: pointer; }
 .clickable-rows :deep(.el-table__body tr:hover) { background-color: var(--el-fill-color-light); }
+
+/* 设置筛选下拉框宽度 */
+:deep(.el-form-item .el-select) {
+  width: 160px;
+}
 
 .preview-content {
   text-align: center;

@@ -13,7 +13,7 @@
               {{ workOrderDetail.applicationTitle || workOrderDetail.businessName }}
             </el-descriptions-item>
             <el-descriptions-item label="申请人">
-              {{ workOrderDetail.applicantName || '-' }}
+              {{ workOrderDetail.applicant?.realName || workOrderDetail.applicantName || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="审批流程">
               {{ workOrderDetail.workflowName || '-' }}
@@ -29,9 +29,9 @@
           </el-descriptions>
 
           <!-- 素材文件列表 -->
-          <div v-if="workOrderDetail.assetList && workOrderDetail.assetList.length > 0" style="margin-top: 20px">
-            <h4>素材文件 ({{ workOrderDetail.assetList.length }})</h4>
-            <el-table :data="workOrderDetail.assetList" size="small" style="margin-top: 10px">
+          <div v-if="workOrderDetail.assets && workOrderDetail.assets.length > 0" style="margin-top: 20px">
+            <h4>素材文件 ({{ workOrderDetail.assets.length }})</h4>
+            <el-table :data="workOrderDetail.assets" size="small" style="margin-top: 10px">
               <el-table-column label="预览" width="90">
                 <template #default="{ row }">
                   <!-- 图片：直接显示预览图 -->

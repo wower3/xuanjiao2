@@ -3,6 +3,7 @@ package com.xuanjiao.adapter.web.workflow;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
 import com.xuanjiao.client.approval.ApprovalProgressDTO;
 import com.xuanjiao.client.Result;
+import com.xuanjiao.client.workflow.FirstStageApproversDTO;
 import com.xuanjiao.client.workflow.WorkflowGetApprovalProgressQry;
 import com.xuanjiao.client.workflow.WorkflowGetFirstStageApproversQry;
 import com.xuanjiao.client.workflow.WorkflowGetSubWorkflowFirstStageApproversQry;
@@ -70,12 +71,12 @@ public class ApproverSelectionController {
      * 返回结果包括按部门分组的审批人列表。</p>
      *
      * @param qry 查询条件，包含工作流ID、申请人ID和搜索关键字
-     * @return 包含审批人列表的Map，key为部门名称，value为审批人列表
+     * @return 第一层审批人配置信息
      */
     @ApiOperation("获取第一层可选审批人")
     @PostMapping("/getFirstStageApprovers")
-    public Result<Map<String, Object>> getFirstStageApprovers(@Valid @RequestBody WorkflowGetFirstStageApproversQry qry) {
-        Map<String, Object> data = approverSelectionService.getFirstStageApprovers(
+    public Result<FirstStageApproversDTO> getFirstStageApprovers(@Valid @RequestBody WorkflowGetFirstStageApproversQry qry) {
+        FirstStageApproversDTO data = approverSelectionService.getFirstStageApprovers(
             qry.getWorkflowId(), qry.getApplicantId(), qry.getKeyword()
         );
         return Result.success(data);
@@ -123,12 +124,12 @@ public class ApproverSelectionController {
      * <p>根据子流程ID查询子流程第一阶段的可选审批人列表，支持按关键字搜索。</p>
      *
      * @param qry 查询条件，包含子流程ID、申请人ID和搜索关键字
-     * @return 包含审批人列表的Map
+     * @return 子流程第一层审批人配置信息
      */
     @ApiOperation("获取子流程第一层可选审批人")
     @PostMapping("/getSubWorkflowFirstStageApprovers")
-    public Result<Map<String, Object>> getSubWorkflowFirstStageApprovers(@Valid @RequestBody WorkflowGetSubWorkflowFirstStageApproversQry qry) {
-        Map<String, Object> data = approverSelectionService.getSubWorkflowFirstStageApprovers(
+    public Result<FirstStageApproversDTO> getSubWorkflowFirstStageApprovers(@Valid @RequestBody WorkflowGetSubWorkflowFirstStageApproversQry qry) {
+        FirstStageApproversDTO data = approverSelectionService.getSubWorkflowFirstStageApprovers(
             qry.getSubWorkflowId(), qry.getApplicantId(), qry.getKeyword()
         );
         return Result.success(data);

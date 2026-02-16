@@ -81,9 +81,6 @@ public class AssetDeletionApplicationRepositoryImpl implements AssetDeletionAppl
     }
 
     private AssetDeletionApplication convert(AssetDeletionApplicationDO applicationDO) {
-        if (applicationDO == null) return null;
-        AssetDeletionApplication application = new AssetDeletionApplication();
-        ConvertUtils.copyProperties(applicationDO, application);
-        return application;
+        return ConvertUtils.copyProperties(applicationDO, AssetDeletionApplication.class);
     }
 }

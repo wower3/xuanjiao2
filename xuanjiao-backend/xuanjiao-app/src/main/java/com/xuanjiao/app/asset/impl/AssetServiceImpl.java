@@ -286,10 +286,7 @@ public class AssetServiceImpl implements AssetService {
     }
 
     private AssetDTO convert(Asset asset) {
-        if (asset == null) return null;
-        AssetDTO dto = new AssetDTO();
-        ConvertUtils.copyProperties(asset, dto);
-        return dto;
+        return ConvertUtils.copyProperties(asset, AssetDTO.class);
     }
 
     private AssetDTO convertWithTags(Asset asset) {
@@ -426,10 +423,7 @@ public class AssetServiceImpl implements AssetService {
     }
 
     private AssetDTO convertDOToDTO(com.xuanjiao.infrastructure.dataobject.AssetDO assetDO) {
-        if (assetDO == null) return null;
-        AssetDTO dto = new AssetDTO();
-        ConvertUtils.copyProperties(assetDO, dto);
-        return dto;
+        return ConvertUtils.copyProperties(assetDO, AssetDTO.class);
     }
 
     /**

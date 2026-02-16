@@ -192,11 +192,6 @@ public class AssetRepositoryImpl implements AssetRepository {
      * @return 素材实体
      */
     private Asset convert(AssetDO assetDO) {
-        if (assetDO == null) {
-            return null;
-        }
-        Asset asset = new Asset();
-        ConvertUtils.copyProperties(assetDO, asset);
-        return asset;
+        return ConvertUtils.copyProperties(assetDO, Asset.class);
     }
 }

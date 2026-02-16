@@ -166,9 +166,6 @@ public class MenuServiceImpl implements MenuService {
     }
 
     private MenuDTO convert(MenuDO menuDO) {
-        if (menuDO == null) return null;
-        MenuDTO dto = new MenuDTO();
-        ConvertUtils.copyProperties(menuDO, dto);
-        return dto;
+        return ConvertUtils.copyProperties(menuDO, MenuDTO.class);
     }
 }

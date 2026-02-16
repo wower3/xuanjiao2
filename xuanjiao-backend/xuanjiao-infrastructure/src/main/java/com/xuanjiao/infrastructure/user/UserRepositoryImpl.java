@@ -80,11 +80,6 @@ public class UserRepositoryImpl implements UserRepository {
      * @return 用户实体
      */
     private User convert(UserDO userDO) {
-        if (userDO == null) {
-            return null;
-        }
-        User user = new User();
-        ConvertUtils.copyProperties(userDO, user);
-        return user;
+        return ConvertUtils.copyProperties(userDO, User.class);
     }
 }

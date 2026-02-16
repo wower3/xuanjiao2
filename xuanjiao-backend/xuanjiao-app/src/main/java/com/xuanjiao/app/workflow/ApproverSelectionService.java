@@ -1,6 +1,7 @@
 package com.xuanjiao.app.workflow;
 
 import com.xuanjiao.client.workflow.ApproverSelectionDTO;
+import com.xuanjiao.client.workflow.FirstStageApproversDTO;
 import com.xuanjiao.client.approval.ApprovalProgressDTO;
 import com.xuanjiao.client.workflow.WorkflowDTO;
 
@@ -68,9 +69,9 @@ public interface ApproverSelectionService {
      * @param workflowId 流程ID
      * @param applicantId 申请人ID
      * @param keyword 搜索关键词（用户名或姓名，支持中英文模糊查询），可为null表示不搜索
-     * @return 包含流程信息和审批人配置的Map，含 workflowId, workflowName, stageId, stageName, approveType, approverConfigs, approverCount
+     * @return 第一层审批人配置信息
      */
-    Map<String, Object> getFirstStageApprovers(Long workflowId, Long applicantId, String keyword);
+    FirstStageApproversDTO getFirstStageApprovers(Long workflowId, Long applicantId, String keyword);
 
     /**
      * 选择第一层审批人（兼容旧接口）
@@ -122,9 +123,9 @@ public interface ApproverSelectionService {
      * @param subWorkflowId 子流程ID
      * @param applicantId 申请人ID
      * @param keyword 搜索关键词（用户名或姓名，支持中英文模糊查询），可为null表示不搜索
-     * @return 包含流程信息和审批人配置的Map，含 workflowId, workflowName, approverConfigs, approverCount
+     * @return 子流程第一层审批人配置信息
      */
-    Map<String, Object> getSubWorkflowFirstStageApprovers(Long subWorkflowId, Long applicantId, String keyword);
+    FirstStageApproversDTO getSubWorkflowFirstStageApprovers(Long subWorkflowId, Long applicantId, String keyword);
 
     /**
      * 选择子流程第一层审批人

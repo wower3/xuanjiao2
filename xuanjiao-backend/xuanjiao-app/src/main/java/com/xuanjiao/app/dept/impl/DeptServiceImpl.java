@@ -116,9 +116,6 @@ public class DeptServiceImpl implements DeptService {
     }
 
     private DeptDTO convert(DeptDO entity) {
-        if (entity == null) return null;
-        DeptDTO dto = new DeptDTO();
-        ConvertUtils.copyProperties(entity, dto);
-        return dto;
+        return ConvertUtils.copyProperties(entity, DeptDTO.class);
     }
 }
