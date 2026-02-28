@@ -1,14 +1,7 @@
-<!--
-/**
- * 待办事项页面
- * <p>展示当前登录用户的待审批任务列表</p>
- * <p>支持按业务类型（素材录入/素材使用/素材删除）筛选</p>
- * <p>支持审批通过/驳回/退回操作，可选择下一层审批人和子流程审批人</p>
- * <p>支持查看审批详情和审批进度（主流程+子流程）</p>
- *
- * @author system
- * @version 1.0
- */
+<!-- 待办事项页面
+  展示当前登录用户的待审批任务列表
+  支持按业务类型筛选、审批通过/驳回/退回操作
+-->
 <template>
   <div class="pending-approval-page">
     <el-card>
@@ -34,6 +27,11 @@
         <el-table-column label="申请单ID" width="120">
           <template #default="{ row }">
             <span style="color: #409EFF; font-weight: 500;">AP-{{ row.applicationId || row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="审批类型" width="110">
+          <template #default="{ row }">
+            <el-tag :type="getBusinessTypeColor(row.businessType)">{{ getBusinessTypeText(row.businessType) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="申请标题" min-width="200" prop="businessName" />
@@ -112,9 +110,9 @@
           </el-descriptions>
 
           <!-- 素材列表 -->
-          <div v-if="taskDetail.assetList && taskDetail.assetList.length > 0" style="margin-top: 15px">
+          <div v-if="taskDetail.assets && taskDetail.assets.length > 0" style="margin-top: 15px">
             <div class="asset-list-header">素材清单</div>
-            <el-table :data="taskDetail.assetList" size="small" border>
+            <el-table :data="taskDetail.assets" size="small" border>
               <el-table-column prop="id" label="素材ID" width="80" />
               <el-table-column prop="name" label="素材名称" min-width="150" />
               <el-table-column prop="type" label="类型" width="80" />
@@ -354,13 +352,13 @@
             </el-alert>
 
             <div v-if="taskDetail.nextStageApproverConfigs && taskDetail.nextStageApproverConfigs.length > 0">
-              <div v-for="(config, index) in taskDetail.nextStageApproverConfigs" :key="config.configId" style="margin-bottom: 15px;">
+              <div v-for="(config, index) in taskDetail.nextStageApproverConfigs" :key="config.id" style="margin-bottom: 15px;">
                 <div style="display: flex; align-items: center; margin-bottom: 5px;">
                   <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #409EFF; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
                   <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName }}：{{ config.approverName }}</span>
                 </div>
                 <el-select
-                  v-model="selectedNextApprovers[config.configId]"
+                  v-model="selectedNextApprovers[config.id]"
                   filterable
                   placeholder="请选择审批人"
                   style="width: 100%;"
@@ -426,7 +424,7 @@
                   会签：请按照配置顺序为每个配置项选择一个审批人，共需要选择 {{ subWorkflow.approverCount }} 个审批人。
                 </template>
               </div>
-              <div v-for="(config, index) in subWorkflow.approverConfigs" :key="config.configId" style="margin-bottom: 10px;">
+              <div v-for="(config, index) in subWorkflow.approverConfigs" :key="config.id" style="margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; margin-bottom: 5px;">
                   <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #E6A23C; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
                   <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName || '未知类型' }}：{{ config.approverName || '未命名' }}</span>
@@ -435,7 +433,7 @@
                   </span>
                 </div>
                 <el-select
-                  v-model="selectedSubWorkflowApprovers[subWorkflow.id][config.configId]"
+                  v-model="selectedSubWorkflowApprovers[subWorkflow.id][config.id]"
                   filterable
                   placeholder="请选择审批人"
                   style="width: 100%;"
@@ -527,7 +525,7 @@
         </el-alert>
 
         <div v-if="restartForm.approverConfigs && restartForm.approverConfigs.length > 0">
-          <div v-for="(config, index) in restartForm.approverConfigs" :key="config.configId" style="margin-bottom: 15px;">
+          <div v-for="(config, index) in restartForm.approverConfigs" :key="config.id" style="margin-bottom: 15px;">
             <div style="display: flex; align-items: center; margin-bottom: 5px;">
               <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #E6A23C; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
               <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName || '未知类型' }}：{{ config.approverName || '未命名' }}</span>
@@ -536,7 +534,7 @@
               </span>
             </div>
             <el-select
-              v-model="restartForm.selectedApprovers[config.configId]"
+              v-model="restartForm.selectedApprovers[config.id]"
               filterable
               placeholder="请选择审批人"
               style="width: 100%;"
@@ -843,7 +841,7 @@ async function submitApprove(passed: boolean) {
       const configs = taskDetail.value.nextStageApproverConfigs || []
       const approverIds: number[] = []
       for (const config of configs) {
-        const selectedUserId = selectedNextApprovers.value[config.configId]
+        const selectedUserId = selectedNextApprovers.value[config.id]
         if (selectedUserId) {
           approverIds.push(selectedUserId)
         }
@@ -856,8 +854,8 @@ async function submitApprove(passed: boolean) {
           const subApproverIds: number[] = []
           for (const subConfig of subConfigs) {
             const subSelected = selectedSubWorkflowApprovers.value[subWorkflow.id]
-            if (subSelected && subSelected[subConfig.configId]) {
-              subApproverIds.push(subSelected[subConfig.configId])
+            if (subSelected && subSelected[subConfig.id]) {
+              subApproverIds.push(subSelected[subConfig.id])
             }
           }
           if (subApproverIds.length > 0) {
@@ -951,6 +949,24 @@ function getStatusText(status: string) {
   return map[status] || status
 }
 
+function getBusinessTypeText(businessType: string) {
+  const map: Record<string, string> = {
+    MATERIAL_ENTRY: '素材录入',
+    ASSET_USAGE: '素材使用',
+    ASSET_DELETION: '素材删除'
+  }
+  return map[businessType] || businessType
+}
+
+function getBusinessTypeColor(businessType: string) {
+  const map: Record<string, string> = {
+    MATERIAL_ENTRY: 'success',
+    ASSET_USAGE: 'warning',
+    ASSET_DELETION: 'danger'
+  }
+  return map[businessType] || 'info'
+}
+
 async function handleOpenRestartDetail(row: any) {
   currentTask.value = row
   showRestartDialog.value = true
@@ -995,7 +1011,7 @@ async function handleOpenRestartDetail(row: any) {
 
     // Initialize selected approvers object
     for (const config of restartForm.approverConfigs) {
-      restartForm.selectedApprovers[config.configId] = null
+      restartForm.selectedApprovers[config.id] = null
     }
 
   } catch (e: any) {

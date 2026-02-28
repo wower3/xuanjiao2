@@ -5,20 +5,58 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * ApprovalProgress查询条件对象
- * 用于查询审批进度
+ * 审批进度查询条件对象
+ *
+ * <p>用于动态构建审批进度查询条件，对应 ApprovalProgressMapper 使用。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class ApprovalProgressQuery {
-    private Long id;
-    private Long instanceId;
-    private Long stageId;
-    private String status;
-    private Integer isSubWorkflow; // 是否是子流程：0-否，1-是
-    private Long parentInstanceId; // 父实例ID（用于查询子流程）
-    private Long parentTaskId; // 父任务ID
 
-    // 扩展查询条件
-    private Boolean parentInstanceIdIsNull; // IS NULL查询：父实例ID为空（用于查询主流程）
-    private List<Long> instanceIds; // IN查询：实例ID列表
+    /**
+     * 进度ID
+     */
+    private Long id;
+
+    /**
+     * 审批实例ID
+     */
+    private Long instanceId;
+
+    /**
+     * 阶段ID
+     */
+    private Long stageId;
+
+    /**
+     * 进度状态（PENDING, APPROVED, REJECTED, SKIPPED）
+     */
+    private String status;
+
+    /**
+     * 是否是子流程（0-否、1-是）
+     */
+    private Integer isSubWorkflow;
+
+    /**
+     * 父实例ID（用于查询子流程）
+     */
+    private Long parentInstanceId;
+
+    /**
+     * 父任务ID
+     */
+    private Long parentTaskId;
+
+    /**
+     * 父实例ID是否为空（IS NULL 查询，用于查询主流程）
+     */
+    private Boolean parentInstanceIdIsNull;
+
+    /**
+     * 实例ID列表（IN 查询）
+     */
+    private List<Long> instanceIds;
 }

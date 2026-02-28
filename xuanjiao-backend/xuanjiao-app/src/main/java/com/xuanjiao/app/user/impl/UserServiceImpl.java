@@ -3,9 +3,9 @@ package com.xuanjiao.app.user.impl;
 import cn.hutool.crypto.digest.DigestUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.user.UserService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UserDTO;
-import com.xuanjiao.client.dto.user.UserGetListWithFilterQry;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.user.UserDTO;
+import com.xuanjiao.client.user.UserGetListWithFilterQry;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
@@ -14,12 +14,15 @@ import com.xuanjiao.infrastructure.dept.DeptQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.user.UserQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
  /**
@@ -135,7 +138,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void create(UserDTO dto) {
         UserDO user = new UserDO();
-        BeanUtils.copyProperties(dto, user);
+        ConvertUtils.copyProperties(dto, user);
         // 默认密码123456，MD5加密
         user.setPassword(DigestUtil.md5Hex("123456"));
         user.setStatus(1);
@@ -245,7 +248,7 @@ public class UserServiceImpl implements UserService {
     private UserDTO convert(UserDO entity) {
         if (entity == null) return null;
         UserDTO dto = new UserDTO();
-        BeanUtils.copyProperties(entity, dto);
+        ConvertUtils.copyProperties(entity, dto);
 
         // 填充角色信息
         if (entity.getRoleId() != null) {
@@ -270,7 +273,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public PageResult<Map<String, Object>> searchUsers(Long userId, UserGetListWithFilterQry qry) {
+    public PageResult<UserDTO> searchUsers(Long userId, UserGetListWithFilterQry qry) {
         // 获取当前用户信息和角色
         UserDTO currentUser = getCurrentUser(userId);
         if (currentUser == null) {
@@ -305,7 +308,7 @@ public class UserServiceImpl implements UserService {
 
         // 获取所有用户并筛选
         List<UserDO> allUsers = userMapper.selectList(new UserQuery());
-        List<Map<String, Object>> filteredUsers = allUsers.stream()
+        List<UserDTO> filteredUsers = allUsers.stream()
                 .filter(user -> {
                     // 部门筛选
                     if (user.getDeptId() == null || !filterDeptIds.contains(user.getDeptId())) {
@@ -330,7 +333,7 @@ public class UserServiceImpl implements UserService {
                     }
                     return true;
                 })
-                .map(this::convertToMap)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
 
         // 分页处理
@@ -338,33 +341,33 @@ public class UserServiceImpl implements UserService {
         int start = (qry.getPageNum() - 1) * qry.getPageSize();
         int end = Math.min(start + qry.getPageSize(), total);
 
-        List<Map<String, Object>> pagedUsers = start < total ?
+        List<UserDTO> pagedUsers = start < total ?
                 filteredUsers.subList(start, end) : new ArrayList<>();
 
         return PageResult.of(pagedUsers, (long) total, qry.getPageNum(), qry.getPageSize());
     }
 
     /**
-     * 将UserDO转换为Map（包含角色和部门信息）
+     * 将UserDO转换为UserDTO（包含角色和部门信息）
      */
-    private Map<String, Object> convertToMap(UserDO entity) {
+    private UserDTO convertToDTO(UserDO entity) {
         if (entity == null) return null;
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", entity.getId());
-        map.put("username", entity.getUsername());
-        map.put("realName", entity.getRealName());
-        map.put("phone", entity.getPhone());
-        map.put("email", entity.getEmail());
-        map.put("roleId", entity.getRoleId());
-        map.put("deptId", entity.getDeptId());
-        map.put("status", entity.getStatus());
+        UserDTO dto = new UserDTO();
+        dto.setId(entity.getId());
+        dto.setUsername(entity.getUsername());
+        dto.setRealName(entity.getRealName());
+        dto.setPhone(entity.getPhone());
+        dto.setEmail(entity.getEmail());
+        dto.setRoleId(entity.getRoleId());
+        dto.setDeptId(entity.getDeptId());
+        dto.setStatus(entity.getStatus());
 
         // 填充角色信息
         if (entity.getRoleId() != null) {
             RoleDO role = roleMapper.selectById(entity.getRoleId());
             if (role != null) {
-                map.put("roleName", role.getName());
-                map.put("roleType", role.getRoleType());
+                dto.setRoleName(role.getName());
+                dto.setRoleType(role.getRoleType());
             }
         }
 
@@ -372,10 +375,10 @@ public class UserServiceImpl implements UserService {
         if (entity.getDeptId() != null) {
             DeptDO dept = deptMapper.selectById(entity.getDeptId());
             if (dept != null) {
-                map.put("deptName", dept.getName());
+                dto.setDeptName(dept.getName());
             }
         }
 
-        return map;
+        return dto;
     }
 }

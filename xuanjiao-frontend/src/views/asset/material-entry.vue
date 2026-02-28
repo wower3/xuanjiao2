@@ -1,14 +1,4 @@
-<!--
-/**
- * 素材录入页面
- * <p>提供素材录入申请的新建和编辑功能</p>
- * <p>支持添加视频/图片素材，设置标签、版权声明、发布渠道</p>
- * <p>支持选择审批流程和第一层/子流程审批人后提交审批</p>
- * <p>支持保存草稿、路由守卫防止未保存离开</p>
- *
- * @author system
- * @version 1.0
- */
+<!-- 素材录入页面 - 提供素材录入申请的新建和编辑功能 -->
 <template>
   <div class="material-entry-page">
     <!-- 隐藏的视频元素用于截取缩略图 -->
@@ -380,7 +370,7 @@ import {
 } from '@/api/materialApplication'
 import { getTagList, createTag } from '@/api/tag'
 import { uploadAsset, deleteAsset } from '@/api/asset'
-import { getWorkflowList, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
+import { getWorkflowList, getWorkflowById, getFirstStageApprovers, selectFirstStageApproversWithSubWorkflows, getSubWorkflowFirstStageApprovers } from '@/api/workflow'
 import { useUserStore } from '@/stores/user'
 import { getCurrentUser } from '@/api/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -486,7 +476,9 @@ async function loadWorkflows() {
           w.status === 1
         )
         if (matched) {
-          boundWorkflow.value = matched
+          // 流程列表不包含stages信息，需要单独调用getWorkflowById获取完整信息
+          const detailRes = await getWorkflowById(matched.id)
+          boundWorkflow.value = detailRes.data
         }
       }
     }
@@ -710,15 +702,8 @@ onBeforeRouteLeave((to, from, next) => {
   }
 })
 
-// 保存草稿后导航
+// 保存草稿后导航（不校验任何内容，草稿阶段不限制）
 async function saveDraftAndNavigate(to: any) {
-  await formRef.value?.validate()
-
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
-    return
-  }
-
   saving.value = true
   try {
     const submitData = {
@@ -745,13 +730,7 @@ async function saveDraftAndNavigate(to: any) {
 }
 
 async function handleSaveDraft() {
-  await formRef.value?.validate()
-
-  if (!form.guaranteeDeclaration) {
-    ElMessage.warning('请勾选保证声明')
-    return
-  }
-
+  // 不校验任何内容，草稿阶段不限制（标题和保证声明只在提交审批时验证）
   saving.value = true
   try {
     const submitData = {
@@ -785,6 +764,12 @@ async function handleSaveDraft() {
 }
 
 function handleSubmitDialog() {
+  // 提交审批时验证标题必填
+  if (!form.title || form.title.trim() === '') {
+    ElMessage.warning('请输入事项标题')
+    return
+  }
+
   if (!form.guaranteeDeclaration) {
     ElMessage.warning('请勾选保证声明')
     return
@@ -1057,19 +1042,20 @@ async function handleAddFile() {
 
   // 确保有申请单ID（编辑模式已有ID，新建模式需要创建）
   if (!applicationId.value) {
-    // 新建模式：自动创建申请单，不需要用户预先填写标题和保证声明
-    // 使用默认标题创建申请单
-    const defaultTitle = `素材录入申请-${new Date().toLocaleDateString()}`
+    // 新建模式：使用用户输入的标题，或默认标题
+    const titleToUse = form.title.trim() || `素材录入申请-${new Date().toLocaleDateString()}`
+
     const submitData = {
-      title: defaultTitle,
+      title: titleToUse,
       maintainerId: form.maintainerId,
       deptId: form.deptId,
       guaranteeDeclaration: 0  // 暂不强制要求保证声明
     }
     const res = await createMaterialApplication(submitData)
     applicationId.value = res.data.id
-    // 更新表单标题为默认值，用户可以后续修改
-    form.title = defaultTitle
+
+    // 同步回表单，保持一致性
+    form.title = titleToUse
   } else if (applicationStatus.value !== 'DRAFT') {
     // 只有草稿状态可以添加文件
     ElMessage.warning('只有草稿状态可以添加文件')
@@ -1102,10 +1088,9 @@ async function handleAddFile() {
     ElMessage.success('添加成功')
     showAddFile.value = false
     resetFileForm()
-    // 重新加载文件列表
-    console.log('handleAddFile - 准备重新加载...')
-    await loadApplication()
-    console.log('handleAddFile - 重新加载完成, fileList.length:', fileList.length)
+
+    // 直接添加到列表，不重新加载（避免覆盖用户输入的表单数据）
+    fileList.push(uploadRes.data)
   } catch (e: any) {
     console.error('handleAddFile - 上传失败:', e)
     ElMessage.error(e.message || '添加失败')

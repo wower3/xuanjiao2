@@ -2,8 +2,8 @@ package com.xuanjiao.app.usage;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xuanjiao.app.usage.impl.UsageLogServiceImpl;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.UsageLogDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.usage.UsageLogDTO;
 import com.xuanjiao.infrastructure.dataobject.UsageLogDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.usage.UsageLogMapper;
@@ -126,8 +126,9 @@ public class UsageLogServiceImplTest {
 
         when(usageLogMapper.selectPage(any(Page.class), any(UsageLogQuery.class)))
                 .thenReturn(new Page<UsageLogDO>(1, 10).setRecords(Arrays.asList(testUsageLog)).setTotal(1L));
+        when(userMapper.selectById(1L)).thenReturn(testUser);
 
-        PageResult<Map<String, Object>> result = usageLogService.query("DOWNLOAD", 1, 10);
+        PageResult<UsageLogDTO> result = usageLogService.query("DOWNLOAD", 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
@@ -149,8 +150,9 @@ public class UsageLogServiceImplTest {
 
         when(usageLogMapper.selectPage(any(Page.class), any(UsageLogQuery.class)))
                 .thenReturn(new Page<UsageLogDO>(1, 10).setRecords(Arrays.asList(testUsageLog)).setTotal(1L));
+        when(userMapper.selectById(1L)).thenReturn(testUser);
 
-        PageResult<Map<String, Object>> result = usageLogService.query(null, 1, 10);
+        PageResult<UsageLogDTO> result = usageLogService.query(null, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
@@ -192,22 +194,26 @@ public class UsageLogServiceImplTest {
     @Test
     @Order(6)
     public void testToMap() {
-        // 测试私有方法 toMap 的映射逻辑（通过 query 方法间接测试）
+        // 测试私有方法 toDTO 的映射逻辑（通过 query 方法间接测试）
+        // 注意：query 方法现在返回 PageResult<UsageLogDTO>，与 getAssetUsageLogs 共用 toDTO 方法
 
         when(usageLogMapper.selectPage(any(Page.class), any(UsageLogQuery.class)))
                 .thenReturn(new Page<UsageLogDO>(1, 10).setRecords(Arrays.asList(testUsageLog)).setTotal(1L));
+        when(userMapper.selectById(1L)).thenReturn(testUser);
 
-        PageResult<Map<String, Object>> result = usageLogService.query("DOWNLOAD", 1, 10);
+        PageResult<UsageLogDTO> result = usageLogService.query("DOWNLOAD", 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
-        Map<String, Object> map = result.getList().get(0);
-        assertEquals(1L, map.get("id"));
-        assertEquals(1L, map.get("assetId"));
-        assertEquals(1L, map.get("userId"));
-        assertEquals("DOWNLOAD", map.get("action"));
-        assertEquals("127.0.0.1", map.get("ip"));
-        System.out.println("✓ UsageLogService toMap() - 字段映射验证通过");
+        UsageLogDTO dto = result.getList().get(0);
+        assertEquals(1L, dto.getId());
+        assertEquals(1L, dto.getAssetId());
+        assertEquals(1L, dto.getUserId());
+        assertEquals("DOWNLOAD", dto.getAction());
+        assertEquals("127.0.0.1", dto.getIp());
+        // query 方法调用 toDTO，会填充用户名
+        assertEquals("测试用户", dto.getUsername());
+        System.out.println("✓ UsageLogService toDTO() - 字段映射验证通过（通过 query 方法）");
     }
 
     @Test

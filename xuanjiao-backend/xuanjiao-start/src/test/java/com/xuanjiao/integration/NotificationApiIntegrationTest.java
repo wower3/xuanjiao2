@@ -1,9 +1,19 @@
 package com.xuanjiao.integration;
 
 import com.xuanjiao.app.notification.NotificationService;
-import com.xuanjiao.client.dto.PageResult;
-import com.xuanjiao.client.dto.notification.*;
-import org.junit.jupiter.api.*;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.notification.BatchCreateNotificationCmd;
+import com.xuanjiao.client.notification.BatchMarkReadCmd;
+import com.xuanjiao.client.notification.CreateNotificationCmd;
+import com.xuanjiao.client.notification.DeleteNotificationCmd;
+import com.xuanjiao.client.notification.MarkReadCmd;
+import com.xuanjiao.client.notification.NotificationDTO;
+import com.xuanjiao.client.notification.NotificationPageQry;
+import com.xuanjiao.client.notification.NotifyUsersCmd;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -63,7 +73,7 @@ public class NotificationApiIntegrationTest {
         qry.setPageSize(10);
         qry.setRecipientId(TEST_RECIPIENT_ID);
 
-        PageResult<Map<String, Object>> result = notificationService.getNotificationPageDTO(qry);
+        PageResult<NotificationDTO> result = notificationService.getNotificationPageDTO(qry);
         assertNotNull(result);
         assertTrue(result.getTotal() >= 0);
     }
@@ -78,7 +88,7 @@ public class NotificationApiIntegrationTest {
         qry.setNotificationType("WORKFLOW_FLOW");
         qry.setIsRead(0);
 
-        PageResult<Map<String, Object>> result = notificationService.getNotificationPageDTO(qry);
+        PageResult<NotificationDTO> result = notificationService.getNotificationPageDTO(qry);
         assertNotNull(result);
     }
 
@@ -129,13 +139,13 @@ public class NotificationApiIntegrationTest {
         qry.setPageSize(10);
         qry.setRecipientId(TEST_RECIPIENT_ID);
 
-        PageResult<Map<String, Object>> result = notificationService.getNotificationPageDTO(qry);
+        PageResult<NotificationDTO> result = notificationService.getNotificationPageDTO(qry);
         assertNotNull(result);
 
-        // 检查返回的Map是否包含类型文本字段
-        for (Map<String, Object> item : result.getList()) {
-            assertTrue(item.containsKey("notificationTypeText"));
-            assertTrue(item.containsKey("sourceTypeText"));
+        // 检查返回的DTO是否包含类型文本字段
+        for (NotificationDTO item : result.getList()) {
+            assertNotNull(item.getNotificationTypeText());
+            assertNotNull(item.getSourceTypeText());
         }
     }
 

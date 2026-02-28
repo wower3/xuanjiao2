@@ -1,6 +1,6 @@
 package com.xuanjiao.app.user;
 
-import com.xuanjiao.client.dto.UserDTO;
+import com.xuanjiao.client.user.UserDTO;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;

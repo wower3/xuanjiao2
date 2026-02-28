@@ -5,7 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.workflow.handler.WorkflowCompletionHandler;
-import com.xuanjiao.infrastructure.dataobject.*;
+import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
+import com.xuanjiao.infrastructure.dataobject.ApprovalProgressDO;
+import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
+import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.workflow.WorkflowMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
@@ -30,7 +37,13 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -168,22 +181,41 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 instanceMapper.updateById(instance);
                 logger.info("实例状态已更新为REJECTED: instanceId={}", instance.getId());
 
-                // 取消所有待办任务（包括主流程和所有子流程）
                 // 获取根实例ID：主流程的rootInstanceId为null，使用当前实例ID；子流程使用rootInstanceId
                 Long rootInstanceId = instance.getRootInstanceId() != null ? instance.getRootInstanceId() : instance.getId();
+
+                // 如果是子流程驳回，需要同时将主流程（父实例）的状态也设置为REJECTED
+                if (instance.getRootInstanceId() != null) {
+                    ApprovalInstanceDO parentInstance = instanceMapper.selectById(instance.getRootInstanceId());
+                    if (parentInstance != null && !"REJECTED".equals(parentInstance.getStatus())) {
+                        parentInstance.setStatus("REJECTED");
+                        instanceMapper.updateById(parentInstance);
+                        logger.info("子流程驳回，主流程状态已更新为REJECTED: parentInstanceId={}", parentInstance.getId());
+                    }
+                }
+
+                // 取消所有待办任务（包括主流程和所有子流程）
                 cancelAllPendingTasksForInstance(rootInstanceId);
 
                 // 更新进度记录
                 updateProgressRecord(task.getInstanceId(), task.getStageId(), "REJECTED", userId, comment);
 
-                // 更新业务数据状态
-                handleWorkflowRejection(instance.getBusinessType(), instance.getBusinessId());
+                // 更新业务数据状态（使用主流程的业务数据）
+                ApprovalInstanceDO businessInstance = instance.getRootInstanceId() != null
+                    ? instanceMapper.selectById(instance.getRootInstanceId())
+                    : instance;
+                if (businessInstance != null) {
+                    handleWorkflowRejection(businessInstance.getBusinessType(), businessInstance.getBusinessId());
+                }
             }
             return;
         }
 
         // 审批通过：先更新当前审批人的状态（会签时，每个人完成后都要更新）
         updateApproverStatusInProgress(task.getInstanceId(), task.getStageId(), userId, "APPROVED", comment);
+
+        // AND签：标记第一个审批通过的人为 is_first_approver=1
+        markFirstApproverInAndSign(task);
 
         // 检查当前阶段是否完成
         logger.info("检查阶段是否完成: instanceId={}, stageId={}", task.getInstanceId(), task.getStageId());
@@ -717,10 +749,15 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
         if ("OR".equals(stage.getApproveType())) {
             // 或签：任一通过即可
+            // 优先使用 is_first_approver=1 的任务，如果没有则使用第一个APPROVED的任务
             firstCompletedTask = tasks.stream()
                 .filter(t -> "APPROVED".equals(t.getStatus()))
+                .filter(t -> t.getIsFirstApprover() != null && t.getIsFirstApprover() == 1)
                 .findFirst()
-                .orElse(null);
+                .orElseGet(() -> tasks.stream()
+                    .filter(t -> "APPROVED".equals(t.getStatus()))
+                    .findFirst()
+                    .orElse(null));
             stageCompleted = firstCompletedTask != null;
             logger.info("或签检查: stageCompleted={}, firstCompletedTaskId={}", stageCompleted,
                 firstCompletedTask != null ? firstCompletedTask.getId() : null);
@@ -735,10 +772,15 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             stageCompleted = tasks.stream()
                 .noneMatch(t -> "PENDING".equals(t.getStatus()) || "RETURNED".equals(t.getStatus()));
             if (stageCompleted) {
+                // 优先使用 is_first_approver=1 的任务，如果没有则使用第一个APPROVED的任务
                 firstCompletedTask = tasks.stream()
                     .filter(t -> "APPROVED".equals(t.getStatus()))
+                    .filter(t -> t.getIsFirstApprover() != null && t.getIsFirstApprover() == 1)
                     .findFirst()
-                    .orElse(null);
+                    .orElseGet(() -> tasks.stream()
+                        .filter(t -> "APPROVED".equals(t.getStatus()))
+                        .findFirst()
+                        .orElse(null));
             }
             logger.info("会签检查: stageCompleted={}, taskCount={}, approvedCount={}, cancelledCount={}",
                 stageCompleted,
@@ -1487,6 +1529,53 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             logger.error("更新审批人状态失败: instanceId={}, stageId={}, approverId={}, error={}",
                 instanceId, stageId, approverId, e.getMessage(), e);
         }
+    }
+
+    /**
+     * 标记第一个审批通过的人为 is_first_approver=1
+     * 在AND签（会签）和OR签（或签）阶段，第一个完成审批的人被标记为 is_first_approver=1
+     * 这样可以确保第一个完成审批的人选择的下一层审批人被使用
+     */
+    private void markFirstApproverInAndSign(ApprovalTaskDO completedTask) {
+        // 获取阶段信息
+        WorkflowStageDO stage = stageMapper.selectById(completedTask.getStageId());
+        if (stage == null) {
+            logger.warn("阶段不存在，无法标记is_first_approver: stageId={}", completedTask.getStageId());
+            return;
+        }
+
+        // 只有AND签（会签）和OR签（或签）才需要标记第一个完成的人
+        if (!"AND".equals(stage.getApproveType()) && !"OR".equals(stage.getApproveType())) {
+            logger.debug("非AND/OR签阶段，跳过is_first_approver标记: stageId={}, approveType={}",
+                completedTask.getStageId(), stage.getApproveType());
+            return;
+        }
+
+        // 如果该任务已经是 is_first_approver=1，无需重复标记
+        if (completedTask.getIsFirstApprover() != null && completedTask.getIsFirstApprover() == 1) {
+            logger.debug("任务已标记为is_first_approver=1，无需重复标记: taskId={}", completedTask.getId());
+            return;
+        }
+
+        // 检查同阶段是否已有任务标记为 is_first_approver=1
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(completedTask.getInstanceId());
+        query.setStageId(completedTask.getStageId());
+        List<ApprovalTaskDO> tasks = taskMapper.selectList(query);
+
+        boolean hasFirstApprover = tasks.stream()
+            .anyMatch(t -> t.getIsFirstApprover() != null && t.getIsFirstApprover() == 1);
+
+        if (hasFirstApprover) {
+            logger.debug("同阶段已有任务标记为is_first_approver=1，跳过标记: stageId={}", completedTask.getStageId());
+            return;
+        }
+
+        // 标记当前任务为 is_first_approver=1
+        completedTask.setIsFirstApprover(1);
+        taskMapper.updateById(completedTask);
+        logger.info("已标记{}阶段第一个完成的人为is_first_approver=1: taskId={}, approverId={}, stageId={}",
+            stage.getApproveType(), completedTask.getId(), completedTask.getApproverId(), completedTask.getStageId());
     }
 
     /**

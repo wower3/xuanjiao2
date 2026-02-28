@@ -1,13 +1,4 @@
-<!--
-/**
- * 我发起的页面
- * <p>展示当前用户发起的所有审批申请</p>
- * <p>支持按状态筛选（审批中/已通过/已驳回/已取消）</p>
- * <p>支持查看详情、追回工单、复制申请单（被驳回的申请）</p>
- *
- * @author system
- * @version 1.0
- */
+<!-- 我发起的页面 - 展示当前用户发起的所有审批申请 -->
 <template>
   <div class="my-initiated-page">
     <el-card>
@@ -204,14 +195,15 @@ async function handleCopyApplication(row: any) {
     let targetPage = ''
 
     // 根据工单类型调用不同的复制 API
+    // 注意：使用applicationId（业务申请单ID），而不是id（审批实例ID）
     if (row.businessType === 'MATERIAL_ENTRY') {
-      newApplicationId = await copyApplication(row.applicationId || row.id)
+      newApplicationId = await copyApplication(row.applicationId)
       targetPage = '素材录入'
     } else if (row.businessType === 'ASSET_USAGE') {
-      newApplicationId = await copyUsageApplication(row.applicationId || row.id)
+      newApplicationId = await copyUsageApplication(row.applicationId)
       targetPage = '素材使用'
     } else if (row.businessType === 'ASSET_DELETION') {
-      newApplicationId = await copyDeletionApplication(row.applicationId || row.id)
+      newApplicationId = await copyDeletionApplication(row.applicationId)
       targetPage = '素材删除'
     } else {
       ElMessage.error('不支持的工单类型')

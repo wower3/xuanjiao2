@@ -20,11 +20,6 @@ const router = createRouter({
           component: () => import('@/views/asset/index.vue')
         },
         {
-          path: 'asset/material-list',
-          name: 'MaterialList',
-          component: () => import('@/views/asset/material-list.vue')
-        },
-        {
           path: 'asset/material-entry',
           name: 'MaterialEntry',
           component: () => import('@/views/asset/material-entry.vue')
@@ -63,11 +58,6 @@ const router = createRouter({
           path: 'task/draft-box',
           name: 'DraftBox',
           component: () => import('@/views/task/draft-box.vue')
-        },
-        {
-          path: 'task/in-progress',
-          name: 'WorkflowInProgress',
-          component: () => import('@/views/task/workflow-in-progress.vue')
         },
         {
           path: 'task/material-approval',

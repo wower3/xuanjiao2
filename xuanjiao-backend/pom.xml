@@ -12,6 +12,7 @@
     <description>宣传教育平台 - 后端服务</description>
 
     <modules>
+        <module>xuanjiao-common</module>
         <module>xuanjiao-client</module>
         <module>xuanjiao-domain</module>
         <module>xuanjiao-app</module>
@@ -112,6 +113,11 @@
             </dependency>
 
             <!-- Project Modules -->
+            <dependency>
+                <groupId>com.xuanjiao</groupId>
+                <artifactId>xuanjiao-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.xuanjiao</groupId>
                 <artifactId>xuanjiao-client</artifactId>

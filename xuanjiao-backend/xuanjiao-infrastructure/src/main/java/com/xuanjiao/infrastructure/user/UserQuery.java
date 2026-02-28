@@ -6,10 +6,15 @@ import java.util.List;
 
 /**
  * 用户查询条件对象
- * 用于动态构建查询条件
+ *
+ * <p>用于动态构建用户查询条件，支持多种查询方式。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class UserQuery {
+
     /**
      * 角色ID
      */
@@ -26,13 +31,12 @@ public class UserQuery {
     private List<Long> deptIds;
 
     /**
-     * 用户状态（0:禁用, 1:启用）
+     * 用户状态（0-禁用、1-启用）
      */
     private Integer status;
 
     /**
-     * 删除标记（0:未删除, 1:已删除）
-     * 默认查询未删除的记录
+     * 删除标记（0-未删除、1-已删除）
      */
     private Integer deleted;
 

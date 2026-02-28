@@ -13,7 +13,14 @@ import javax.annotation.Resource;
 /**
  * 素材录入审批完成处理器
  *
- * 处理素材录入申请（MATERIAL_ENTRY）的审批通过和驳回逻辑
+ * <p>处理素材录入申请（MATERIAL_ENTRY）的审批通过和驳回逻辑。
+ * 审批通过时将申请单和关联素材状态更新为APPROVED，审批驳回时更新为REJECTED。</p>
+ *
+ * <p>使用 ApplicationContext 延迟获取依赖 Bean，避免循环依赖问题。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
+ * @see WorkflowCompletionHandler
  */
 @Component
 public class MaterialEntryHandler implements WorkflowCompletionHandler {
@@ -25,7 +32,10 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
 
     /**
      * 获取 MaterialApplicationService Bean
-     * 使用 ApplicationContext 延迟获取，避免循环依赖
+     *
+     * <p>使用 ApplicationContext 延迟获取，避免循环依赖。</p>
+     *
+     * @return 素材录入申请服务实例，获取失败返回null
      */
     private MaterialApplicationService getMaterialApplicationService() {
         try {
@@ -38,7 +48,10 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
 
     /**
      * 获取 AssetService Bean
-     * 使用 ApplicationContext 延迟获取，避免循环依赖
+     *
+     * <p>使用 ApplicationContext 延迟获取，避免循环依赖。</p>
+     *
+     * @return 素材服务实例，获取失败返回null
      */
     private AssetService getAssetService() {
         try {
@@ -49,6 +62,15 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>素材录入审批通过处理：</p>
+     * <ol>
+     *   <li>更新申请单状态为APPROVED</li>
+     *   <li>将所有关联素材状态更新为APPROVED</li>
+     * </ol>
+     */
     @Override
     public void onApproved(Long businessId, Long instanceId) {
         logger.info("素材录入审批通过: businessId={}, instanceId={}", businessId, instanceId);
@@ -68,6 +90,15 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>素材录入审批驳回处理：</p>
+     * <ol>
+     *   <li>更新申请单状态为REJECTED</li>
+     *   <li>将所有关联素材状态更新为REJECTED</li>
+     * </ol>
+     */
     @Override
     public void onRejected(Long businessId, Long instanceId, String reason) {
         logger.info("素材录入审批驳回: businessId={}, instanceId={}, reason={}", businessId, instanceId, reason);
@@ -87,6 +118,11 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return "MATERIAL_ENTRY"
+     */
     @Override
     public String getSupportedBusinessType() {
         return "MATERIAL_ENTRY";

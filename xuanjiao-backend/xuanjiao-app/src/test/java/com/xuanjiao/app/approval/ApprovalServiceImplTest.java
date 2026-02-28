@@ -9,7 +9,18 @@ import com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.asset.AssetQuery;
-import com.xuanjiao.infrastructure.dataobject.*;
+import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
+import com.xuanjiao.infrastructure.dataobject.ApprovalTaskDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
+import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
+import com.xuanjiao.infrastructure.dataobject.RoleDO;
+import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
@@ -25,7 +36,9 @@ import com.xuanjiao.infrastructure.workflow.WorkflowStageMapper;
 import com.xuanjiao.infrastructure.workflow.WorkflowStageQuery;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.approval.MyAppliedDTO;
+import com.xuanjiao.client.approval.TaskDetailDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -166,7 +179,7 @@ public class ApprovalServiceImplTest {
         when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, 100L, null, null
         );
 
@@ -209,7 +222,7 @@ public class ApprovalServiceImplTest {
         when(deptMapper.selectById(100L)).thenReturn(testDept);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, null, "SYSTEM_ADMIN", null
         );
 
@@ -253,7 +266,7 @@ public class ApprovalServiceImplTest {
         when(deptMapper.selectById(100L)).thenReturn(testDept);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, 100L, "SYSTEM_ADMIN", null
         );
 
@@ -293,7 +306,7 @@ public class ApprovalServiceImplTest {
         when(deptMapper.selectById(100L)).thenReturn(testDept);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, null, true, null, null, "BRANCH_MGMT", null
         );
 
@@ -346,7 +359,7 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, "MATERIAL_ENTRY", false, null, null, null, null
         );
 
@@ -389,7 +402,7 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, "ASSET", false, null, null, null, null
         );
 
@@ -449,7 +462,7 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
         @SuppressWarnings("unchecked")
-        PageResult<Map<String, Object>> result = approvalService.getMyApplied(
+        PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
                 1L, 1, 10, "ASSET_DELETION", false, null, null, null, null
         );
 
@@ -492,10 +505,10 @@ public class ApprovalServiceImplTest {
         when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
         when(userMapper.selectById(1L)).thenReturn(testUser);
 
-        Map<String, Object> result = approvalService.getTaskDetail(1L);
+        TaskDetailDTO result = approvalService.getTaskDetail(1L);
 
         assertNotNull(result);
-        assertEquals("测试素材.jpg", result.get("businessName"));
+        assertEquals("测试素材.jpg", result.getBusinessName());
         // Verify AssetMapper.selectById was called
         verify(assetMapper, atLeastOnce()).selectById(1L);
         System.out.println("✓ ApprovalService - AssetMapper.selectById in getTaskDetail 测试通过");
@@ -555,7 +568,7 @@ public class ApprovalServiceImplTest {
                 "ASC".equals(query.getOrderByDirection())
         ))).thenReturn(Arrays.asList(currentStage));
 
-        Map<String, Object> result = approvalService.getTaskDetail(1L);
+        TaskDetailDTO result = approvalService.getTaskDetail(1L);
 
         assertNotNull(result);
         // 验证 workflowStageMapper.selectList 被正确调用
@@ -644,7 +657,7 @@ public class ApprovalServiceImplTest {
                 Boolean.TRUE.equals(query.getSubWorkflowIdNotNull())
         ))).thenReturn(new ArrayList<>());
 
-        Map<String, Object> result = approvalService.getTaskDetail(1L);
+        TaskDetailDTO result = approvalService.getTaskDetail(1L);
 
         assertNotNull(result);
         // 验证 stageApproverMapper.selectList 被正确调用（排除子流程）
@@ -761,7 +774,7 @@ public class ApprovalServiceImplTest {
                 "ASC".equals(query.getOrderByDirection())
         ))).thenReturn(new ArrayList<>());
 
-        Map<String, Object> result = approvalService.getTaskDetail(1L);
+        TaskDetailDTO result = approvalService.getTaskDetail(1L);
 
         assertNotNull(result);
         // 验证 stageApproverMapper.selectList 被正确调用（子流程第一阶段审批人）

@@ -3,13 +3,18 @@ package com.xuanjiao.infrastructure.asset;
 import lombok.Data;
 
 /**
- * AssetTag查询条件对象
- * 用于查询资产与标签的关联关系
+ * 素材-标签关联查询条件对象
+ *
+ * <p>用于查询素材与标签的关联关系。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class AssetTagQuery {
+
     /**
-     * 资产ID
+     * 素材ID
      */
     private Long assetId;
 

@@ -1,13 +1,4 @@
-<!--
-/**
- * 工单详情对话框组件
- * <p>展示审批工单的详细信息，包括申请内容、素材列表</p>
- * <p>分离展示主流程和子流程的审批进度</p>
- * <p>支持查看知会记录标签页</p>
- *
- * @author system
- * @version 1.0
- */
+<!-- 工单详情对话框组件 - 展示审批工单的详细信息 -->
 <template>
   <el-dialog v-model="visible" title="工单详情" width="1000px" @close="handleClose">
     <el-tabs v-model="activeTab" type="border-card">
@@ -16,13 +7,13 @@
         <div v-loading="loading">
           <el-descriptions :column="2" border>
             <el-descriptions-item label="申请单ID" :span="2">
-              {{ workOrderDetail.displayId || ('AP-' + workOrderDetail.instanceId) }}
+              {{ workOrderDetail.id ? 'AP-' + workOrderDetail.id : '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="申请标题" :span="2">
-              {{ workOrderDetail.displayTitle || workOrderDetail.title }}
+              {{ workOrderDetail.applicationTitle || workOrderDetail.businessName }}
             </el-descriptions-item>
             <el-descriptions-item label="申请人">
-              {{ workOrderDetail.applicantName || '-' }}
+              {{ workOrderDetail.applicant?.realName || workOrderDetail.applicantName || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="审批流程">
               {{ workOrderDetail.workflowName || '-' }}
@@ -41,16 +32,49 @@
           <div v-if="workOrderDetail.assets && workOrderDetail.assets.length > 0" style="margin-top: 20px">
             <h4>素材文件 ({{ workOrderDetail.assets.length }})</h4>
             <el-table :data="workOrderDetail.assets" size="small" style="margin-top: 10px">
-              <el-table-column label="预览" width="80">
+              <el-table-column label="预览" width="90">
                 <template #default="{ row }">
+                  <!-- 图片：直接显示预览图 -->
                   <el-image
                     v-if="row.type === 'IMAGE'"
-                    :src="row.filePath ? `/api/asset/preview/${row.id}` : ''"
+                    :src="`/api/asset/preview/${row.id}`"
+                    :preview-src-list="[`/api/asset/preview/${row.id}`]"
+                    :preview-teleported="true"
+                    :z-index="9999"
                     fit="cover"
-                    style="width: 60px; height: 40px"
+                    style="width: 60px; height: 40px; cursor: pointer"
                   />
-                  <el-icon v-else-if="row.type === 'VIDEO'" :size="24"><VideoCamera /></el-icon>
-                  <el-icon v-else :size="24"><Document /></el-icon>
+                  <!-- 视频：显示缩略图，加载失败显示图标 -->
+                  <el-image
+                    v-else-if="row.type === 'VIDEO' && row.thumbnailPath"
+                    :src="`/api/asset/thumbnail/${row.id}`"
+                    fit="cover"
+                    style="width: 60px; height: 40px; cursor: pointer"
+                    @click="handlePreviewAsset(row)"
+                  >
+                    <template #error>
+                      <div style="text-align: center; padding: 10px;">
+                        <el-icon :size="20"><VideoCamera /></el-icon>
+                        <el-icon :size="16" style="margin-left: 4px;"><VideoPlay /></el-icon>
+                      </div>
+                    </template>
+                  </el-image>
+                  <!-- 视频无缩略图：显示图标按钮 -->
+                  <el-button
+                    v-else-if="row.type === 'VIDEO'"
+                    link
+                    type="primary"
+                    @click.stop="handlePreviewAsset(row)"
+                    style="padding: 8px;"
+                  >
+                    <el-icon :size="18"><VideoCamera /></el-icon>
+                    预览
+                  </el-button>
+                  <!-- 其他：显示查看按钮 -->
+                  <el-button v-else link @click.stop="handlePreviewAsset(row)">
+                    <el-icon :size="18"><Document /></el-icon>
+                    查看
+                  </el-button>
                 </template>
               </el-table-column>
               <el-table-column prop="name" label="文件名称" />
@@ -244,6 +268,21 @@
               </template>
             </el-table-column>
             <el-table-column prop="title" label="通知标题" min-width="200" show-overflow-tooltip />
+            <el-table-column label="附加消息" min-width="200">
+              <template #default="{ row }">
+                <!-- 只有当前用户的知会记录才显示附加消息 -->
+                <template v-if="row.recipientId === props.currentUserId">
+                  <div v-if="row.message" style="color: #606266;" :title="row.message">
+                    {{ row.message }}
+                  </div>
+                  <div v-else style="color: #C0C4CC; font-style: italic;">无附加消息</div>
+                </template>
+                <!-- 其他人的知会记录不显示附加消息 -->
+                <template v-else>
+                  <div style="color: #C0C4CC; font-style: italic;">***</div>
+                </template>
+              </template>
+            </el-table-column>
             <el-table-column label="阅读状态" width="100" align="center">
               <template #default="{ row }">
                 <el-tag :type="row.isRead === 1 ? 'success' : 'info'" size="small">
@@ -258,6 +297,27 @@
       </el-tab-pane>
     </el-tabs>
 
+    <!-- 素材预览对话框 -->
+    <el-dialog v-model="showPreview" title="素材预览" width="900px" @closed="handleClosePreview">
+      <div v-if="previewAsset" class="preview-content">
+        <img
+          v-if="previewAsset.type === 'IMAGE'"
+          :src="previewUrl"
+          style="max-width: 100%; max-height: 500px"
+        />
+        <video
+          v-else-if="previewAsset.type === 'VIDEO'"
+          :src="previewUrl"
+          controls
+          style="max-width: 100%; max-height: 500px"
+          crossorigin="anonymous"
+        >
+          您的浏览器不支持视频播放
+        </video>
+        <iframe v-else :src="previewUrl" style="width: 100%; height: 500px" />
+      </div>
+    </el-dialog>
+
     <template #footer>
       <slot name="footer">
         <el-button @click="handleClose">关闭</el-button>
@@ -268,13 +328,14 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled, VideoCamera } from '@element-plus/icons-vue'
+import { Clock, SuccessFilled, CircleCloseFilled, WarningFilled, Document, Folder, MoreFilled, VideoCamera, VideoPlay } from '@element-plus/icons-vue'
 import { getInstanceDetail } from '@/api/task'
 import { getNotificationRecords } from '@/api/notification'
 
 interface Props {
   modelValue: boolean
   instanceId: number | null
+  currentUserId?: number | null  // 当前用户ID，用于判断是否显示附加消息
 }
 
 interface Emits {
@@ -290,6 +351,11 @@ const loading = ref(false)
 const loadingRecords = ref(false)
 const workOrderDetail = ref<any>({})
 const notificationRecords = ref<any[]>([])
+
+// 预览相关
+const showPreview = ref(false)
+const previewAsset = ref<any>(null)
+const previewUrl = ref('')
 
 // 分离主流程和子流程进度
 const mainWorkflowProgress = computed(() => {
@@ -343,6 +409,20 @@ async function loadNotificationRecords() {
   } finally {
     loadingRecords.value = false
   }
+}
+
+// 预览素材
+function handlePreviewAsset(row: any) {
+  previewAsset.value = row
+  previewUrl.value = `/api/asset/preview/${row.id}?t=${Date.now()}`
+  showPreview.value = true
+}
+
+// 关闭预览
+function handleClosePreview() {
+  showPreview.value = false
+  previewAsset.value = null
+  previewUrl.value = ''
 }
 
 function handleClose() {
@@ -558,5 +638,10 @@ function getAssetStatusText(status: string) {
 h4 {
   margin: 15px 0 10px;
   color: #303133;
+}
+
+.preview-content {
+  text-align: center;
+  margin-bottom: 20px;
 }
 </style>

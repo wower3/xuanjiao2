@@ -3,11 +3,16 @@ package com.xuanjiao.app.workflow;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.workflow.impl.ApproverSelectionServiceImpl;
-import com.xuanjiao.client.dto.ApproverSelectionDTO;
+import com.xuanjiao.client.workflow.ApproverSelectionDTO;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalProgressMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
-import com.xuanjiao.infrastructure.dataobject.*;
+import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
+import com.xuanjiao.infrastructure.dataobject.StageApproverDO;
+import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowDO;
+import com.xuanjiao.infrastructure.dataobject.WorkflowStageDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
@@ -280,7 +285,7 @@ public class ApproverSelectionServiceImplTest {
         when(workflowMapper.selectById(1L)).thenReturn(testWorkflow);
         when(workflowStageMapper.selectList(any())).thenReturn(new ArrayList<>());
 
-        com.xuanjiao.client.dto.WorkflowDTO result = approverSelectionService.getWorkflowByRole(1L, "ASSET_UPLOAD");
+        com.xuanjiao.client.workflow.WorkflowDTO result = approverSelectionService.getWorkflowByRole(1L, "ASSET_UPLOAD");
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
@@ -304,7 +309,7 @@ public class ApproverSelectionServiceImplTest {
         when(workflowMapper.selectList(any(WorkflowQuery.class)))
                 .thenReturn(new ArrayList<>());
 
-        com.xuanjiao.client.dto.WorkflowDTO result = approverSelectionService.getWorkflowByRole(999L, "UNKNOWN_TYPE");
+        com.xuanjiao.client.workflow.WorkflowDTO result = approverSelectionService.getWorkflowByRole(999L, "UNKNOWN_TYPE");
 
         assertNull(result);
         // 验证 workflowMapper.selectList 被调用
@@ -351,7 +356,7 @@ public class ApproverSelectionServiceImplTest {
                 "ASC".equals(query.getOrderByDirection())
         ))).thenReturn(Arrays.asList(stage1));
 
-        List<com.xuanjiao.client.dto.ApprovalProgressDTO> result =
+        List<com.xuanjiao.client.approval.ApprovalProgressDTO> result =
                 approverSelectionService.getApprovalProgress(1L);
 
         assertNotNull(result);
@@ -394,7 +399,7 @@ public class ApproverSelectionServiceImplTest {
                 "ASC".equals(query.getOrderByDirection())
         ))).thenReturn(Arrays.asList(subStage1));
 
-        List<com.xuanjiao.client.dto.ApprovalProgressDTO> result =
+        List<com.xuanjiao.client.approval.ApprovalProgressDTO> result =
                 approverSelectionService.getApprovalProgress(2L);
 
         assertNotNull(result);

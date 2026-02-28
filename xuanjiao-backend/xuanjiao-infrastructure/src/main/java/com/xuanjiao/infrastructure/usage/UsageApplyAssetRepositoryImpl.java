@@ -3,7 +3,7 @@ package com.xuanjiao.infrastructure.usage;
 import com.xuanjiao.domain.usage.entity.UsageApplyAsset;
 import com.xuanjiao.domain.usage.repository.UsageApplyAssetRepository;
 import com.xuanjiao.infrastructure.dataobject.UsageApplyAssetDO;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
 
@@ -70,15 +70,10 @@ public class UsageApplyAssetRepositoryImpl implements UsageApplyAssetRepository 
     }
 
     private UsageApplyAsset convert(UsageApplyAssetDO usageApplyAssetDO) {
-        if (usageApplyAssetDO == null) return null;
-        UsageApplyAsset usageApplyAsset = new UsageApplyAsset();
-        BeanUtils.copyProperties(usageApplyAssetDO, usageApplyAsset);
-        return usageApplyAsset;
+        return ConvertUtils.copyProperties(usageApplyAssetDO, UsageApplyAsset.class);
     }
 
     private UsageApplyAssetDO convertToDO(UsageApplyAsset usageApplyAsset) {
-        UsageApplyAssetDO usageApplyAssetDO = new UsageApplyAssetDO();
-        BeanUtils.copyProperties(usageApplyAsset, usageApplyAssetDO);
-        return usageApplyAssetDO;
+        return ConvertUtils.copyProperties(usageApplyAsset, UsageApplyAssetDO.class);
     }
 }

@@ -2,14 +2,21 @@ package com.xuanjiao.infrastructure.role;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 角色查询条件对象
- * 用于动态构建查询条件
+ *
+ * <p>用于动态构建角色查询条件，支持多种查询方式。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class RoleQuery {
+
     /**
-     * 主键ID
+     * 角色ID
      */
     private Long id;
 
@@ -21,16 +28,15 @@ public class RoleQuery {
     /**
      * 角色类型列表（IN查询）
      */
-    private java.util.List<String> roleTypes;
+    private List<String> roleTypes;
 
     /**
-     * 角色状态（0:禁用, 1:启用）
+     * 角色状态（0-禁用、1-启用）
      */
     private Integer status;
 
     /**
-     * 删除标记（0:未删除, 1:已删除）
-     * 默认查询未删除的记录
+     * 删除标记（0-未删除、1-已删除）
      */
     private Integer deleted;
 

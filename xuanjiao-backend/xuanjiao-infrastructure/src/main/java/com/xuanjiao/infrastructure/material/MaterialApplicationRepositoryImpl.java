@@ -3,7 +3,7 @@ package com.xuanjiao.infrastructure.material;
 import com.xuanjiao.domain.material.entity.MaterialApplication;
 import com.xuanjiao.domain.material.repository.MaterialApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.MaterialApplicationDO;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -26,7 +26,7 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
     @Override
     public MaterialApplication save(MaterialApplication application) {
         MaterialApplicationDO applicationDO = new MaterialApplicationDO();
-        BeanUtils.copyProperties(application, applicationDO);
+        ConvertUtils.copyProperties(application, applicationDO);
         materialApplicationMapper.insert(applicationDO);
         application.setId(applicationDO.getId());
         return application;
@@ -35,7 +35,7 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
     @Override
     public MaterialApplication update(MaterialApplication application) {
         MaterialApplicationDO applicationDO = new MaterialApplicationDO();
-        BeanUtils.copyProperties(application, applicationDO);
+        ConvertUtils.copyProperties(application, applicationDO);
         materialApplicationMapper.updateById(applicationDO);
         return application;
     }
@@ -78,9 +78,6 @@ public class MaterialApplicationRepositoryImpl implements MaterialApplicationRep
     }
 
     private MaterialApplication convert(MaterialApplicationDO applicationDO) {
-        if (applicationDO == null) return null;
-        MaterialApplication application = new MaterialApplication();
-        BeanUtils.copyProperties(applicationDO, application);
-        return application;
+        return ConvertUtils.copyProperties(applicationDO, MaterialApplication.class);
     }
 }

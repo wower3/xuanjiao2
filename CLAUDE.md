@@ -23,6 +23,10 @@ mysql -u root -p123456 < xuanjiao-backend/sql/init_all.sql
 cd xuanjiao-backend
 # Build all modules (skips tests)
 mvn clean install -DskipTests
+# Run tests
+mvn test
+# Run specific test class
+mvn test -Dtest=ConvertUtilsTest
 # Run the application (runs on port 8080)
 mvn spring-boot:run -pl xuanjiao-start
 # Or run with specific profile
@@ -116,6 +120,7 @@ The backend follows Alibaba's COLA (Clean Object-Oriented and Layered Architectu
 
 ```
 xuanjiao-backend/
+├── xuanjiao-common/        # Common utilities - ConvertUtils for object copying
 ├── xuanjiao-client/       # Client Layer - DTOs, API request/response definitions
 ├── xuanjiao-domain/       # Domain Layer - Entities, domain services, repository interfaces
 │   ├── auth/              # Authentication module entities
@@ -181,6 +186,7 @@ xuanjiao-backend/
 - `infrastructure` implements interfaces defined in `domain`
 - Controllers in `adapter` handle HTTP, delegate to services in `app`
 - `app` orchestrates business logic using `domain` entities and `infrastructure` repositories
+- `xuanjiao-common` provides shared utilities (ConvertUtils) used across all layers
 
 **Cross-module interaction**: When modules need to interact, use the domain layer (repositories) rather than direct service-to-service calls within the same layer.
 
@@ -225,7 +231,8 @@ The usage application module supports multiple assets per application and multip
 - MySQL 8.0
 - JWT authentication
 - Knife4j 4.1.0 (Swagger UI)
-- MapStruct 1.5.5 (DTO mapping)
+- MapStruct 1.5.5 (DTO mapping - for complex transformations)
+- ConvertUtils (in xuanjiao-common - for simple object copying)
 
 ### Frontend
 - Vue 3.4 with Composition API and TypeScript
@@ -427,6 +434,11 @@ The system supports a two-stage asset deletion process:
 ## Development Notes
 
 - The project uses MapStruct for DTO mapping between layers - look for `*Mapper.java` files with `@Mapper` annotation
+- **ConvertUtils** (in `xuanjiao-common` module): Preferred over direct BeanUtils usage for object copying
+  - `ConvertUtils.copyProperties(source, target)` - copies non-null properties
+  - `ConvertUtils.copyProperties(source, TargetClass.class)` - creates and copies to new instance
+  - `ConvertUtils.copyPropertiesIncludeNull(source, target)` - copies all properties including nulls
+  - Both Infrastructure and App layers have been refactored to use ConvertUtils
 - **Notification System Enhancements** (February 2025):
   - `notifications.vue` detail dialog now matches `pending-approval.vue` style with progress icons and main/sub-workflow separation
   - Added "Notify Others" (知会其他人) feature in notification items, reusing existing `notifyUsers` API
@@ -458,162 +470,25 @@ The system supports a two-stage asset deletion process:
 
 ### API Design Conventions
 
-**POST-First Approach for All Endpoints:**
+**POST-First Approach:** Use POST for all operations (except file preview/download)
+- Query: `POST /{module}/get{Action}` (e.g., `POST /asset/getDetail`)
+- Command: `POST /{module}/{action}` (e.g., `POST /asset/delete`)
+- Use `@PostMapping` with `@RequestBody @Valid`
+- GET only for file preview/download endpoints
 
-The project follows a POST-first approach for API design to ensure consistency and avoid RESTful ambiguity:
-
-**Default Rule: Use POST for all operations**
-- Query operations: `POST /{module}/get{Action}` (e.g., `POST /asset/getDetail`)
-- Command operations: `POST /{module}/{action}` (e.g., `POST /asset/delete`)
-- All request parameters should be in the request body as DTO objects
-- Use `@PostMapping` with `@RequestBody @Valid` for all controller methods
-
-**DTO Naming Convention:**
-- Query DTOs: `{Action}Qry` (e.g., `AssetGetDetailQry`, `ApprovalGetMyTasksQry`)
-- Command DTOs: `{Action}Cmd` (e.g., `AssetDeleteCmd`, `ApprovalApproveCmd`)
-- Always use JSR-303 validation annotations (`@NotNull`, `@NotBlank`, `@Min`, etc.)
-
-**Exceptions (When to use GET):**
-Use `@GetMapping` only when POST is impractical:
-- **File preview endpoints** for `<img>` tags: Browsers can only send GET requests for image sources
-  - Example: `@GetMapping("/asset/preview/{id}")` - Must be GET for browser compatibility
-- **File download endpoints** when triggered by direct browser URL access
-  - Example: `@GetMapping("/asset/download/{id}")` - Allows direct download links
-- **Public endpoints** that need to be accessible from external systems without POST capabilities
-
-**Why POST-first?**
-1. **Consistency**: All endpoints follow the same pattern, reducing cognitive load
-2. **Type safety**: DTOs with validation ensure data integrity
-3. **Flexibility**: Easy to add parameters without breaking existing clients
-4. **Logging**: Request bodies are easier to log and audit than URL parameters
-5. **Security**: POST bodies are not logged in access logs or browser history
-
-**Example Controller Pattern:**
-```java
-@PostMapping("/getDetail")
-public Result<AssetDTO> getDetail(@Valid @RequestBody AssetGetDetailQry qry) {
-    return Result.success(assetService.getById(qry.getId()));
-}
-
-// Only use GET for browser-compatible file access
-@GetMapping("/preview/{id}")
-public ResponseEntity<FileSystemResource> preview(@PathVariable Long id) {
-    // ... implementation
-}
-```
+**DTO Naming:** Query DTOs use `{Action}Qry`, commands use `{Action}Cmd`
 
 ### MyBatis Development Standards
 
-**Native MyBatis with explicit XML Mapper approach:**
+The project uses native MyBatis with explicit XML Mapper approach. Key points:
+- All Mapper methods must be explicitly defined (no BaseMapper)
+- Use dedicated Query classes for conditions
+- Always use ResultMap with explicit column-to-property mappings
+- Never use `SELECT *` - define column list explicitly
+- Use strongly-typed DO classes instead of Map/HashMap
+- `infrastructure` layer uses DO classes; cannot depend on `client` DTOs
 
-All Mapper methods must be explicitly defined in the interface and implemented in XML files.
-
-```java
-@Mapper
-public interface AssetMapper {
-    // Basic CRUD Methods - all explicitly defined
-    AssetDO selectById(@Param("id") Long id);
-    AssetDO selectOne(AssetQuery query);
-    List<AssetDO> selectList(AssetQuery query);
-    Long selectCount(AssetQuery query);
-    IPage<AssetDO> selectPage(Page<AssetDO> page, @Param("query") AssetQuery query);
-    int insert(AssetDO assetDO);
-    int updateById(AssetDO assetDO);
-}
-```
-
-**Key Principles:**
-- Use dedicated Query classes instead of dynamic conditions
-- Define explicit ResultMap with column-to-property mappings
-- Always use `<where>` and `<set>` tags for dynamic SQL
-- NEVER use `SELECT *` - always define column list
-- Use `Base_Column_List` SQL fragment for column definitions
-
-**Special Query Patterns:**
-- IS NULL queries: Use Boolean field (e.g., `deletedIsNull`)
-- IN queries: Use `List<T>` field with `<foreach>` tag
-- != queries: Use dedicated field (e.g., `idNotEqual`)
-- Force NULL update: Create explicit XML method
-
-**Field Mapping Standards:**
-- `column`: Database field name (underscore_case, like `role_id`)
-- `property`: Java property name (camelCase, like `roleId`)
-
-### Mapper Return Type Standards
-
-**IMPORTANT: Always use strongly-typed classes, never use Map/HastMap:**
-
-✅ **Recommended: Use specific DO/DTO classes**
-```java
-// Single table query
-AssetDO selectById(@Param("id") Long id);
-
-// Multi-table JOIN - create dedicated result class
-List<FlowItemDO> selectFlowItemsByUser(@Param("userId") Long userId,
-                                       @Param("businessType") String businessType,
-                                       @Param("status") String status);
-```
-
-❌ **Avoid: Using Map as return type**
-```java
-// DON'T DO THIS - type unsafe, no IDE support
-List<Map<String, Object>> selectSomething();
-```
-
-**DO Class Naming Conventions:**
-| Query Type | Class Name Pattern | Example |
-|------------|-------------------|---------|
-| Single table result | `{Entity}DO` | `AssetDO` |
-| Multi-table JOIN result | `{Module}ItemDO` or `{Module}QueryResultDO` | `FlowItemDO` |
-| Statistics/Aggregation | `{Module}StatisticsDO` | `AssetStatisticsDO` |
-| Summary/Dashboard | `{Module}SummaryDO` | `WorkflowSummaryDO` |
-
-**ResultMap Definition:**
-```xml
-<!-- Good: Use resultMap with explicit mappings -->
-<resultMap id="FlowItemResultMap" type="com.xuanjiao.infrastructure.approval.FlowItemDO">
-    <id column="id" property="id" jdbcType="BIGINT"/>
-    <result column="workflow_name" property="workflowName" jdbcType="VARCHAR"/>
-    <!-- MyBatis auto-handles underscore → camelCase mapping when resultMap is used -->
-</resultMap>
-
-<select id="selectFlowItemsByUser" resultMap="FlowItemResultMap">
-    SELECT ai.id, ai.status, w.name AS workflow_name, ...
-    <!-- No need for manual AS aliases when resultMap is properly defined -->
-</select>
-
-<!-- Bad: Using HashMap -->
-<select id="selectSomething" resultType="java.util.HashMap">
-    <!-- Type unsafe, no IDE support, runtime errors only -->
-</select>
-```
-
-**Why Strong Typing Matters:**
-| Aspect | HashMap | Strongly-typed DO |
-|--------|---------|-------------------|
-| Type Safety | ❌ Runtime errors only | ✅ Compile-time checking |
-| IDE Support | ❌ No autocomplete | ✅ Full autocomplete |
-| Refactoring | ❌ Break silently | ✅ Safe with IDE tools |
-| Code Quality | ❌ Hard to maintain | ✅ Self-documenting |
-| Column Mapping | ❌ Manual AS required | ✅ resultMap handles it |
-
-**COLA Architecture Compliance:**
-- `infrastructure` layer: Use DO classes (infrastructure's own package)
-- `app` layer: Can convert DO to DTO if needed
-- `infrastructure` CANNOT depend on `client` layer DTOs
-
-```java
-// Correct - infrastructure layer
-package com.xuanjiao.infrastructure.approval;
-public class FlowItemDO { ... }
-
-// Correct - app layer (optional conversion)
-List<Map<String, Object>> result = flowItems.stream()
-    .map(this::convertToMap)
-    .collect(Collectors.toList());
-```
-
-For detailed MyBatis development standards, see `DEVELOPMENT_GUIDELINES.md`.
+See `DEVELOPMENT_GUIDELINES.md` for detailed standards.
 
 ### Important Constraints & Gotchas
 
@@ -723,72 +598,12 @@ As of January 2025, the backend has been refactored to use module-based packagin
 
 **Important**: When adding new features, follow the module-based structure. Place code in the appropriate module subdirectory within each layer.
 
-### Recent Database Architecture Changes (January 2025)
+### Key Database Changes
 
-**Menu Rename (init_27_rename_pending_menu.sql):**
-- Renamed menu id=12 from "待我审批" to "待办事项"
-- SQL: `UPDATE sys_menu SET name = '待办事项' WHERE id = 12;`
-
-**Usage Application Refactoring (init_24_refactor_to_intermediate_table.sql):**
-- Changed from direct `asset_id` foreign key in `usage_apply` table to a many-to-many relationship
-- Created `usage_apply_asset` intermediate table to support:
-  - One application can include multiple assets
-  - One asset can be used by multiple applications
-  - Per-asset usage configuration (description, channel, secondary creation, attachment)
-
-**Previous Schema (Deprecated):**
-- `usage_apply.asset_id` - Direct foreign key (one-to-one)
-- `asset` table had usage fields (usage_description, usage_publish_channel, etc.)
-
-**Current Schema:**
-- `usage_apply` - No direct asset_id
-- `usage_apply_asset` - Intermediate table with `usage_apply_id`, `asset_id`, and per-asset config fields
-
-## Environment Configuration
-
-### Backend Configuration
-File: `xuanjiao-start/src/main/resources/application.yml`
-
-**Key settings to verify:**
-- Database connection: `spring.datasource.url` (default: `127.0.0.1:3306/xuanjiao_s`)
-- Database credentials: `spring.datasource.username/password` (default: `root`/`123456`)
-- File upload path: `file.upload-path` (default: `D:/xuanjiao/uploads/`)
-- Server port: `server.port` (default: `8080`)
-- JWT secret and expiration: Used for token generation and validation
-
-### Frontend Configuration
-File: `xuanjiao-frontend/vite.config.ts`
-
-**Key settings:**
-- Dev server port: `server.port` (default: `3000`)
-- API proxy: Routes `/api` requests to `http://localhost:8080`
-
-**Environment variables (optional):**
-Create `.env` file in `xuanjiao-frontend/`:
-```
-VITE_API_BASE_URL=http://localhost:8080/api
-```
+- **Menu Rename**: menu id=12 renamed from "待我审批" to "待办事项"
+- **Usage Application**: Uses many-to-many via `usage_apply_asset` intermediate table (not direct `asset_id`)
 
 ## Working with This Codebase
-
-### Adding a New Feature
-
-1. **Backend (COLA layers)**:
-   - Create/modify entities in `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/entity/`
-   - Create repository interface in `xuanjiao-domain/src/main/java/com/xuanjiao/domain/{module}/repository/`
-   - Create mapper in `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
-   - Implement repository in `xuanjiao-infrastructure/src/main/java/com/xuanjiao/infrastructure/{module}/`
-   - Create service interface in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/`
-   - Implement service in `xuanjiao-app/src/main/java/com/xuanjiao/app/{module}/impl/`
-   - Create DTOs in `xuanjiao-client/src/main/java/com/xuanjiao/client/dto/`
-   - Create controller in `xuanjiao-adapter/src/main/java/com/xuanjiao/adapter/web/{module}/`
-
-2. **Frontend**:
-   - Add API client methods in `xuanjiao-frontend/src/api/{domain}.ts`
-   - Create Pinia store in `xuanjiao-frontend/src/stores/{domain}.ts` (if needed)
-   - Create page component in `xuanjiao-frontend/src/views/{path}/`
-   - Add route in `xuanjiao-frontend/src/router/index.ts`
-   - Add menu entry in backend `menu` table if needed
 
 ### Debugging Approval Workflows
 
@@ -799,11 +614,3 @@ When troubleshooting workflow issues:
 4. Review progress tracking in `approval_progress` table
 5. Check logs for workflow engine operations
 6. Refer to `WORKFLOW_REFACTOR_SUMMARY.md` for detailed architecture
-
-### Understanding Module Boundaries
-
-The COLA architecture enforces strict layer dependencies:
-- `adapter` → `app` → `domain` (dependencies flow inward)
-- `client` is shared by all layers
-- `infrastructure` implements `domain` interfaces
-- Cross-module communication within a layer should use repositories/domain entities, not direct service calls

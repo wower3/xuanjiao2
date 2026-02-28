@@ -14,7 +14,17 @@ import java.util.List;
 
 /**
  * 素材彻底软删除定时任务
- * 每天凌晨2点执行，清理审批通过超过一周的素材
+ *
+ * <p>每天凌晨2点执行，清理审批通过超过一周的素材。
+ * 实现素材删除的两阶段处理：</p>
+ *
+ * <ol>
+ *   <li>第一阶段：审批通过后素材状态变为DELETED（可见但不可用）</li>
+ *   <li>第二阶段：7天后执行软删除，设置deleted=1（完全隐藏）</li>
+ * </ol>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Component
 public class AssetDeletionCleanupTask {
@@ -25,8 +35,15 @@ public class AssetDeletionCleanupTask {
     private AssetMapper assetMapper;
 
     /**
-     * 每天凌晨2点执行
-     * 将状态为DELETED且删除审批时间超过一周的素材彻底软删除
+     * 每天凌晨2点执行定时任务
+     *
+     * <p>将状态为DELETED且删除审批时间超过一周的素材彻底软删除。
+     * 执行条件：</p>
+     * <ul>
+     *   <li>素材状态为DELETED</li>
+     *   <li>deletion_approve_time 早于一周前</li>
+     *   <li>deleted = 0（未执行过软删除）</li>
+     * </ul>
      */
     @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupDeletedAssets() {
@@ -34,8 +51,10 @@ public class AssetDeletionCleanupTask {
     }
 
     /**
-     * 手动触发方法（用于测试）
-     * 可以通过后端接口调用此方法进行测试
+     * 手动触发方法（用于测试和管理）
+     *
+     * <p>可以通过后端管理员接口调用此方法进行测试或立即执行清理。</p>
+     *
      * @return 删除的素材数量
      */
     public int cleanupDeletedAssetsManually() {
@@ -44,7 +63,11 @@ public class AssetDeletionCleanupTask {
     }
 
     /**
-     * 内部执行方法，返回删除数量
+     * 内部执行方法
+     *
+     * <p>执行素材软删除的核心逻辑，返回处理的记录数量。</p>
+     *
+     * @return 删除的素材数量，执行失败返回0
      */
     private int cleanupDeletedAssetsInternal() {
         logger.info("开始执行素材彻底软删除定时任务");

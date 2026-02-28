@@ -3,10 +3,10 @@ package com.xuanjiao.app.deletion.impl;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.deletion.AssetDeletionApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.dto.AssetDeletionApplicationCmd;
-import com.xuanjiao.client.dto.AssetDeletionApplicationDTO;
-import com.xuanjiao.client.dto.AssetDeletionAssetDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.deletion.AssetDeletionApplicationCmd;
+import com.xuanjiao.client.deletion.AssetDeletionApplicationDTO;
+import com.xuanjiao.client.deletion.AssetDeletionAssetDTO;
+import com.xuanjiao.client.PageResult;
 import com.xuanjiao.domain.asset.entity.Asset;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.domain.deletion.entity.AssetDeletionApplication;
@@ -14,13 +14,15 @@ import com.xuanjiao.domain.deletion.entity.AssetDeletionAsset;
 import com.xuanjiao.domain.deletion.repository.AssetDeletionApplicationRepository;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
+import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
+import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +61,9 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private DeptMapper deptMapper;
 
     @Autowired
     private WorkflowEngineService workflowEngineService;
@@ -378,7 +383,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         for (AssetDeletionAsset asset : assets) {
             com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO assetDO =
                 new com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO();
-            BeanUtils.copyProperties(asset, assetDO);
+            ConvertUtils.copyProperties(asset, assetDO);
             deletionAssetMapper.insert(assetDO);
         }
     }
@@ -397,18 +402,20 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
      */
     private AssetDeletionApplicationDTO convertToDTO(AssetDeletionApplication application) {
         AssetDeletionApplicationDTO dto = new AssetDeletionApplicationDTO();
-        BeanUtils.copyProperties(application, dto);
+        ConvertUtils.copyProperties(application, dto);
 
         // 查询申请人信息
         UserDO applicant = userMapper.selectById(application.getApplicantId());
         if (applicant != null) {
-            dto.setApplicantName(applicant.getUsername());
+            dto.setApplicantName(applicant.getRealName());
         }
 
         // 查询部门信息
         if (application.getDeptId() != null) {
-            // 这里可以根据需要查询部门名称
-            // dto.setDeptName(deptService.getById(application.getDeptId()).getName());
+            DeptDO dept = deptMapper.selectById(application.getDeptId());
+            if (dept != null) {
+                dto.setDeptName(dept.getName());
+            }
         }
 
         // 查询关联的素材

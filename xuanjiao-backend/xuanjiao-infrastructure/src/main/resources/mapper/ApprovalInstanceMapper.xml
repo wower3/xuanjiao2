@@ -243,6 +243,80 @@
 
     <!-- ==================== 自定义查询方法 ==================== -->
 
+    <!-- ==================== 优化查询方法 ==================== -->
+
+    <!-- 我发起的列表ResultMap -->
+    <resultMap id="MyAppliedResultMap" type="com.xuanjiao.infrastructure.approval.MyAppliedDO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="business_id" property="businessId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="applicant_id" property="applicantId" jdbcType="BIGINT"/>
+        <result column="applicant_name" property="applicantName" jdbcType="VARCHAR"/>
+        <result column="workflow_id" property="workflowId" jdbcType="BIGINT"/>
+        <result column="workflow_name" property="workflowName" jdbcType="VARCHAR"/>
+        <result column="current_stage_id" property="currentStageId" jdbcType="BIGINT"/>
+        <result column="current_stage_name" property="currentStageName" jdbcType="VARCHAR"/>
+        <result column="application_title" property="applicationTitle" jdbcType="VARCHAR"/>
+        <result column="deletion_title" property="deletionTitle" jdbcType="VARCHAR"/>
+        <result column="usage_title" property="usageTitle" jdbcType="VARCHAR"/>
+        <result column="pending_approver_names" property="pendingApproverNames" jdbcType="VARCHAR"/>
+        <result column="pending_approver_ids" property="pendingApproverIds" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- 查询我发起的工单（优化的JOIN查询，避免N+1问题） -->
+    <select id="selectMyAppliedList" resultMap="MyAppliedResultMap">
+        SELECT
+            ai.id,
+            ai.status,
+            ai.business_type,
+            ai.business_id,
+            ai.create_time,
+            ai.applicant_id,
+            ai.workflow_id,
+            ai.current_stage_id,
+            u.real_name AS applicant_name,
+            w.name AS workflow_name,
+            ws.name AS current_stage_name,
+            ma.title AS application_title,
+            da.title AS deletion_title,
+            ua.title AS usage_title,
+            GROUP_CONCAT(DISTINCT approver.real_name ORDER BY approver.real_name SEPARATOR ',') AS pending_approver_names,
+            GROUP_CONCAT(DISTINCT approver.id ORDER BY approver.id SEPARATOR ',') AS pending_approver_ids
+        FROM approval_instance ai
+        INNER JOIN sys_user u ON ai.applicant_id = u.id
+        INNER JOIN workflow w ON ai.workflow_id = w.id
+        LEFT JOIN workflow_stage ws ON ai.current_stage_id = ws.id
+        LEFT JOIN material_application ma ON ai.business_type = 'MATERIAL_ENTRY' AND ai.business_id = ma.id
+        LEFT JOIN asset_deletion_application da ON ai.business_type = 'ASSET_DELETION' AND ai.business_id = da.id
+        LEFT JOIN usage_apply ua ON ai.business_type = 'ASSET_USAGE' AND ai.business_id = ua.id
+        LEFT JOIN approval_task at ON ai.id = at.instance_id AND at.status = 'PENDING'
+        LEFT JOIN sys_user approver ON at.approver_id = approver.id
+        <where>
+            ai.parent_instance_id IS NULL
+            <if test="applicantId != null">
+                AND ai.applicant_id = #{applicantId}
+            </if>
+            <if test="applicantIds != null and applicantIds.size() > 0">
+                AND ai.applicant_id IN
+                <foreach collection="applicantIds" item="id" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="businessType != null and businessType != ''">
+                AND ai.business_type = #{businessType}
+            </if>
+            <if test="status != null and status != ''">
+                AND ai.status = #{status}
+            </if>
+        </where>
+        GROUP BY ai.id, ai.status, ai.business_type, ai.business_id, ai.create_time,
+                 ai.applicant_id, ai.workflow_id, ai.current_stage_id,
+                 u.real_name, w.name, ws.name, ma.title, da.title, ua.title
+        ORDER BY ai.create_time DESC
+    </select>
+
     <select id="selectSubInstancesToCancel" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM approval_instance

@@ -191,19 +191,6 @@
         </choose>
     </select>
 
-    <!-- 自定义查询：根据素材ID和用户ID查询 -->
-    <select id="selectByAssetAndUser" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM usage_apply
-        <where>
-            asset_id = #{assetId}
-            AND user_id = #{userId}
-            AND status = #{status}
-            AND deleted = 0
-        </where>
-        LIMIT 1
-    </select>
-
     <!-- 插入 -->
     <insert id="insert" parameterType="com.xuanjiao.infrastructure.dataobject.UsageApplyDO"
             useGeneratedKeys="true" keyProperty="id">
@@ -252,4 +239,88 @@
             id = #{id}
         </where>
     </update>
+
+    <!-- ==================== 优化的JOIN查询方法（解决N+1问题） ==================== -->
+
+    <!-- ResultMap with Details -->
+    <resultMap id="WithDetailsResultMap" type="com.xuanjiao.infrastructure.usage.UsageApplyWithDetailsDO">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="purpose" property="purpose"/>
+        <result column="scope" property="scope"/>
+        <result column="workflow_id" property="workflowId"/>
+        <result column="status" property="status"/>
+        <result column="approval_instance_id" property="approvalInstanceId"/>
+        <result column="attachment_path" property="attachmentPath"/>
+        <result column="is_secondary_creation" property="isSecondaryCreation"/>
+        <result column="publish_channel" property="publishChannel"/>
+        <result column="dept_id" property="deptId"/>
+        <result column="draft" property="draft"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="dept_name" property="deptName"/>
+    </resultMap>
+
+    <!-- 动态条件查询（带申请人姓名和部门名称，JOIN查询避免N+1） -->
+    <select id="selectListWithDetails" resultMap="WithDetailsResultMap">
+        SELECT
+            ua.id, ua.user_id, ua.title, ua.purpose, ua.scope, ua.workflow_id, ua.status,
+            ua.approval_instance_id, ua.attachment_path, ua.is_secondary_creation, ua.publish_channel,
+            ua.dept_id, ua.draft, ua.create_time, ua.update_time, ua.deleted,
+            u.real_name AS applicant_name,
+            d.name AS dept_name
+        FROM usage_apply ua
+        LEFT JOIN sys_user u ON ua.user_id = u.id AND u.deleted = 0
+        LEFT JOIN sys_dept d ON ua.dept_id = d.id AND COALESCE(d.deleted, 0) = 0
+        <where>
+            <if test="deleted != null">
+                ua.deleted = #{deleted}
+            </if>
+            <if test="deleted == null">
+                ua.deleted = 0
+            </if>
+
+            <if test="userId != null">
+                AND ua.user_id = #{userId}
+            </if>
+            <if test="status != null and status != ''">
+                AND ua.status = #{status}
+            </if>
+            <if test="draft != null">
+                AND ua.draft = #{draft}
+            </if>
+            <if test="deptId != null">
+                AND ua.dept_id = #{deptId}
+            </if>
+
+            <if test="statusList != null and statusList.size() > 0">
+                AND ua.status IN
+                <foreach collection="statusList" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+
+            <if test="titleKeyword != null and titleKeyword != ''">
+                AND ua.title LIKE CONCAT('%', #{titleKeyword}, '%')
+            </if>
+        </where>
+        <choose>
+            <when test="orderByField != null and orderByField != ''">
+                ORDER BY ${orderByField}
+                <if test="orderByDirection != null and orderByDirection != ''">
+                    ${orderByDirection}
+                </if>
+            </when>
+            <otherwise>
+                ORDER BY ua.create_time DESC
+            </otherwise>
+        </choose>
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
 </mapper>

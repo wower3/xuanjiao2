@@ -3,10 +3,12 @@ package com.xuanjiao.app.material.impl;
 import com.xuanjiao.app.material.MaterialApplicationService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.app.asset.AssetService;
-import com.xuanjiao.client.dto.AssetDTO;
-import com.xuanjiao.client.dto.MaterialApplicationCmd;
-import com.xuanjiao.client.dto.MaterialApplicationDTO;
-import com.xuanjiao.client.dto.PageResult;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
+import com.xuanjiao.client.asset.AssetDTO;
+import com.xuanjiao.client.material.MaterialApplicationCmd;
+import com.xuanjiao.client.material.MaterialApplicationDTO;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.asset.TagDTO;
 import com.xuanjiao.domain.material.entity.MaterialApplication;
 import com.xuanjiao.domain.material.repository.MaterialApplicationRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetDO;
@@ -20,7 +22,10 @@ import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.asset.TagMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.infrastructure.material.MaterialApplicationWithDetailsDO;
+import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
+import com.xuanjiao.infrastructure.material.MaterialApplicationQuery;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -69,6 +75,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
     @Autowired
     private DeptMapper deptMapper;
+
+    @Autowired
+    private MaterialApplicationMapper materialApplicationMapper;
 
     @Override
     @Transactional
@@ -214,50 +223,159 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
     @Override
     public PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize) {
-        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
+        // 使用JOIN查询一次性获取申请及关联的用户/部门信息，避免N+1问题
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
+        List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
+        long total = materialApplicationMapper.selectCount(query);
+
         // 过滤出草稿状态
-        list = list.stream().filter(app -> "DRAFT".equals(app.getStatus())).collect(Collectors.toList());
-
-        long total = materialApplicationRepository.countByApplicant(userId);
-
-        List<MaterialApplicationDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        List<MaterialApplicationDTO> dtoList = list.stream()
+            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .map(this::convertWithDetails)
+            .collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
     @Override
     public PageResult<MaterialApplicationDTO> queryDrafts(Long userId, Integer pageNum, Integer pageSize, String title) {
-        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
+        // 使用JOIN查询一次性获取申请及关联的用户/部门信息，避免N+1问题
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
+        List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
+        long total = materialApplicationMapper.selectCount(query);
+
         // 过滤出草稿状态
-        list = list.stream().filter(app -> "DRAFT".equals(app.getStatus())).collect(Collectors.toList());
+        List<MaterialApplicationWithDetailsDO> filteredList = list.stream()
+            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .collect(Collectors.toList());
 
         // 按标题筛选
-        List<MaterialApplication> filteredList = list;
         if (title != null && !title.isEmpty()) {
             final String titleFilter = title;
-            filteredList = list.stream()
+            filteredList = filteredList.stream()
                 .filter(app -> app.getTitle() != null && app.getTitle().contains(titleFilter))
                 .collect(Collectors.toList());
         }
 
-        long total = materialApplicationRepository.countByApplicant(userId);
-
-        List<MaterialApplicationDTO> dtoList = filteredList.stream().map(this::convert).collect(Collectors.toList());
-        return PageResult.of(dtoList, (long) filteredList.size(), pageNum, pageSize);
+        List<MaterialApplicationDTO> dtoList = filteredList.stream()
+            .map(this::convertWithDetails)
+            .collect(Collectors.toList());
+        return PageResult.of(dtoList, total, pageNum, pageSize);
     }
 
     @Override
     public PageResult<MaterialApplicationDTO> queryMyApplications(Long userId, Integer pageNum, Integer pageSize) {
-        List<MaterialApplication> list = materialApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
-        long total = materialApplicationRepository.countByApplicant(userId);
+        // 使用JOIN查询一次性获取申请及关联的用户/部门信息，避免N+1问题
+        MaterialApplicationQuery query = new MaterialApplicationQuery();
+        query.setApplicantId(userId);
+        query.setOrderByField("create_time");
+        query.setOrderByDirection("DESC");
+        query.setOffset((pageNum - 1) * pageSize);
+        query.setLimit(pageSize);
+        List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
+        long total = materialApplicationMapper.selectCount(query);
 
-        List<MaterialApplicationDTO> dtoList = list.stream().map(this::convert).collect(Collectors.toList());
+        // 转换为DTO - 使用优化的convert方法
+        List<MaterialApplicationDTO> dtoList = list.stream().map(this::convertWithDetails).collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
+    }
+
+    /**
+     * 将带详情的DO转换为DTO（优化版，使用JOIN查询结果）
+     */
+    private MaterialApplicationDTO convertWithDetails(MaterialApplicationWithDetailsDO details) {
+        if (details == null) return null;
+        MaterialApplicationDTO dto = new MaterialApplicationDTO();
+        dto.setId(details.getId());
+        dto.setTitle(details.getTitle());
+        dto.setApplicantId(details.getApplicantId());
+        dto.setApplicantName(details.getApplicantName());
+        dto.setMaintainerId(details.getMaintainerId());
+        dto.setMaintainerName(details.getMaintainerName());
+        dto.setDeptId(details.getDeptId());
+        dto.setDeptName(details.getDeptName());
+        dto.setWorkflowId(details.getWorkflowId());
+        dto.setStatus(details.getStatus());
+        dto.setGuaranteeDeclaration(details.getGuaranteeDeclaration());
+        dto.setCreateTime(details.getCreateTime());
+        dto.setUpdateTime(details.getUpdateTime());
+
+        // 查询关联的素材文件
+        if (details.getId() != null) {
+            AssetQuery wrapper = new AssetQuery();
+            wrapper.setApplicationId(details.getId());
+            List<AssetDO> assets = assetMapper.selectList(wrapper);
+
+            if (!assets.isEmpty()) {
+                // 批量查询所有素材的标签（优化N+1问题）
+                List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+                Map<Long, List<TagDTO>> tagsMap = new java.util.HashMap<>();
+
+                if (!assetIds.isEmpty()) {
+                    List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags =
+                        assetTagMapper.selectByAssetIds(assetIds);
+
+                    if (!allAssetTags.isEmpty()) {
+                        List<Long> tagIds = allAssetTags.stream()
+                            .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
+                            .distinct()
+                            .collect(Collectors.toList());
+
+                        List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
+                        Map<Long, TagDO> tagIdToTag = new java.util.HashMap<>();
+                        for (TagDO tag : allTags) {
+                            tagIdToTag.put(tag.getId(), tag);
+                        }
+
+                        Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
+                            .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
+
+                        for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
+                            List<TagDTO> tagsForAsset = new ArrayList<>();
+                            for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : entry.getValue()) {
+                                TagDO tag = tagIdToTag.get(assetTag.getTagId());
+                                if (tag != null) {
+                                    TagDTO tagDTO = new TagDTO();
+                                    tagDTO.setId(tag.getId());
+                                    tagDTO.setName(tag.getName());
+                                    tagDTO.setCategory(tag.getCategory());
+                                    tagDTO.setCreateTime(tag.getCreateTime());
+                                    tagsForAsset.add(tagDTO);
+                                }
+                            }
+                            tagsMap.put(entry.getKey(), tagsForAsset);
+                        }
+                    }
+                }
+
+                // 转换为 DTO
+                List<AssetDTO> assetDTOs = new ArrayList<>();
+                for (AssetDO asset : assets) {
+                    AssetDTO assetDTO = new AssetDTO();
+                    ConvertUtils.copyProperties(asset, assetDTO);
+                    assetDTO.setTags(tagsMap.get(asset.getId()));
+                    assetDTOs.add(assetDTO);
+                }
+                dto.setAssets(assetDTOs);
+            }
+        }
+
+        return dto;
     }
 
     private MaterialApplicationDTO convert(MaterialApplication application) {
         if (application == null) return null;
         MaterialApplicationDTO dto = new MaterialApplicationDTO();
-        BeanUtils.copyProperties(application, dto);
+        ConvertUtils.copyProperties(application, dto);
 
         logger.info("MaterialApplication.convert - applicationId: {}, title: {}", application.getId(), application.getTitle());
 
@@ -296,7 +414,54 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
                 logger.info("MaterialApplication.convert - asset: id={}, name={}, applicationId={}",
                     assetDO.getId(), assetDO.getName(), assetDO.getApplicationId());
             }
-            List<AssetDTO> assetDTOs = assets.stream().map(this::convertAsset).collect(Collectors.toList());
+
+            // 批量查询所有素材的标签（优化N+1问题）
+            // 1. 获取所有素材ID
+            List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+
+            // 2. 批量查询素材-标签关联
+            Map<Long, List<TagDO>> tagsMap = new java.util.HashMap<>();
+            if (!assetIds.isEmpty()) {
+                List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags =
+                    assetTagMapper.selectByAssetIds(assetIds);
+
+                if (!allAssetTags.isEmpty()) {
+                    // 3. 收集所有标签ID
+                    List<Long> tagIds = allAssetTags.stream()
+                        .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                    // 4. 批量查询所有标签
+                    List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
+
+                    // 5. 建立标签ID到标签对象的映射
+                    Map<Long, TagDO> tagIdToTag = new java.util.HashMap<>();
+                    for (TagDO tag : allTags) {
+                        tagIdToTag.put(tag.getId(), tag);
+                    }
+
+                    // 6. 按素材ID分组，建立素材ID到标签列表的映射
+                    Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
+                        .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
+
+                    for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
+                        List<TagDO> tagsForAsset = new ArrayList<>();
+                        for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : entry.getValue()) {
+                            TagDO tag = tagIdToTag.get(assetTag.getTagId());
+                            if (tag != null) {
+                                tagsForAsset.add(tag);
+                            }
+                        }
+                        tagsMap.put(entry.getKey(), tagsForAsset);
+                    }
+                }
+            }
+
+            // 6. 转换素材为DTO，使用预加载的标签
+            List<AssetDTO> assetDTOs = assets.stream()
+                .map(asset -> convertAssetWithPreloadedTags(asset, tagsMap))
+                .collect(Collectors.toList());
             dto.setAssets(assetDTOs);
             logger.info("MaterialApplication.convert - 设置后 dto.assets 数量: {}", dto.getAssets() != null ? dto.getAssets().size() : 0);
         }
@@ -318,7 +483,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     private AssetDTO convertAsset(AssetDO assetDO) {
         if (assetDO == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(assetDO, dto);
+        ConvertUtils.copyProperties(assetDO, dto);
 
         // 填充标签
         AssetTagQuery tagQuery = new AssetTagQuery();
@@ -332,8 +497,35 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
             if (!tagIds.isEmpty()) {
                 List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
                 dto.setTags(tags.stream().map(tag -> {
-                    com.xuanjiao.client.dto.TagDTO tagDTO = new com.xuanjiao.client.dto.TagDTO();
-                    BeanUtils.copyProperties(tag, tagDTO);
+                    com.xuanjiao.client.asset.TagDTO tagDTO = new com.xuanjiao.client.asset.TagDTO();
+                    ConvertUtils.copyProperties(tag, tagDTO);
+                    return tagDTO;
+                }).collect(Collectors.toList()));
+            }
+        }
+
+        return dto;
+    }
+
+    /**
+     * 使用预加载的标签转换素材为DTO（优化N+1问题）
+     *
+     * @param assetDO 素材数据对象
+     * @param tagsMap 素材ID到标签列表的映射（预加载）
+     * @return 素材DTO
+     */
+    private AssetDTO convertAssetWithPreloadedTags(AssetDO assetDO, Map<Long, List<TagDO>> tagsMap) {
+        if (assetDO == null) return null;
+        AssetDTO dto = new AssetDTO();
+        ConvertUtils.copyProperties(assetDO, dto);
+
+        // 使用预加载的标签
+        if (tagsMap != null && tagsMap.containsKey(assetDO.getId())) {
+            List<TagDO> tags = tagsMap.get(assetDO.getId());
+            if (tags != null && !tags.isEmpty()) {
+                dto.setTags(tags.stream().map(tag -> {
+                    com.xuanjiao.client.asset.TagDTO tagDTO = new com.xuanjiao.client.asset.TagDTO();
+                    ConvertUtils.copyProperties(tag, tagDTO);
                     return tagDTO;
                 }).collect(Collectors.toList()));
             }
@@ -374,7 +566,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         for (AssetDO originalAsset : originalAssets) {
             AssetDO newAsset = new AssetDO();
-            BeanUtils.copyProperties(originalAsset, newAsset);
+            ConvertUtils.copyProperties(originalAsset, newAsset);
             newAsset.setId(null);
             newAsset.setApplicationId(saved.getId());
             newAsset.setStatus("DRAFT");

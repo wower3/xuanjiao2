@@ -5,7 +5,12 @@ import com.xuanjiao.infrastructure.asset.AssetTagQuery;
 import com.xuanjiao.app.asset.AssetService;
 import com.xuanjiao.app.schedule.AssetDeletionCleanupTask;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
-import com.xuanjiao.client.dto.*;
+import com.xuanjiao.client.approval.ApprovalProgressDTO;
+import com.xuanjiao.client.asset.AssetDTO;
+import com.xuanjiao.client.asset.AssetQueryCmd;
+import com.xuanjiao.client.asset.AssetUploadCmd;
+import com.xuanjiao.client.PageResult;
+import com.xuanjiao.client.asset.TagDTO;
 import com.xuanjiao.domain.asset.entity.Asset;
 import com.xuanjiao.domain.asset.repository.AssetRepository;
 import com.xuanjiao.infrastructure.dataobject.AssetTagDO;
@@ -26,7 +31,7 @@ import com.xuanjiao.app.log.OperationLogService;
 import com.xuanjiao.app.usage.UsageApplyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -179,7 +184,7 @@ public class AssetServiceImpl implements AssetService {
                 }
             }
 
-            return convert(asset);
+            return convertWithTags(asset);
         } catch (IOException e) {
             throw new RuntimeException("文件上传失败", e);
         }
@@ -281,16 +286,13 @@ public class AssetServiceImpl implements AssetService {
     }
 
     private AssetDTO convert(Asset asset) {
-        if (asset == null) return null;
-        AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(asset, dto);
-        return dto;
+        return ConvertUtils.copyProperties(asset, AssetDTO.class);
     }
 
     private AssetDTO convertWithTags(Asset asset) {
         if (asset == null) return null;
         AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(asset, dto);
+        ConvertUtils.copyProperties(asset, dto);
 
         // Load tags
         if (asset.getId() != null) {
@@ -306,7 +308,7 @@ public class AssetServiceImpl implements AssetService {
                     List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
                     dto.setTags(tags.stream().map(tag -> {
                         TagDTO tagDTO = new TagDTO();
-                        BeanUtils.copyProperties(tag, tagDTO);
+                        ConvertUtils.copyProperties(tag, tagDTO);
                         return tagDTO;
                     }).collect(Collectors.toList()));
                 }
@@ -421,10 +423,7 @@ public class AssetServiceImpl implements AssetService {
     }
 
     private AssetDTO convertDOToDTO(com.xuanjiao.infrastructure.dataobject.AssetDO assetDO) {
-        if (assetDO == null) return null;
-        AssetDTO dto = new AssetDTO();
-        BeanUtils.copyProperties(assetDO, dto);
-        return dto;
+        return ConvertUtils.copyProperties(assetDO, AssetDTO.class);
     }
 
     /**

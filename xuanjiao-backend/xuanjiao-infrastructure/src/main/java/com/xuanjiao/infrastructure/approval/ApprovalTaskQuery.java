@@ -5,22 +5,68 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * ApprovalTask查询条件对象
- * 用于查询审批任务
+ * 审批任务查询条件对象
+ *
+ * <p>用于动态构建审批任务查询条件，对应 ApprovalTaskMapper 使用。</p>
+ *
+ * @author xuanjiao
+ * @since 1.0.0
  */
 @Data
 public class ApprovalTaskQuery {
-    private Long id;
-    private Long instanceId;
-    private Long stageId;
-    private Long approverId;
-    private String status;
-    private Integer isFirstApprover; // 是否是第一个审批人：0-否，1-是
-    private String taskType; // 任务类型：NORMAL, RESTART_SUB_WORKFLOW
 
-    // 扩展查询条件
-    private Boolean subWorkflowApproverIdsNotNull; // IS NOT NULL查询：sub_workflow_approver_ids不为空
-    private List<String> statusIn; // IN查询：状态列表
-    private Long idNotEqual; // != 查询：排除指定ID的任务
-    private String businessType; // 业务类型筛选：MATERIAL_ENTRY, ASSET_USAGE, ASSET_DELETION（需关联approval_instance表）
+    /**
+     * 任务ID
+     */
+    private Long id;
+
+    /**
+     * 审批实例ID
+     */
+    private Long instanceId;
+
+    /**
+     * 阶段ID
+     */
+    private Long stageId;
+
+    /**
+     * 审批人ID
+     */
+    private Long approverId;
+
+    /**
+     * 任务状态（PENDING, APPROVED, REJECTED, RETURNED, CANCELLED）
+     */
+    private String status;
+
+    /**
+     * 是否是第一个审批人（0-否、1-是）
+     */
+    private Integer isFirstApprover;
+
+    /**
+     * 任务类型（NORMAL-普通审批、RESTART_SUB_WORKFLOW-重新发起子流程）
+     */
+    private String taskType;
+
+    /**
+     * 子流程审批人IDs是否不为空（IS NOT NULL 查询）
+     */
+    private Boolean subWorkflowApproverIdsNotNull;
+
+    /**
+     * 状态列表（IN 查询）
+     */
+    private List<String> statusIn;
+
+    /**
+     * 排除的任务ID（!= 查询）
+     */
+    private Long idNotEqual;
+
+    /**
+     * 业务类型（需关联 approval_instance 表查询）
+     */
+    private String businessType;
 }

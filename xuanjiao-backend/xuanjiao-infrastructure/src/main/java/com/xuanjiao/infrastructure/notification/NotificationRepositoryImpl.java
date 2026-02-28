@@ -3,7 +3,7 @@ package com.xuanjiao.infrastructure.notification;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xuanjiao.domain.notification.entity.Notification;
 import com.xuanjiao.domain.notification.repository.NotificationRepository;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -239,7 +239,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
             return null;
         }
         Notification notification = new Notification();
-        BeanUtils.copyProperties(notificationDO, notification);
+        ConvertUtils.copyProperties(notificationDO, notification);
         return notification;
     }
 
@@ -248,7 +248,7 @@ public class NotificationRepositoryImpl implements NotificationRepository {
             return null;
         }
         NotificationDO notificationDO = new NotificationDO();
-        BeanUtils.copyProperties(notification, notificationDO);
+        ConvertUtils.copyProperties(notification, notificationDO);
         notificationDO.setStatus(1);
         notificationDO.setDeleted(0);
         if (notificationDO.getCreateTime() == null) {

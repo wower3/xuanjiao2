@@ -35,9 +35,6 @@ public class UsageApplyQuery {
     /** 删除标记（0:未删除, 1:已删除） */
     private Integer deleted;
 
-    /** 素材ID（用于自定义查询 selectByAssetAndUser） */
-    private Long assetId;
-
     /** 排序字段 */
     private String orderByField;
 

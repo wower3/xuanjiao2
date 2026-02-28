@@ -1,13 +1,4 @@
-<!--
-/**
- * 草稿箱页面
- * <p>展示当前用户保存的各类申请草稿</p>
- * <p>支持按类型（素材录入/使用申请/素材删除）和标题筛选</p>
- * <p>支持继续编辑草稿或删除草稿</p>
- *
- * @author system
- * @version 1.0
- */
+<!-- 草稿箱页面 - 展示当前用户保存的各类申请草稿 -->
 <template>
   <div class="draft-box-page">
     <el-card>
@@ -58,7 +49,7 @@
         </el-table-column>
         <el-table-column label="维护人/申请人" width="120">
           <template #default="{ row }">
-            {{ row.data.maintainerName || row.data.userName || row.data.applicantName || '-' }}
+            {{ row.data.maintainerName || row.data.username || row.data.applicantName || '-' }}
           </template>
         </el-table-column>
         <el-table-column label="归属部门" width="120">

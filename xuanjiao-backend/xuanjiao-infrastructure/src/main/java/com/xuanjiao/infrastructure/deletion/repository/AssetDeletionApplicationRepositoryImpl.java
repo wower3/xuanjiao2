@@ -5,7 +5,7 @@ import com.xuanjiao.domain.deletion.repository.AssetDeletionApplicationRepositor
 import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationQuery;
-import org.springframework.beans.BeanUtils;
+import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
@@ -31,7 +31,7 @@ public class AssetDeletionApplicationRepositoryImpl implements AssetDeletionAppl
     @Override
     public AssetDeletionApplication save(AssetDeletionApplication application) {
         AssetDeletionApplicationDO applicationDO = new AssetDeletionApplicationDO();
-        BeanUtils.copyProperties(application, applicationDO);
+        ConvertUtils.copyProperties(application, applicationDO);
         assetDeletionApplicationMapper.insert(applicationDO);
         application.setId(applicationDO.getId());
         return application;
@@ -40,7 +40,7 @@ public class AssetDeletionApplicationRepositoryImpl implements AssetDeletionAppl
     @Override
     public AssetDeletionApplication update(AssetDeletionApplication application) {
         AssetDeletionApplicationDO applicationDO = new AssetDeletionApplicationDO();
-        BeanUtils.copyProperties(application, applicationDO);
+        ConvertUtils.copyProperties(application, applicationDO);
         assetDeletionApplicationMapper.updateById(applicationDO);
         return application;
     }
@@ -81,9 +81,6 @@ public class AssetDeletionApplicationRepositoryImpl implements AssetDeletionAppl
     }
 
     private AssetDeletionApplication convert(AssetDeletionApplicationDO applicationDO) {
-        if (applicationDO == null) return null;
-        AssetDeletionApplication application = new AssetDeletionApplication();
-        BeanUtils.copyProperties(applicationDO, application);
-        return application;
+        return ConvertUtils.copyProperties(applicationDO, AssetDeletionApplication.class);
     }
 }

@@ -16,6 +16,21 @@
         <result column="deleted" property="deleted"/>
     </resultMap>
 
+    <!-- Result Map with Role Name (for JOIN query) -->
+    <resultMap id="WithRoleResultMap" type="com.xuanjiao.infrastructure.dataobject.WorkflowDO">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="version" property="version"/>
+        <result column="status" property="status"/>
+        <result column="bound_role_id" property="boundRoleId"/>
+        <result column="workflow_type" property="workflowType"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="deleted" property="deleted"/>
+        <result column="role_name" property="roleName"/>
+    </resultMap>
+
     <!-- Base Column List -->
     <sql id="Base_Column_List">
         id, name, description, version, status, bound_role_id, workflow_type, create_time, update_time, deleted
@@ -56,6 +71,40 @@
         </if>
         <if test="orderByField == null or orderByField == ''">
             ORDER BY id DESC
+        </if>
+    </select>
+
+    <!-- 查询列表（带角色名称，通过JOIN） -->
+    <select id="selectListWithRoleName" resultMap="WithRoleResultMap">
+        SELECT w.id, w.name, w.description, w.version, w.status, w.bound_role_id, w.workflow_type,
+               w.create_time, w.update_time, w.deleted,
+               r.name AS role_name
+        FROM workflow w
+        LEFT JOIN sys_role r ON w.bound_role_id = r.id AND r.deleted = 0
+        <where>
+            <if test="deleted == null">w.deleted = 0</if>
+            <if test="deleted != null">w.deleted = #{deleted}</if>
+            <if test="id != null">AND w.id = #{id}</if>
+            <if test="name != null and name != ''">AND w.name = #{name}</if>
+            <if test="version != null">AND w.version = #{version}</if>
+            <if test="status != null">AND w.status = #{status}</if>
+            <if test="boundRoleId != null">AND w.bound_role_id = #{boundRoleId}</if>
+            <if test="workflowType != null and workflowType != ''">AND w.workflow_type = #{workflowType}</if>
+            <if test="excludeIds != null and excludeIds.size() > 0">
+                AND w.id NOT IN
+                <foreach collection="excludeIds" item="excludeId" open="(" separator="," close=")">
+                    #{excludeId}
+                </foreach>
+            </if>
+        </where>
+        <if test="orderByField != null and orderByField != ''">
+            ORDER BY ${orderByField}
+            <if test="orderByDirection != null and orderByDirection != ''">
+                ${orderByDirection}
+            </if>
+        </if>
+        <if test="orderByField == null or orderByField == ''">
+            ORDER BY w.id DESC
         </if>
     </select>
 
