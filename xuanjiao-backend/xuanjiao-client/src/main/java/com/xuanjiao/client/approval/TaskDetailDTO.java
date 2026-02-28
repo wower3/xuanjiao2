@@ -146,6 +146,11 @@ public class TaskDetailDTO {
     // ===== 子流程信息 =====
 
     /**
+     * 是否有子流程
+     */
+    private Boolean hasSubWorkflows;
+
+    /**
      * 子流程列表
      */
     private List<SubWorkflowDTO> subWorkflows;
@@ -200,6 +205,11 @@ public class TaskDetailDTO {
      * 申请人姓名
      */
     private String applicantName;
+
+    /**
+     * 创建时间
+     */
+    private java.time.LocalDateTime createTime;
 
     /**
      * 审批进度列表

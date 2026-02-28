@@ -669,6 +669,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         result.setNextStageApproverIds(task.getNextStageApproverIds());
         result.setSelectedByUserId(task.getSelectedByUserId());
         result.setApproverId(task.getApproverId());
+        result.setCreateTime(task.getCreateTime());
         if (task.getSubWorkflowApproverIds() != null) {
             result.setSubWorkflowApproverIds(task.getSubWorkflowApproverIds());
         }
@@ -858,17 +859,27 @@ public class ApprovalServiceImpl implements ApprovalService {
                         }
                     }
                     result.setSubWorkflows(subWorkflows);
+                    result.setHasSubWorkflows(subWorkflows != null && !subWorkflows.isEmpty());
                 } else {
                     // 没有下一阶段，说明是最后一层
                     result.setNextStageId(null);
                     result.setNextStageApproverConfigs(new ArrayList<>());
                     result.setNextStageApproverCount(0);
                     result.setSubWorkflows(new ArrayList<>());
+                    result.setHasSubWorkflows(false);
                 }
             }
 
             // 获取业务名称和申请人信息
-            if ("ASSET_USAGE".equals(instance.getBusinessType())) {
+            if ("MATERIAL_ENTRY".equals(instance.getBusinessType())) {
+                // 素材录入申请：获取申请单信息
+                MaterialApplicationDO materialApplication = materialApplicationMapper.selectById(instance.getBusinessId());
+                if (materialApplication != null) {
+                    result.setApplicationId(materialApplication.getId());
+                    result.setApplicationTitle(materialApplication.getTitle());
+                    result.setBusinessName(materialApplication.getTitle());
+                }
+            } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
                 // 通过中间表查询关联的素材
                 List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
                 if (applyAssets != null && !applyAssets.isEmpty()) {
@@ -877,6 +888,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                         businessName += " 等" + applyAssets.size() + "个素材";
                     }
                     result.setBusinessName(businessName);
+                    // 设置 applicationId 和 applicationTitle
+                    result.setApplicationId(instance.getBusinessId());
+                    result.setApplicationTitle(businessName);
                 }
             } else if ("ASSET_DELETION".equals(instance.getBusinessType())) {
                 // 素材删除申请：获取申请单信息

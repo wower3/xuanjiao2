@@ -352,13 +352,13 @@
             </el-alert>
 
             <div v-if="taskDetail.nextStageApproverConfigs && taskDetail.nextStageApproverConfigs.length > 0">
-              <div v-for="(config, index) in taskDetail.nextStageApproverConfigs" :key="config.configId" style="margin-bottom: 15px;">
+              <div v-for="(config, index) in taskDetail.nextStageApproverConfigs" :key="config.id" style="margin-bottom: 15px;">
                 <div style="display: flex; align-items: center; margin-bottom: 5px;">
                   <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #409EFF; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
                   <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName }}：{{ config.approverName }}</span>
                 </div>
                 <el-select
-                  v-model="selectedNextApprovers[config.configId]"
+                  v-model="selectedNextApprovers[config.id]"
                   filterable
                   placeholder="请选择审批人"
                   style="width: 100%;"
@@ -424,7 +424,7 @@
                   会签：请按照配置顺序为每个配置项选择一个审批人，共需要选择 {{ subWorkflow.approverCount }} 个审批人。
                 </template>
               </div>
-              <div v-for="(config, index) in subWorkflow.approverConfigs" :key="config.configId" style="margin-bottom: 10px;">
+              <div v-for="(config, index) in subWorkflow.approverConfigs" :key="config.id" style="margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; margin-bottom: 5px;">
                   <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #E6A23C; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
                   <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName || '未知类型' }}：{{ config.approverName || '未命名' }}</span>
@@ -433,7 +433,7 @@
                   </span>
                 </div>
                 <el-select
-                  v-model="selectedSubWorkflowApprovers[subWorkflow.id][config.configId]"
+                  v-model="selectedSubWorkflowApprovers[subWorkflow.id][config.id]"
                   filterable
                   placeholder="请选择审批人"
                   style="width: 100%;"
@@ -525,7 +525,7 @@
         </el-alert>
 
         <div v-if="restartForm.approverConfigs && restartForm.approverConfigs.length > 0">
-          <div v-for="(config, index) in restartForm.approverConfigs" :key="config.configId" style="margin-bottom: 15px;">
+          <div v-for="(config, index) in restartForm.approverConfigs" :key="config.id" style="margin-bottom: 15px;">
             <div style="display: flex; align-items: center; margin-bottom: 5px;">
               <span style="display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background-color: #E6A23C; color: white; font-size: 12px; margin-right: 8px;">{{ index + 1 }}</span>
               <span style="font-weight: bold; color: #606266;">{{ config.approverTypeName || '未知类型' }}：{{ config.approverName || '未命名' }}</span>
@@ -534,7 +534,7 @@
               </span>
             </div>
             <el-select
-              v-model="restartForm.selectedApprovers[config.configId]"
+              v-model="restartForm.selectedApprovers[config.id]"
               filterable
               placeholder="请选择审批人"
               style="width: 100%;"
@@ -841,7 +841,7 @@ async function submitApprove(passed: boolean) {
       const configs = taskDetail.value.nextStageApproverConfigs || []
       const approverIds: number[] = []
       for (const config of configs) {
-        const selectedUserId = selectedNextApprovers.value[config.configId]
+        const selectedUserId = selectedNextApprovers.value[config.id]
         if (selectedUserId) {
           approverIds.push(selectedUserId)
         }
@@ -854,8 +854,8 @@ async function submitApprove(passed: boolean) {
           const subApproverIds: number[] = []
           for (const subConfig of subConfigs) {
             const subSelected = selectedSubWorkflowApprovers.value[subWorkflow.id]
-            if (subSelected && subSelected[subConfig.configId]) {
-              subApproverIds.push(subSelected[subConfig.configId])
+            if (subSelected && subSelected[subConfig.id]) {
+              subApproverIds.push(subSelected[subConfig.id])
             }
           }
           if (subApproverIds.length > 0) {
@@ -1011,7 +1011,7 @@ async function handleOpenRestartDetail(row: any) {
 
     // Initialize selected approvers object
     for (const config of restartForm.approverConfigs) {
-      restartForm.selectedApprovers[config.configId] = null
+      restartForm.selectedApprovers[config.id] = null
     }
 
   } catch (e: any) {
