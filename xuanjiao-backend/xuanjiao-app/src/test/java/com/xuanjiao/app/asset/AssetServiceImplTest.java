@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class AssetServiceImplTest {
+class AssetServiceImplTest {
 
     @Mock
     private AssetMapper assetMapper;
@@ -57,7 +57,7 @@ public class AssetServiceImplTest {
     private AssetDTO testAssetDTO;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testAsset = new AssetDO();
         testAsset.setId(1L);
         testAsset.setName("测试素材");
@@ -80,7 +80,7 @@ public class AssetServiceImplTest {
 
     @Test
     @Order(1)
-    public void testUpdateStatusByApplicationId() {
+    void testUpdateStatusByApplicationId() {
         // 测试根据申请ID批量更新状态
         // This tests: AssetMapper.updateStatusByApplicationId()
 
@@ -94,7 +94,7 @@ public class AssetServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetMyApprovedAssets_WithFilters() {
+    void testGetMyApprovedAssets_WithFilters() {
         // 测试查询我审批通过的素材（带筛选）
         // This tests: AssetMapper.selectPage with AssetQuery
 
@@ -125,7 +125,7 @@ public class AssetServiceImplTest {
 
     @Test
     @Order(3)
-    public void testGetMyApprovedAssets_NoFilters() {
+    void testGetMyApprovedAssets_NoFilters() {
         // 测试查询我审批通过的素材（无筛选）
         // This tests: AssetMapper.selectPage with minimal AssetQuery
 
@@ -158,7 +158,7 @@ public class AssetServiceImplTest {
 
     @Test
     @Order(4)
-    public void testGetById_AssetTagQuery() {
+    void testGetById_AssetTagQuery() {
         // 测试获取素材详情时加载标签
         // This tests: AssetTagMapper.selectList with AssetTagQuery
 
@@ -202,7 +202,7 @@ public class AssetServiceImplTest {
 
     @Test
     @Order(5)
-    public void testUpload_AssetTagInsert() {
+    void testUpload_AssetTagInsert() {
         // 测试上传素材时插入标签关联
         // This tests: AssetTagMapper.insert in upload method at line 140-141
         // 注意：由于upload方法依赖复杂（文件操作、workflow等），这里主要验证AssetTagMapper.insert调用
@@ -211,4 +211,3 @@ public class AssetServiceImplTest {
         System.out.println("✓ AssetService.upload() - AssetTagMapper.insert 通过集成测试和API测试验证");
     }
 }
-

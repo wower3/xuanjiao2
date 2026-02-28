@@ -21,14 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageApplyMapperIntegrationTest {
+class UsageApplyMapperIntegrationTest {
 
     @Autowired
     private UsageApplyMapper usageApplyMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         UsageApplyDO result = usageApplyMapper.selectById(1L);
         // 假设数据库中有ID为1的记录
         if (result != null) {
@@ -41,7 +41,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         UsageApplyQuery query = new UsageApplyQuery();
         List<UsageApplyDO> list = usageApplyMapper.selectList(query);
         assertNotNull(list);
@@ -50,7 +50,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithUserId() {
+    void testSelectList_WithUserId() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(1L);
         List<UsageApplyDO> list = usageApplyMapper.selectList(query);
@@ -63,7 +63,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithStatus() {
+    void testSelectList_WithStatus() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setStatus("APPROVED");
         List<UsageApplyDO> list = usageApplyMapper.selectList(query);
@@ -76,7 +76,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectList_WithDraft() {
+    void testSelectList_WithDraft() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setDraft(1);
         List<UsageApplyDO> list = usageApplyMapper.selectList(query);
@@ -89,7 +89,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectCount() {
+    void testSelectCount() {
         UsageApplyQuery query = new UsageApplyQuery();
         Long count = usageApplyMapper.selectCount(query);
         assertNotNull(count);
@@ -99,7 +99,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectCount_WithUserId() {
+    void testSelectCount_WithUserId() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(1L);
         Long count = usageApplyMapper.selectCount(query);
@@ -110,7 +110,7 @@ public class UsageApplyMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectPage() {
+    void testSelectPage() {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(1L);
         Page<UsageApplyDO> page = new Page<>(1, 10);

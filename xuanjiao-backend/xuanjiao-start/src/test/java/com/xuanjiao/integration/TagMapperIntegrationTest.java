@@ -21,14 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TagMapperIntegrationTest {
+class TagMapperIntegrationTest {
 
     @Autowired
     private TagMapper tagMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         TagDO result = tagMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -40,7 +40,7 @@ public class TagMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         TagQuery query = new TagQuery();
         List<TagDO> list = tagMapper.selectList(query);
         assertNotNull(list);
@@ -49,7 +49,7 @@ public class TagMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithCategory() {
+    void testSelectList_WithCategory() {
         TagQuery query = new TagQuery();
         List<TagDO> allTags = tagMapper.selectList(query);
 
@@ -74,7 +74,7 @@ public class TagMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithOrderBy() {
+    void testSelectList_WithOrderBy() {
         TagQuery query = new TagQuery();
         query.setOrderByField("category");
         query.setOrderByDirection("ASC");
@@ -93,7 +93,7 @@ public class TagMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectBatchIds() {
+    void testSelectBatchIds() {
         TagQuery query = new TagQuery();
         List<TagDO> allTags = tagMapper.selectList(query);
 
@@ -110,7 +110,7 @@ public class TagMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectCount() {
+    void testSelectCount() {
         TagQuery query = new TagQuery();
         Long count = tagMapper.selectCount(query);
         assertNotNull(count);
@@ -120,7 +120,7 @@ public class TagMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testInsertAndDelete() {
+    void testInsertAndDelete() {
         // Test insert
         TagDO newTag = new TagDO();
         newTag.setName("测试标签" + System.currentTimeMillis());

@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @Transactional
-public class ApprovalTaskMapperIntegrationTest {
+class ApprovalTaskMapperIntegrationTest {
 
     @Autowired
     private ApprovalTaskMapper taskMapper;
@@ -30,7 +30,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(1)
-    public void testInsert() {
+    void testInsert() {
         ApprovalTaskDO task = new ApprovalTaskDO();
         task.setInstanceId(1L);
         task.setStageId(1L);
@@ -49,7 +49,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectById() {
+    void testSelectById() {
         ApprovalTaskDO task = taskMapper.selectById(1L);
         assertNotNull(task);
         System.out.println("✓ ApprovalTask: selectById - id=" + task.getId());
@@ -57,7 +57,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectOne() {
+    void testSelectOne() {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setInstanceId(1L);
         query.setApproverId(1L);
@@ -70,7 +70,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList() {
+    void testSelectList() {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setInstanceId(1L);
 
@@ -82,7 +82,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setStatus("PENDING");
         Long count = taskMapper.selectCount(query);
@@ -93,7 +93,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testUpdateById() {
+    void testUpdateById() {
         ApprovalTaskDO task = taskMapper.selectById(1L);
         if (task != null) {
             task.setComment("Updated comment");
@@ -108,7 +108,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectWithStatusIn() {
+    void testSelectWithStatusIn() {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setStatusIn(Arrays.asList("PENDING", "APPROVED"));
 
@@ -119,7 +119,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectWithSubWorkflowApproverIdsNotNull() {
+    void testSelectWithSubWorkflowApproverIdsNotNull() {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setSubWorkflowApproverIdsNotNull(true);
 
@@ -130,7 +130,7 @@ public class ApprovalTaskMapperIntegrationTest {
 
     @Test
     @Order(9)
-    public void testSelectWithIdNotEqual() {
+    void testSelectWithIdNotEqual() {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setIdNotEqual(1L);
 

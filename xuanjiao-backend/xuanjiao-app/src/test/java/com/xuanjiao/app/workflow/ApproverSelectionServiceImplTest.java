@@ -50,7 +50,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ApproverSelectionServiceImplTest {
+class ApproverSelectionServiceImplTest {
 
     @Mock
     private WorkflowStageMapper workflowStageMapper;
@@ -95,7 +95,7 @@ public class ApproverSelectionServiceImplTest {
     private UserDO testUser;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testStage = new WorkflowStageDO();
         testStage.setId(1L);
         testStage.setName("第一阶段");
@@ -135,7 +135,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(1)
-    public void testGetNextStageApprovers_WithUserIds() {
+    void testGetNextStageApprovers_WithUserIds() {
         // 测试按用户ID查询审批人
         // This tests: UserQuery with userIds at line 113-118
 
@@ -158,7 +158,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetNextStageApprovers_WithRoleIds() {
+    void testGetNextStageApprovers_WithRoleIds() {
         // 测试按角色ID查询审批人
         // This tests: UserQuery with roleId at line 136-151
 
@@ -181,7 +181,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(3)
-    public void testGetNextStageApprovers_WithDeptId() {
+    void testGetNextStageApprovers_WithDeptId() {
         // 测试按部门ID查询审批人
         // This tests: UserQuery with deptId at line 165-172
 
@@ -204,7 +204,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(4)
-    public void testGetNextStageApprovers_WithKeyword() {
+    void testGetNextStageApprovers_WithKeyword() {
         // 测试按关键词搜索
         // This tests: UserQuery with userIds + keyword at line 113-118
 
@@ -227,7 +227,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(5)
-    public void testGetNextStageApprovers_WithRoleAndDeptIds() {
+    void testGetNextStageApprovers_WithRoleAndDeptIds() {
         // 测试按角色+二级部门查询审批人
         // This tests: UserQuery with roleId + deptIds at line 136-151
 
@@ -263,7 +263,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(6)
-    public void testGetWorkflowByRole_Found() {
+    void testGetWorkflowByRole_Found() {
         // 测试根据角色和流程类型获取工作流（找到）
         // This tests: workflowMapper.selectList in getWorkflowByRole()
 
@@ -302,7 +302,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(7)
-    public void testGetWorkflowByRole_NotFound() {
+    void testGetWorkflowByRole_NotFound() {
         // 测试根据角色和流程类型获取工作流（未找到）
         // This tests: workflowMapper.selectList in getWorkflowByRole() returns empty
 
@@ -327,7 +327,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(8)
-    public void testGetMainWorkflowProgress_WorkflowStageQuery() {
+    void testGetMainWorkflowProgress_WorkflowStageQuery() {
         // 测试获取主流程进度 - 验证 WorkflowStageMapper.selectList 调用
         // This tests: getApprovalProgress() -> getMainWorkflowProgress() -> workflowStageMapper.selectList
 
@@ -372,7 +372,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(9)
-    public void testGetSubWorkflowProgress_WorkflowStageQuery() {
+    void testGetSubWorkflowProgress_WorkflowStageQuery() {
         // 测试获取子流程进度 - 验证 WorkflowStageMapper.selectList 调用
         // This tests: getApprovalProgress() -> getSubWorkflowProgress() -> workflowStageMapper.selectList
 
@@ -415,7 +415,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(8)
-    public void testGetFirstStageApprovers_StageApproverQuery() {
+    void testGetFirstStageApprovers_StageApproverQuery() {
         // 测试获取第一阶段审批人 - 验证 stageApproverMapper.selectList 调用
         // This tests: getFirstStageApprovers() -> stageApproverMapper.selectList
 
@@ -448,8 +448,8 @@ public class ApproverSelectionServiceImplTest {
 
         approverSelectionService.getFirstStageApprovers(1L, 1L, null);
 
-        // 验证 stageApproverMapper.selectList 被正确调用
-        verify(stageApproverMapper).selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
+        // 验证 stageApproverMapper.selectWithDetails 被正确调用
+        verify(stageApproverMapper).selectWithDetails(ArgumentMatchers.<StageApproverQuery>argThat(query ->
                 query != null &&
                 query.getStageId() == 1L
         ));
@@ -458,7 +458,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(9)
-    public void testGetNextStageApprovers_StageApproverQuery() {
+    void testGetNextStageApprovers_StageApproverQuery() {
         // 测试获取下一阶段审批人 - 验证 stageApproverMapper.selectList 调用
         // This tests: getNextStageApprovers() -> stageApproverMapper.selectList
 
@@ -490,7 +490,7 @@ public class ApproverSelectionServiceImplTest {
 
     @Test
     @Order(10)
-    public void testGetSubWorkflowFirstStageApprovers_StageApproverQuery() {
+    void testGetSubWorkflowFirstStageApprovers_StageApproverQuery() {
         // 测试获取子流程第一阶段审批人 - 验证 stageApproverMapper.selectList 调用
         // This tests: getSubWorkflowFirstStageApprovers() -> stageApproverMapper.selectList
 

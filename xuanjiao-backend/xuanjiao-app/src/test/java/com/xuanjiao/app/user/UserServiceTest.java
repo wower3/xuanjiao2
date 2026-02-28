@@ -34,7 +34,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UserServiceTest {
+class UserServiceTest {
 
     @Mock
     private UserMapper userMapper;
@@ -53,7 +53,7 @@ public class UserServiceTest {
     private DeptDO adminDept;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         // 初始化测试数据
         adminRole = new RoleDO();
         adminRole.setId(1L);
@@ -79,7 +79,7 @@ public class UserServiceTest {
 
     @Test
     @Order(1)
-    public void testList_EmptyQuery() {
+    void testList_EmptyQuery() {
         // 测试空查询：userMapper.selectList(new UserQuery())
         when(userMapper.selectList(any(UserQuery.class)))
                 .thenReturn(Arrays.asList(adminUser));
@@ -96,7 +96,7 @@ public class UserServiceTest {
 
     @Test
     @Order(2)
-    public void testListByBranchDept_WithEmptyQuery() {
+    void testListByBranchDept_WithEmptyQuery() {
         // 测试带部门的查询：当用户部门不是二级机构时，返回所有用户
         when(userMapper.selectById(1L)).thenReturn(adminUser);
         when(deptMapper.selectById(100L)).thenReturn(adminDept);
@@ -115,7 +115,7 @@ public class UserServiceTest {
 
     @Test
     @Order(3)
-    public void testListWithFilter_NoFilters() {
+    void testListWithFilter_NoFilters() {
         // 测试带筛选的查询：无筛选条件时调用 selectList(new DeptQuery())
         // Setup: user is SYSTEM_ADMIN with access to all depts
         when(userMapper.selectById(1L)).thenReturn(adminUser);
@@ -136,7 +136,7 @@ public class UserServiceTest {
 
     @Test
     @Order(4)
-    public void testListWithFilter_WithRoleIds() {
+    void testListWithFilter_WithRoleIds() {
         // 测试按角色筛选
         // The implementation filters in Java, not in SQL
         when(userMapper.selectById(1L)).thenReturn(adminUser);
@@ -160,7 +160,7 @@ public class UserServiceTest {
 
     @Test
     @Order(5)
-    public void testListWithFilter_WithDeptId() {
+    void testListWithFilter_WithDeptId() {
         // 测试按部门筛选
         // The implementation filters in Java, not in SQL
         when(userMapper.selectById(1L)).thenReturn(adminUser);
@@ -184,7 +184,7 @@ public class UserServiceTest {
 
     @Test
     @Order(6)
-    public void testGetById() {
+    void testGetById() {
         // 测试通过ID获取用户
         when(userMapper.selectById(1L)).thenReturn(adminUser);
         when(roleMapper.selectById(1L)).thenReturn(adminRole);
@@ -202,7 +202,7 @@ public class UserServiceTest {
 
     @Test
     @Order(7)
-    public void testGetCurrentUser() {
+    void testGetCurrentUser() {
         // 测试获取当前用户
         when(userMapper.selectById(1L)).thenReturn(adminUser);
         when(roleMapper.selectById(1L)).thenReturn(adminRole);
@@ -218,7 +218,7 @@ public class UserServiceTest {
 
     @Test
     @Order(8)
-    public void testCreate() {
+    void testCreate() {
         // 测试创建用户
         when(userMapper.insert(any(UserDO.class))).thenReturn(1);
 
@@ -239,7 +239,7 @@ public class UserServiceTest {
 
     @Test
     @Order(9)
-    public void testUpdate() {
+    void testUpdate() {
         // 测试更新用户
         when(userMapper.selectById(1L)).thenReturn(adminUser);
         when(userMapper.updateById(any(UserDO.class))).thenReturn(1);
@@ -257,7 +257,7 @@ public class UserServiceTest {
 
     @Test
     @Order(10)
-    public void testDelete() {
+    void testDelete() {
         // 测试删除用户
         when(userMapper.deleteById(1L)).thenReturn(1);
 

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @Transactional
-public class OperationLogMapperIntegrationTest {
+class OperationLogMapperIntegrationTest {
 
     @Autowired
     private OperationLogMapper operationLogMapper;
@@ -29,7 +29,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(1)
-    public void testInsert() {
+    void testInsert() {
         OperationLogDO log = new OperationLogDO();
         log.setOperatorId(1L);
         log.setOperatorName("测试用户");
@@ -50,7 +50,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectById() {
+    void testSelectById() {
         // 先插入一条记录用于测试
         OperationLogDO testLog = new OperationLogDO();
         testLog.setOperatorId(1L);
@@ -72,7 +72,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectOne() {
+    void testSelectOne() {
         // 先插入一条记录用于测试
         OperationLogDO testLog = new OperationLogDO();
         testLog.setOperatorId(1L);
@@ -101,7 +101,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList() {
+    void testSelectList() {
         OperationLogQuery query = new OperationLogQuery();
         query.setOperatorId(1L);
 
@@ -112,7 +112,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         OperationLogQuery query = new OperationLogQuery();
         query.setOperationType("CREATE");
         Long count = operationLogMapper.selectCount(query);
@@ -123,7 +123,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testUpdateById() {
+    void testUpdateById() {
         // 先插入一条记录用于测试
         OperationLogDO testLog = new OperationLogDO();
         testLog.setOperatorId(1L);
@@ -150,7 +150,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectByTargetType() {
+    void testSelectByTargetType() {
         OperationLogQuery query = new OperationLogQuery();
         query.setTargetType("ASSET");
 
@@ -161,7 +161,7 @@ public class OperationLogMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectByTargetId() {
+    void testSelectByTargetId() {
         OperationLogQuery query = new OperationLogQuery();
         query.setTargetId(1L);
 

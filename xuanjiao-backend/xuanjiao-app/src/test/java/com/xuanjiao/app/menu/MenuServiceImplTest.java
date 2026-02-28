@@ -36,7 +36,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MenuServiceImplTest {
+class MenuServiceImplTest {
 
     @Mock
     private MenuMapper menuMapper;
@@ -51,7 +51,7 @@ public class MenuServiceImplTest {
     private MenuDO testSubMenu;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         // Create test menu data
         testMenu = new MenuDO();
         testMenu.setId(1L);
@@ -86,7 +86,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(1)
-    public void testGetTree() {
+    void testGetTree() {
         // 测试获取菜单树
         // This tests: menuMapper.selectList with type=MENU, status=1, orderBy sort ASC
 
@@ -111,7 +111,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetById() {
+    void testGetById() {
         // 测试根据ID获取菜单
         // This tests: menuMapper.selectById
 
@@ -129,7 +129,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(3)
-    public void testSave() {
+    void testSave() {
         // 测试保存菜单
         // This tests: menuMapper.insert
 
@@ -159,7 +159,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(4)
-    public void testUpdate() {
+    void testUpdate() {
         // 测试更新菜单
         // This tests: menuMapper.updateById
 
@@ -186,7 +186,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(5)
-    public void testDelete() {
+    void testDelete() {
         // 测试删除菜单
         // This tests: menuMapper.deleteById, roleMenuMapper.delete
 
@@ -206,7 +206,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(6)
-    public void testGetMenuIdsByRoleId() {
+    void testGetMenuIdsByRoleId() {
         // 测试根据角色ID获取菜单ID列表
         // This tests: menuMapper.selectMenuIdsByRoleId
 
@@ -224,7 +224,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(7)
-    public void testGetMenusByUserId() {
+    void testGetMenusByUserId() {
         // 测试根据用户ID获取菜单列表
         // This tests: menuMapper.selectMenusByUserId, menuMapper.selectList
 
@@ -249,7 +249,7 @@ public class MenuServiceImplTest {
 
     @Test
     @Order(8)
-    public void testAssignMenusToRole() {
+    void testAssignMenusToRole() {
         // 测试为角色分配菜单
         // This tests: roleMenuMapper.deleteByRoleId, roleMenuMapper.insert
 

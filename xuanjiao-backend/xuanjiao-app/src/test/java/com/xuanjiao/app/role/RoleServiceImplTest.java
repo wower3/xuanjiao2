@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RoleServiceImplTest {
+class RoleServiceImplTest {
 
     @Mock
     private RoleMapper roleMapper;
@@ -47,7 +47,7 @@ public class RoleServiceImplTest {
     private RoleDTO testRoleDTO;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testRole = new RoleDO();
         testRole.setId(1L);
         testRole.setName("系统管理员");
@@ -64,7 +64,7 @@ public class RoleServiceImplTest {
 
     @Test
     @Order(1)
-    public void testList_WithOrderByDesc() {
+    void testList_WithOrderByDesc() {
         // 测试列表查询按ID降序排列
         // This tests: RoleQuery with orderByField="id", orderByDirection="DESC" at line 28-30
 
@@ -84,7 +84,7 @@ public class RoleServiceImplTest {
 
     @Test
     @Order(2)
-    public void testCreate_NewRoleType() {
+    void testCreate_NewRoleType() {
         // 测试创建新角色类型（不存在）
         // This tests: RoleQuery with roleType at line 111-116 (called from create)
 
@@ -105,7 +105,7 @@ public class RoleServiceImplTest {
 
     @Test
     @Order(3)
-    public void testCreate_ExistingRoleType() {
+    void testCreate_ExistingRoleType() {
         // 测试创建已存在的角色类型
         // This tests: RoleQuery with roleType at line 111-116 (called from create)
 
@@ -128,7 +128,7 @@ public class RoleServiceImplTest {
 
     @Test
     @Order(4)
-    public void testUpdate_WithExcludeId() {
+    void testUpdate_WithExcludeId() {
         // 测试更新角色时排除当前ID
         // This tests: RoleQuery with roleType+excludeId at line 111-116 (called from update)
 
@@ -149,7 +149,7 @@ public class RoleServiceImplTest {
 
     @Test
     @Order(5)
-    public void testUpdate_ExistingRoleTypeInOtherRole() {
+    void testUpdate_ExistingRoleTypeInOtherRole() {
         // 测试更新角色时，角色类型在其他角色中已存在
         // This tests: RoleQuery with roleType+excludeId at line 111-116 (called from update)
 

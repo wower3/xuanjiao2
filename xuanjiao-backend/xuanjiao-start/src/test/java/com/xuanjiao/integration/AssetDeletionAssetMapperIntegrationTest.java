@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class AssetDeletionAssetMapperIntegrationTest {
+class AssetDeletionAssetMapperIntegrationTest {
 
     @Autowired
     private AssetDeletionAssetMapper assetDeletionAssetMapper;
 
     @Test
     @Order(1)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
         java.util.List<AssetDeletionAssetDO> list = assetDeletionAssetMapper.selectList(query);
         assertNotNull(list);
@@ -34,7 +34,7 @@ public class AssetDeletionAssetMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_WithDeletionApplicationId() {
+    void testSelectList_WithDeletionApplicationId() {
         // Find a deletion application with assets
         AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
         java.util.List<AssetDeletionAssetDO> allAssets = assetDeletionAssetMapper.selectList(query);
@@ -56,7 +56,7 @@ public class AssetDeletionAssetMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithAssetId() {
+    void testSelectList_WithAssetId() {
         // Find an asset with deletion applications
         AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
         java.util.List<AssetDeletionAssetDO> allAssets = assetDeletionAssetMapper.selectList(query);
@@ -78,7 +78,7 @@ public class AssetDeletionAssetMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectCount() {
+    void testSelectCount() {
         AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
         Long count = assetDeletionAssetMapper.selectCount(query);
         assertNotNull(count);
@@ -88,7 +88,7 @@ public class AssetDeletionAssetMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testInsertAndDelete() {
+    void testInsertAndDelete() {
         // Test insert
         AssetDeletionAssetDO newRecord = new AssetDeletionAssetDO();
         newRecord.setDeletionApplicationId(999999L);
@@ -111,7 +111,7 @@ public class AssetDeletionAssetMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testFindByDeletionApplicationIdWithAsset() {
+    void testFindByDeletionApplicationIdWithAsset() {
         // Test custom query method with asset details
         AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
         java.util.List<AssetDeletionAssetDO> allRecords = assetDeletionAssetMapper.selectList(query);

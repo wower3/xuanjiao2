@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @Transactional
-public class ApprovalProgressMapperIntegrationTest {
+class ApprovalProgressMapperIntegrationTest {
 
     @Autowired
     private ApprovalProgressMapper progressMapper;
@@ -30,7 +30,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(1)
-    public void testInsert() {
+    void testInsert() {
         ApprovalProgressDO progress = new ApprovalProgressDO();
         progress.setInstanceId(1L);
         progress.setStageId(1L);
@@ -49,7 +49,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectById() {
+    void testSelectById() {
         ApprovalProgressDO progress = progressMapper.selectById(1L);
         if (progress == null) {
             System.out.println("⚠ ApprovalProgress: selectById - no progress found with id=1");
@@ -61,7 +61,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectOne() {
+    void testSelectOne() {
         ApprovalProgressQuery query = new ApprovalProgressQuery();
         query.setInstanceId(1L);
         query.setStageId(2L);  // 使用数据库中实际存在的stageId
@@ -77,7 +77,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList() {
+    void testSelectList() {
         ApprovalProgressQuery query = new ApprovalProgressQuery();
         query.setInstanceId(1L);
 
@@ -89,7 +89,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         ApprovalProgressQuery query = new ApprovalProgressQuery();
         query.setStatus("PENDING");
         Long count = progressMapper.selectCount(query);
@@ -100,7 +100,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testUpdateById() {
+    void testUpdateById() {
         ApprovalProgressDO progress = progressMapper.selectById(1L);
         if (progress != null) {
             progress.setStatus("APPROVED");
@@ -115,7 +115,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectByInstanceId() {
+    void testSelectByInstanceId() {
         List<ApprovalProgressDO> progressList = progressMapper.selectByInstanceId(1L);
         assertNotNull(progressList);
         System.out.println("✓ ApprovalProgress: selectByInstanceId - count=" + progressList.size());
@@ -123,7 +123,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectWithParentInstanceIdIsNull() {
+    void testSelectWithParentInstanceIdIsNull() {
         ApprovalProgressQuery query = new ApprovalProgressQuery();
         query.setParentInstanceIdIsNull(true);
 
@@ -134,7 +134,7 @@ public class ApprovalProgressMapperIntegrationTest {
 
     @Test
     @Order(9)
-    public void testSelectWithInstanceIds() {
+    void testSelectWithInstanceIds() {
         ApprovalProgressQuery query = new ApprovalProgressQuery();
         query.setInstanceIds(Arrays.asList(1L, 2L));
 

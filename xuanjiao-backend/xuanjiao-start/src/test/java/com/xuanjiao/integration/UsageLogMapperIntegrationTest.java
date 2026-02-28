@@ -21,14 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageLogMapperIntegrationTest {
+class UsageLogMapperIntegrationTest {
 
     @Autowired
     private UsageLogMapper usageLogMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         UsageLogDO result = usageLogMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -40,7 +40,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         UsageLogQuery query = new UsageLogQuery();
         List<UsageLogDO> list = usageLogMapper.selectList(query);
         assertNotNull(list);
@@ -49,7 +49,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithAssetId() {
+    void testSelectList_WithAssetId() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAssetId(1L);
         query.setOrderByField("create_time");
@@ -64,7 +64,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithAction() {
+    void testSelectList_WithAction() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAction("DOWNLOAD");
         List<UsageLogDO> list = usageLogMapper.selectList(query);
@@ -77,7 +77,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         UsageLogQuery query = new UsageLogQuery();
         Long count = usageLogMapper.selectCount(query);
         assertNotNull(count);
@@ -87,7 +87,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectCount_WithAssetIdAndAction() {
+    void testSelectCount_WithAssetIdAndAction() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAssetId(1L);
         query.setAction("DOWNLOAD");
@@ -99,7 +99,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectPage() {
+    void testSelectPage() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAction("DOWNLOAD");
         Page<UsageLogDO> page = new Page<>(1, 10);
@@ -110,7 +110,7 @@ public class UsageLogMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectPage_WithAssetId() {
+    void testSelectPage_WithAssetId() {
         UsageLogQuery query = new UsageLogQuery();
         query.setAssetId(1L);
         query.setAction("DOWNLOAD");

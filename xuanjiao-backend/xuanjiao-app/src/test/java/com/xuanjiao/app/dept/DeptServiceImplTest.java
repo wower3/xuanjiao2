@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DeptServiceImplTest {
+class DeptServiceImplTest {
 
     @Mock
     private DeptMapper deptMapper;
@@ -40,7 +40,7 @@ public class DeptServiceImplTest {
     private DeptDO childDept;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         // 根部门
         rootDept = new DeptDO();
         rootDept.setId(1L);
@@ -68,7 +68,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(1)
-    public void testList_EmptyQuery() {
+    void testList_EmptyQuery() {
         // 测试列表查询（使用 DeptQuery）
         // This tests: DeptMapper.selectList(new DeptQuery()) at line 28-30
 
@@ -88,7 +88,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetTree() {
+    void testGetTree() {
         // 测试获取树形结构
         // This tests: DeptMapper.selectAll() at line 35
 
@@ -109,7 +109,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(3)
-    public void testGetById() {
+    void testGetById() {
         // 测试根据ID查询
         // This tests: DeptMapper.selectById() at line 41
 
@@ -128,7 +128,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(4)
-    public void testSave_WithParent() {
+    void testSave_WithParent() {
         // 测试保存部门（有父部门）
         // This tests: DeptMapper.selectById(), DeptMapper.insert()
 
@@ -158,7 +158,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(5)
-    public void testSave_RootDept() {
+    void testSave_RootDept() {
         // 测试保存根部门
         // This tests: DeptMapper.insert() without parent
 
@@ -184,7 +184,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(6)
-    public void testUpdate() {
+    void testUpdate() {
         // 测试更新部门
         // This tests: DeptMapper.updateById()
 
@@ -205,7 +205,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(7)
-    public void testDelete() {
+    void testDelete() {
         // 测试删除部门
         // This tests: DeptMapper.deleteById()
 
@@ -219,7 +219,7 @@ public class DeptServiceImplTest {
 
     @Test
     @Order(8)
-    public void testGenerateCode() {
+    void testGenerateCode() {
         // 测试生成部门编号
         // This tests: DeptMapper.selectByCode()
 

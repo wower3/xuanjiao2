@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageLogServiceImplTest {
+class UsageLogServiceImplTest {
 
     @Mock
     private UsageLogMapper usageLogMapper;
@@ -52,7 +52,7 @@ public class UsageLogServiceImplTest {
     private UserDO testUser;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testUser = new UserDO();
         testUser.setId(1L);
         testUser.setUsername("test_user");
@@ -74,7 +74,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(1)
-    public void testLog() {
+    void testLog() {
         // 测试记录日志
         // This tests: usageLogMapper.insert
 
@@ -96,7 +96,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(2)
-    public void testLogDownload() {
+    void testLogDownload() {
         // 测试记录下载日志
         // This tests: usageLogMapper.insert
 
@@ -120,7 +120,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(3)
-    public void testQuery_WithAction() {
+    void testQuery_WithAction() {
         // 测试查询日志（带action过滤）
         // This tests: usageLogMapper.selectPage with action query
 
@@ -144,7 +144,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(4)
-    public void testQuery_WithoutAction() {
+    void testQuery_WithoutAction() {
         // 测试查询日志（无过滤）
         // This tests: usageLogMapper.selectPage with empty query
 
@@ -167,7 +167,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(5)
-    public void testGetAssetUsageLogs() {
+    void testGetAssetUsageLogs() {
         // 测试获取素材使用记录
         // This tests: usageLogMapper.selectPage with assetId + action=DOWNLOAD
 
@@ -193,7 +193,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(6)
-    public void testToMap() {
+    void testToMap() {
         // 测试私有方法 toDTO 的映射逻辑（通过 query 方法间接测试）
         // 注意：query 方法现在返回 PageResult<UsageLogDTO>，与 getAssetUsageLogs 共用 toDTO 方法
 
@@ -218,7 +218,7 @@ public class UsageLogServiceImplTest {
 
     @Test
     @Order(7)
-    public void testToDTO() {
+    void testToDTO() {
         // 测试私有方法 toDTO 的映射逻辑（通过 getAssetUsageLogs 方法间接测试）
 
         when(usageLogMapper.selectPage(any(Page.class), any(UsageLogQuery.class)))

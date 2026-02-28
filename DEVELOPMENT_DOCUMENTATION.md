@@ -98,20 +98,24 @@ xuanjiao-backend/
 | Java | 8 | 编程语言 |
 | Spring Boot | 2.7.18 | 应用框架 |
 | COLA | 4.3.2 | 架构框架 |
-| MyBatis | 3.x | 数据访问 |
+| MyBatis Plus | 3.5.3.1 | 数据访问（使用BaseMapper） |
 | MySQL | 8.0 | 数据库 |
-| JWT | 0.9.1 | 认证授权 |
+| JWT | - | 认证授权 |
 | Knife4j | 4.1.0 | API文档 |
+| MapStruct | 1.5.5 | DTO映射 |
+| Lombok | 1.18.30 | 代码生成 |
 
 ### 前端技术
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | Vue | 3.4 | 框架 |
-| TypeScript | 5.x | 语言 |
+| TypeScript | 5.3.3 | 语言 |
 | Vite | 5.0 | 构建工具 |
 | Element Plus | 2.4.4 | UI组件库 |
-| Pinia | 2.x | 状态管理 |
+| Pinia | 2.1.7 | 状态管理 |
 | Vue Router | 4.x | 路由 |
+| Axios | 1.6.2 | HTTP客户端 |
+| vuedraggable | 4.1.0 | 拖拽组件 |
 
 ---
 
@@ -203,10 +207,8 @@ POST /auth/login
 #### API接口
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/user/current` | 获取当前用户 |
-| POST | `/user/getList` | 获取用户列表 |
-| POST | `/user/getListWithFilter` | 带筛选获取用户 |
-| POST | `/user/search` | 搜索用户 |
+| POST | `/user/list` | 分页查询用户 |
+| POST | `/user/getDetail` | 获取用户详情 |
 | POST | `/user/create` | 创建用户 |
 | POST | `/user/update` | 更新用户 |
 | POST | `/user/delete` | 删除用户 |
@@ -261,7 +263,12 @@ POST /auth/login
 | POST | `/asset/getDetail` | 获取素材详情 |
 | POST | `/asset/upload` | 上传素材 |
 | POST | `/asset/delete` | 删除素材 |
+| POST | `/asset/adminDelete` | 管理员彻底删除 |
+| POST | `/asset/adjustDeleteTime` | 调整删除时间（测试） |
+| POST | `/asset/admin/trigger-cleanup` | 手动触发清理 |
+| POST | `/asset/getMyApproved` | 获取我的已录入素材 |
 | GET | `/asset/preview/{id}` | 预览素材 |
+| GET | `/asset/thumbnail/{id}` | 查看缩略图 |
 | GET | `/asset/download/{id}` | 下载素材 |
 
 #### 数据库表
@@ -486,13 +493,33 @@ PENDING(审批中)
 #### API接口
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/usage-apply/draft` | 创建草稿 |
-| POST | `/usage-apply/update` | 更新草稿 |
-| POST | `/usage-apply/{id}/submit` | 提交审批 |
+| POST | `/usage-apply/create` | 创建申请 |
+| POST | `/usage-apply/update` | 更新申请 |
+| POST | `/usage-apply/submit` | 提交审批 |
 | POST | `/usage-apply/delete` | 删除申请 |
 | POST | `/usage-apply/getDetail` | 获取详情 |
 | POST | `/usage-apply/getDrafts` | 获取草稿列表 |
 | POST | `/usage-apply/getMyApplications` | 获取我的申请 |
+
+---
+
+### 11. 标签管理模块
+
+#### 功能描述
+提供素材标签的创建、查询、删除功能。标签按分类组织（图片/视频）。
+
+#### 后端实现
+| 文件 | 说明 |
+|------|------|
+| `TagController.java` | 标签接口 |
+
+#### API接口
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/tag/getList` | 获取标签列表 |
+| POST | `/tag/getListByCategory` | 按类别获取标签 |
+| POST | `/tag/create` | 创建标签 |
+| POST | `/tag/delete` | 删除标签 |
 
 #### 数据库表
 | 表名 | 字段 | 说明 |
@@ -592,12 +619,15 @@ usage_apply(1) ←→ (N) usage_apply_asset (N) ←→ (1) asset
 #### API接口
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/notification/getMyNotifications` | 获取通知列表 |
-| POST | `/notification/getMyNotificationsWithWorkOrder` | 获取通知(带工单信息) |
+| POST | `/notification/page` | 分页查询通知 |
 | POST | `/notification/getDetail` | 获取通知详情 |
-| POST | `/notification/getUnreadCount` | 获取未读数量 |
+| POST | `/notification/create` | 创建通知 |
 | POST | `/notification/markAsRead` | 标记已读 |
-| POST | `/notification/markAllAsRead` | 全部已读 |
+| POST | `/notification/batchMarkAsRead` | 批量标记已读 |
+| POST | `/notification/markAllAsRead` | 全部标记已读 |
+| POST | `/notification/delete` | 删除通知 |
+| POST | `/notification/batchDelete` | 批量删除 |
+| POST | `/notification/batchCreate` | 批量创建 |
 | POST | `/notification/notifyUsers` | 知会用户 |
 
 #### 数据库表
@@ -642,6 +672,37 @@ usage_apply(1) ←→ (N) usage_apply_asset (N) ←→ (1) asset
 |------|------|------|
 | POST | `/approval/getMyFlowItems` | 获取流经事项 |
 
+---
+
+### 10. 草稿箱模块
+
+#### 功能描述
+统一的草稿箱，管理所有类型的草稿申请（素材录入、使用申请、删除申请）。
+
+#### 前端页面
+```
+草稿箱 (task/draft-box.vue)
+├── 筛选区域
+│   ├── 类型下拉框（全部/素材录入/使用申请/删除申请）
+│   └── 标题搜索框
+├── 草稿列表
+│   ├── 类型标签
+│   ├── 事项标题
+│   ├── 维护人/申请人
+│   ├── 文件数量
+│   └── 操作按钮（查看详情、继续编辑、删除）
+```
+
+#### 后端实现
+| 文件 | 说明 |
+|------|------|
+| `TaskController.java` | 草稿箱接口 |
+
+#### API接口
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/task/queryDrafts` | 查询草稿列表（支持类型和标题筛选） |
+
 #### 查询逻辑
 ```sql
 -- 发起或审批过的实例
@@ -654,6 +715,41 @@ WHERE ai.applicant_id = #{userId}
    )
 ORDER BY ai.create_time DESC
 ```
+
+---
+
+### 12. 使用日志模块
+
+#### 功能描述
+记录素材的使用/下载日志，包含使用人、时间、IP、使用说明、发布渠道等信息。
+
+#### 后端实现
+| 文件 | 说明 |
+|------|------|
+| `UsageLogController.java` | 使用日志接口 |
+| `UsageLogService.java` | 使用日志服务 |
+
+#### API接口
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/usage-log/page` | 分页查询使用日志 |
+
+---
+
+### 13. 操作日志模块
+
+#### 功能描述
+记录系统的操作日志，用于审计和问题追溯。
+
+#### 后端实现
+| 文件 | 说明 |
+|------|------|
+| `LogController.java` | 日志接口 |
+
+#### API接口
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/log/queryLogs` | 查询操作日志 |
 
 ---
 
@@ -743,8 +839,32 @@ ORDER BY ai.create_time DESC
 | 表名 | 说明 |
 |------|------|
 | `material_application` | 素材录入申请 |
+| `material_application_asset` | 素材录入申请素材关联 |
 | `usage_apply` | 素材使用申请 |
+| `usage_apply_asset` | 使用申请素材关联（中间表） |
 | `asset_deletion_application` | 素材删除申请 |
+| `asset_deletion_asset` | 删除申请素材关联 |
+
+---
+
+### 数据库迁移脚本
+
+项目使用编号的迁移脚本来管理数据库变更：
+
+| 脚本文件 | 说明 |
+|---------|------|
+| `init_complete_fixed.sql` | 完整数据库初始化脚本 |
+| `init_17_sub_workflow_refactor.sql` | 子流程重构 |
+| `init_18_add_sub_workflow_approver_ids.sql` | 添加子流程审批人ID |
+| `init_19_add_sub_workflow_approver_ids_to_instance.sql` | 添加实例子流程审批人ID |
+| `init_20_add_material_approval_menu.sql` | 添加素材审批菜单 |
+| `init_21_add_usage_menu.sql` | 添加使用申请菜单 |
+| `init_22_extend_asset_for_usage.sql` | 扩展素材表支持使用申请 |
+| `init_22_add_returned_status.sql` | 添加已退回状态 |
+| `init_23_add_task_type.sql` | 添加任务类型字段 |
+| `init_23_refactor_to_intermediate_table.sql` | 重构到中间表 |
+| `init_24_refactor_to_intermediate_table.sql` | 使用申请中间表重构 |
+| `init_27_rename_pending_menu.sql` | 重命名待办菜单 |
 
 ---
 
@@ -851,19 +971,72 @@ public interface AssetMapper {
 src/
 ├── api/              # API调用
 │   ├── asset.ts      # 素材相关
-│   ├── user.ts        # 用户相关
+│   ├── approval.ts   # 审批相关
+│   ├── auth.ts       # 认证相关
+│   ├── task.ts       # 任务相关
+│   ├── workflow.ts   # 工作流相关
 │   └── ...
 ├── views/            # 页面组件
-│   ├── asset/
-│   │   ├── index.vue  # 素材列表
-│   │   └── entry.vue   # 素材录入
-│   └── ...
+│   ├── asset/        # 素材管理
+│   │   ├── index.vue              # 素材列表
+│   │   ├── material-entry.vue     # 素材录入
+│   │   └── usage-apply.vue        # 使用申请
+│   ├── workflow/      # 工作流
+│   │   ├── index.vue              # 工作流列表
+│   │   └── design.vue             # 流程设计器
+│   ├── task/          # 任务管理
+│   │   ├── pending-approval.vue   # 待办审批
+│   │   ├── my-initiated.vue       # 我发起的
+│   │   ├── draft-box.vue          # 草稿箱
+│   │   ├── material-approval.vue  # 素材审批
+│   │   ├── flow-items.vue         # 流经事项
+│   │   └── notifications.vue      # 知会事项
+│   ├── log/           # 日志
+│   │   └── index.vue              # 日志查询
+│   └── system/        # 系统管理
+│       ├── user.vue               # 用户管理
+│       ├── dept.vue               # 部门管理
+│       ├── role.vue               # 角色管理
+│       └── menu.vue               # 菜单管理
 ├── components/       # 公共组件
-│   ├── AssetSelector.vue
-│   └── UserSelector.vue
+│   ├── AssetSelector.vue          # 素材选择器
+│   ├── UserSelector.vue           # 用户选择器
+│   ├── NotifyDialog.vue           # 通知对话框
+│   └── WorkOrderDetailDialog.vue  # 工单详情对话框
+├── layouts/          # 布局组件
+│   └── MainLayout.vue             # 主布局
 ├── stores/           # Pinia状态
-└── router/           # 路由配置
+│   └── user.ts                    # 用户状态
+├── router/           # 路由配置
+│   └── index.ts
+├── utils/            # 工具函数
+│   └── request.ts                # Axios封装
+└── main.ts           # 应用入口
 ```
+
+#### 路由配置
+
+主要路由路径：
+
+| 路径 | 组件 | 说明 |
+|------|------|------|
+| `/login` | `login/index.vue` | 登录页 |
+| `/asset` | `asset/index.vue` | 素材列表 |
+| `/asset/material-entry` | `asset/material-entry.vue` | 素材录入 |
+| `/asset/usage-apply` | `asset/usage-apply.vue` | 使用申请 |
+| `/asset/deletion` | `asset/deletion/index.vue` | 删除申请 |
+| `/workflow` | `workflow/index.vue` | 工作流列表 |
+| `/workflow/design/:id?` | `workflow/design.vue` | 流程设计器 |
+| `/task/pending-approval` | `task/pending-approval.vue` | 待办审批 |
+| `/task/my-initiated` | `task/my-initiated.vue` | 我发起的 |
+| `/task/draft-box` | `task/draft-box.vue` | 草稿箱 |
+| `/task/flow-items` | `task/flow-items.vue` | 流经事项 |
+| `/task/notifications` | `task/notifications.vue` | 知会事项 |
+| `/log` | `log/index.vue` | 日志查询 |
+| `/system/user` | `system/user.vue` | 用户管理 |
+| `/system/dept` | `system/dept.vue` | 部门管理 |
+| `/system/role` | `system/role.vue` | 角色管理 |
+| `/system/menu` | `system/menu.vue` | 菜单管理 |
 
 #### 组件命名
 | 类型 | 命名模式 | 示例 |
@@ -893,20 +1066,32 @@ CREATE TABLE example_feature (
 #### 步骤2: 创建后端代码
 ```
 domain/
-├── entity/ExampleFeature.java
-└── repository/ExampleFeatureRepository.java
+├── example/                      # 业务模块目录
+│   ├── entity/ExampleFeature.java
+│   └── repository/ExampleFeatureRepository.java
 
 app/
-├── service/ExampleFeatureService.java
-└── impl/ExampleFeatureServiceImpl.java
+├── example/
+│   ├── ExampleFeatureService.java
+│   └── impl/ExampleFeatureServiceImpl.java
 
 infrastructure/
-├── ExampleFeatureMapper.java
-├── ExampleFeatureQuery.java
-└── mapper/ExampleFeatureMapper.xml
+├── example/
+│   ├── ExampleFeatureMapper.java
+│   ├── ExampleFeatureQuery.java
+│   ├── repository/ExampleFeatureRepositoryImpl.java
+│   └── mapper/ExampleFeatureMapper.xml
+├── dataobject/ExampleFeatureDO.java
+
+client/
+├── example/
+│   ├── ExampleFeatureDTO.java
+│   ├── ExampleFeatureCreateCmd.java
+│   └── ExampleFeatureGetDetailQry.java
 
 adapter/
-└── web/ExampleFeatureController.java
+└── web/example/
+    └── ExampleFeatureController.java
 ```
 
 #### 步骤3: 创建前端代码
@@ -970,10 +1155,9 @@ public List<UserDTO> getNextStageApprovers(Long workflowId, Long currentStageId)
 ## 快速参考
 
 ### 默认账号
-| 用户名 | 密码 | 角色 |
-|--------|------|------|
-| admin | 123456 | 管理员 |
-| test | 123456 | 普通用户 |
+| 用户名 | 密码 | 角色 | 说明 |
+|--------|------|------|------|
+| admin | 123456 | 管理员 (ROLE_ID=1) | 系统默认管理员账号 |
 
 ### 访问地址
 | 服务 | 地址 |

@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TagServiceImplTest {
+class TagServiceImplTest {
 
     @Mock
     private TagMapper tagMapper;
@@ -40,7 +40,7 @@ public class TagServiceImplTest {
     private TagDO testTag;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testTag = new TagDO();
         testTag.setId(1L);
         testTag.setName("测试标签");
@@ -53,7 +53,7 @@ public class TagServiceImplTest {
 
     @Test
     @Order(1)
-    public void testCreate_TagInsert() {
+    void testCreate_TagInsert() {
         // 测试创建标签
         // This tests: TagMapper.insert at line 29
 
@@ -77,7 +77,7 @@ public class TagServiceImplTest {
 
     @Test
     @Order(2)
-    public void testList_TagQuery() {
+    void testList_TagQuery() {
         // 测试查询所有标签
         // This tests: TagMapper.selectList with orderBy at line 36-37
 
@@ -96,7 +96,7 @@ public class TagServiceImplTest {
 
     @Test
     @Order(3)
-    public void testListByCategory_WithTagQuery() {
+    void testListByCategory_WithTagQuery() {
         // 测试按分类查询标签
         // This tests: TagMapper.selectList with category filter at line 48
 
@@ -121,7 +121,7 @@ public class TagServiceImplTest {
 
     @Test
     @Order(4)
-    public void testDelete_TagDeleteById() {
+    void testDelete_TagDeleteById() {
         // 测试删除标签
         // This tests: TagMapper.deleteById at line 54
 
@@ -135,7 +135,7 @@ public class TagServiceImplTest {
 
     @Test
     @Order(5)
-    public void testListByCategory_EmptyCategory() {
+    void testListByCategory_EmptyCategory() {
         // 测试空分类查询
         // This tests: TagMapper.selectList without category filter
 

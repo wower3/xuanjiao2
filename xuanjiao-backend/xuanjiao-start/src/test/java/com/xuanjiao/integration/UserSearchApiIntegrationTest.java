@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UserSearchApiIntegrationTest {
+class UserSearchApiIntegrationTest {
 
     @Autowired
     private UserService userService;
@@ -30,7 +30,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(1)
-    public void testSearchUsersBasic() {
+    void testSearchUsersBasic() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -43,7 +43,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSearchUsersWithKeyword() {
+    void testSearchUsersWithKeyword() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -56,7 +56,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSearchUsersWithRoleFilter() {
+    void testSearchUsersWithRoleFilter() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -74,7 +74,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSearchUsersWithDeptFilter() {
+    void testSearchUsersWithDeptFilter() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -93,7 +93,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSearchUsersWithCombinedFilters() {
+    void testSearchUsersWithCombinedFilters() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -109,7 +109,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSearchUsersPagination() {
+    void testSearchUsersPagination() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(5);
@@ -129,7 +129,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSearchUsersResultFields() {
+    void testSearchUsersResultFields() {
         // 验证返回字段包含角色和部门信息
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
@@ -155,7 +155,7 @@ public class UserSearchApiIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSearchUsersEmptyResult() {
+    void testSearchUsersEmptyResult() {
         UserGetListWithFilterQry qry = new UserGetListWithFilterQry();
         qry.setPageNum(1);
         qry.setPageSize(10);

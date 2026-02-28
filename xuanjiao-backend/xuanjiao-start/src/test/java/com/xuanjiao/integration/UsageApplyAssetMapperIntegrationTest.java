@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageApplyAssetMapperIntegrationTest {
+class UsageApplyAssetMapperIntegrationTest {
 
     @Autowired
     private UsageApplyAssetMapper usageApplyAssetMapper;
 
     @Test
     @Order(1)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         UsageApplyAssetQuery query = new UsageApplyAssetQuery();
         java.util.List<UsageApplyAssetDO> list = usageApplyAssetMapper.selectList(query);
         assertNotNull(list);
@@ -34,7 +34,7 @@ public class UsageApplyAssetMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_WithUsageApplyId() {
+    void testSelectList_WithUsageApplyId() {
         // Find a usage apply with assets
         UsageApplyAssetQuery query = new UsageApplyAssetQuery();
         java.util.List<UsageApplyAssetDO> allAssets = usageApplyAssetMapper.selectList(query);
@@ -56,7 +56,7 @@ public class UsageApplyAssetMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithAssetId() {
+    void testSelectList_WithAssetId() {
         // Find an asset with usage applies
         UsageApplyAssetQuery query = new UsageApplyAssetQuery();
         java.util.List<UsageApplyAssetDO> allAssets = usageApplyAssetMapper.selectList(query);
@@ -78,7 +78,7 @@ public class UsageApplyAssetMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectCount() {
+    void testSelectCount() {
         UsageApplyAssetQuery query = new UsageApplyAssetQuery();
         Long count = usageApplyAssetMapper.selectCount(query);
         assertNotNull(count);
@@ -88,7 +88,7 @@ public class UsageApplyAssetMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testInsertAndDelete() {
+    void testInsertAndDelete() {
         // Test insert
         UsageApplyAssetDO newRecord = new UsageApplyAssetDO();
         newRecord.setUsageApplyId(999999L);
@@ -112,7 +112,7 @@ public class UsageApplyAssetMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testFindByUsageApplyIdWithAsset() {
+    void testFindByUsageApplyIdWithAsset() {
         // Test custom query method with asset details
         UsageApplyAssetQuery query = new UsageApplyAssetQuery();
         java.util.List<UsageApplyAssetDO> allRecords = usageApplyAssetMapper.selectList(query);

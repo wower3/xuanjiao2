@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class NotificationApiIntegrationTest {
+class NotificationApiIntegrationTest {
 
     @Autowired
     private NotificationService notificationService;
@@ -39,7 +39,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(1)
-    public void testCreateNotification() {
+    void testCreateNotification() {
         CreateNotificationCmd cmd = new CreateNotificationCmd();
         cmd.setTitle("测试通知");
         cmd.setContent("这是一条测试通知内容");
@@ -55,7 +55,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(2)
-    public void testBatchCreateNotifications() {
+    void testBatchCreateNotifications() {
         BatchCreateNotificationCmd cmd = new BatchCreateNotificationCmd();
         cmd.setTitle("批量测试通知");
         cmd.setContent("这是批量创建的测试通知");
@@ -67,7 +67,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(3)
-    public void testGetNotificationPage() {
+    void testGetNotificationPage() {
         NotificationPageQry qry = new NotificationPageQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -80,7 +80,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(4)
-    public void testGetNotificationPageWithFilters() {
+    void testGetNotificationPageWithFilters() {
         NotificationPageQry qry = new NotificationPageQry();
         qry.setPageNum(1);
         qry.setPageSize(10);
@@ -94,14 +94,14 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(5)
-    public void testGetUnreadCount() {
+    void testGetUnreadCount() {
         long count = notificationService.getUnreadCount(TEST_RECIPIENT_ID);
         assertTrue(count >= 0);
     }
 
     @Test
     @Order(6)
-    public void testGetById() {
+    void testGetById() {
         if (testNotificationId == null) {
             return;
         }
@@ -112,7 +112,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(7)
-    public void testGetByIdIncludesTypeText() {
+    void testGetByIdIncludesTypeText() {
         // 测试类型文本字段是否正确填充
         CreateNotificationCmd cmd = new CreateNotificationCmd();
         cmd.setTitle("测试类型文本");
@@ -132,7 +132,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(8)
-    public void testGetNotificationPageIncludesTypeText() {
+    void testGetNotificationPageIncludesTypeText() {
         // 测试分页查询是否包含类型文本
         NotificationPageQry qry = new NotificationPageQry();
         qry.setPageNum(1);
@@ -151,7 +151,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(9)
-    public void testMarkAsRead() {
+    void testMarkAsRead() {
         if (testNotificationId == null) {
             return;
         }
@@ -163,7 +163,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(10)
-    public void testDeleteNotification() {
+    void testDeleteNotification() {
         CreateNotificationCmd cmd = new CreateNotificationCmd();
         cmd.setTitle("待删除通知");
         cmd.setContent("这条通知将被删除");
@@ -176,7 +176,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(11)
-    public void testNotificationTypeCoverage() {
+    void testNotificationTypeCoverage() {
         String[] types = {"WORKFLOW_FLOW", "MENTION", "SYSTEM"};
         for (String type : types) {
             CreateNotificationCmd cmd = new CreateNotificationCmd();
@@ -192,7 +192,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(12)
-    public void testNotifyUsersAboutInstance() {
+    void testNotifyUsersAboutInstance() {
         // 测试知会功能（需要有审批实例）
         NotifyUsersCmd cmd = new NotifyUsersCmd();
         cmd.setInstanceId(1L); // 假设存在ID为1的审批实例
@@ -211,7 +211,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(13)
-    public void testNotifyUsersWithMultipleRecipients() {
+    void testNotifyUsersWithMultipleRecipients() {
         // 测试批量知会
         NotifyUsersCmd cmd = new NotifyUsersCmd();
         cmd.setInstanceId(1L);
@@ -229,7 +229,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(14)
-    public void testBatchMarkAsRead() {
+    void testBatchMarkAsRead() {
         // 先创建几条未读通知
         List<Long> ids = Arrays.asList(
             notificationService.createNotification(
@@ -254,7 +254,7 @@ public class NotificationApiIntegrationTest {
 
     @Test
     @Order(15)
-    public void testMarkAllAsRead() {
+    void testMarkAllAsRead() {
         // 创建一条未读通知
         Long id = notificationService.createNotification(
             createCmd("全部已读测试"), TEST_USER_ID, "管理员");

@@ -2,6 +2,9 @@ package com.xuanjiao.app.usage;
 
 import com.xuanjiao.app.usage.impl.UsageApplyServiceImpl;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetQuery;
+import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
+import com.xuanjiao.infrastructure.usage.UsageApplyQuery;
+import com.xuanjiao.infrastructure.usage.UsageApplyWithDetailsDO;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.usage.UsageApplyCmd;
@@ -43,7 +46,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageApplyServiceImplTest {
+class UsageApplyServiceImplTest {
 
     @Mock
     private UsageApplyRepository usageApplyRepository;
@@ -63,6 +66,9 @@ public class UsageApplyServiceImplTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private UsageApplyMapper usageApplyMapper;
+
     @InjectMocks
     private UsageApplyServiceImpl usageApplyService;
 
@@ -71,7 +77,7 @@ public class UsageApplyServiceImplTest {
     private AssetDO testAsset;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testUser = new UserDO();
         testUser.setId(1L);
         testUser.setUsername("test_user");
@@ -99,7 +105,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(1)
-    public void testCreateDraft() {
+    void testCreateDraft() {
         // 测试创建草稿申请
         // This tests: UsageApplyRepository.save
 
@@ -128,7 +134,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetById() {
+    void testGetById() {
         // 测试获取申请详情
         // This tests: UsageApplyRepository.findById
 
@@ -145,47 +151,67 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(3)
-    public void testQueryDrafts() {
-        // 测试查询草稿列表
-        // This tests: UsageApplyRepository.findDraftsByUserId, countDraftsByUserId
+    void testQueryDrafts_MapperSelectListWithDetails() {
+        // 测试查询草稿列表 - 使用 Mapper.selectListWithDetails (重构后使用JOIN查询避免N+1问题)
 
-        when(usageApplyRepository.findDraftsByUserId(eq(1L), eq(0), eq(10)))
-                .thenReturn(Arrays.asList(testUsageApply));
-        when(usageApplyRepository.countDraftsByUserId(1L)).thenReturn(1L);
+        // Mock mapper返回包含用户信息的结果
+        UsageApplyWithDetailsDO withDetails = new UsageApplyWithDetailsDO();
+        withDetails.setId(1L);
+        withDetails.setTitle("测试素材使用申请");
+        withDetails.setUserId(1L);
+        withDetails.setApplicantName("测试用户");
+        withDetails.setStatus("DRAFT");
+        withDetails.setDraft(1);
+
+        when(usageApplyMapper.selectListWithDetails(any(UsageApplyQuery.class)))
+                .thenReturn(Arrays.asList(withDetails));
+        when(usageApplyMapper.selectCount(any(UsageApplyQuery.class))).thenReturn(1L);
 
         PageResult<UsageApplyDTO> result = usageApplyService.queryDrafts(1L, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
-        // 验证 usageApplyRepository 方法被调用
-        verify(usageApplyRepository).findDraftsByUserId(eq(1L), eq(0), eq(10));
-        verify(usageApplyRepository).countDraftsByUserId(1L);
-        System.out.println("✓ UsageApplyService.queryDrafts() - UsageApplyRepository 测试通过");
+        // Verify mapper.selectListWithDetails was called
+        verify(usageApplyMapper).selectListWithDetails(argThat(query ->
+                query != null && query.getUserId() == 1L && query.getDraft() == 1
+        ));
+        verify(usageApplyMapper).selectCount(any(UsageApplyQuery.class));
+        System.out.println("✓ UsageApplyService.queryDrafts() - Mapper.selectListWithDetails 测试通过");
     }
 
     @Test
     @Order(4)
-    public void testQueryMyApplications() {
-        // 测试查询我的申请列表
-        // This tests: UsageApplyRepository.findByUserId, countByUserId
+    void testQueryMyApplications_MapperSelectListWithDetails() {
+        // 测试查询我的申请列表 - 使用 Mapper.selectListWithDetails (重构后使用JOIN查询避免N+1问题)
 
-        when(usageApplyRepository.findByUserId(eq(1L), eq(0), eq(10)))
-                .thenReturn(Arrays.asList(testUsageApply));
-        when(usageApplyRepository.countByUserId(1L)).thenReturn(1L);
+        // Mock mapper返回包含用户信息的结果
+        UsageApplyWithDetailsDO withDetails = new UsageApplyWithDetailsDO();
+        withDetails.setId(1L);
+        withDetails.setTitle("测试素材使用申请");
+        withDetails.setUserId(1L);
+        withDetails.setApplicantName("测试用户");
+        withDetails.setStatus("APPROVED");
+        withDetails.setDraft(0);
+
+        when(usageApplyMapper.selectListWithDetails(any(UsageApplyQuery.class)))
+                .thenReturn(Arrays.asList(withDetails));
+        when(usageApplyMapper.selectCount(any(UsageApplyQuery.class))).thenReturn(1L);
 
         PageResult<UsageApplyDTO> result = usageApplyService.queryMyApplications(1L, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
-        // 验证 usageApplyRepository 方法被调用
-        verify(usageApplyRepository).findByUserId(eq(1L), eq(0), eq(10));
-        verify(usageApplyRepository).countByUserId(1L);
-        System.out.println("✓ UsageApplyService.queryMyApplications() - UsageApplyRepository 测试通过");
+        // Verify mapper.selectListWithDetails was called
+        verify(usageApplyMapper).selectListWithDetails(argThat(query ->
+                query != null && query.getUserId() == 1L && "create_time".equals(query.getOrderByField())
+        ));
+        verify(usageApplyMapper).selectCount(any(UsageApplyQuery.class));
+        System.out.println("✓ UsageApplyService.queryMyApplications() - Mapper.selectListWithDetails 测试通过");
     }
 
     @Test
     @Order(5)
-    public void testUpdateDraft() {
+    void testUpdateDraft() {
         // 测试更新草稿
         // This tests: UsageApplyRepository.findById, update
 
@@ -210,7 +236,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(6)
-    public void testSubmit() {
+    void testSubmit() {
         // 测试提交申请
         // This tests: UsageApplyRepository.findById, update
 
@@ -234,7 +260,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(7)
-    public void testDelete() {
+    void testDelete() {
         // 测试删除草稿
         // This tests: UsageApplyRepository.findById, deleteById
 
@@ -251,7 +277,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(8)
-    public void testUpdateStatus() {
+    void testUpdateStatus() {
         // 测试更新状态
         // This tests: UsageApplyRepository.findById, update
 
@@ -270,7 +296,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(9)
-    public void testCopyApplication() {
+    void testCopyApplication() {
         // 测试复制申请
         // This tests: UsageApplyRepository.findById, save
 
@@ -301,7 +327,7 @@ public class UsageApplyServiceImplTest {
 
     @Test
     @Order(10)
-    public void testCanUseAsset() {
+    void testCanUseAsset() {
         // 测试检查素材使用权限
         // This tests: UsageApplyRepository.findById（通过 UsageApplyAssetRepository）
 
