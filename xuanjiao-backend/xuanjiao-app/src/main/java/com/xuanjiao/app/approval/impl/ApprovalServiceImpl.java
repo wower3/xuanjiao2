@@ -59,6 +59,7 @@ import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.common.exception.NotFoundException;
 import com.xuanjiao.common.exception.SystemException;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
@@ -662,11 +663,42 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     public TaskDetailDTO getTaskDetail(Long taskId) {
+        // 1. 加载并验证任务
+        ApprovalTaskDO task = loadAndValidateTask(taskId);
+
+        // 2. 创建并设置基本任务信息
+        TaskDetailDTO result = createTaskDetailDTO(task);
+
+        // 3. 加载实例相关信息
+        loadInstanceRelatedInfo(result, task);
+
+        // 4. 判断是否可以选择下一层审批人
+        determineCanSelectNextApprovers(result, task);
+
+        // 5. 解析已选择的审批人
+        parseSelectedApprovers(result, task);
+
+        // 6. 加载其他审批人
+        loadOtherApprovers(result, task);
+
+        return result;
+    }
+
+    /**
+     * 加载并验证任务
+     */
+    private ApprovalTaskDO loadAndValidateTask(Long taskId) {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
             throw new NotFoundException(MSG_TASK_NOT_FOUND);
         }
+        return task;
+    }
 
+    /**
+     * 创建任务详情 DTO 并设置基本信息
+     */
+    private TaskDetailDTO createTaskDetailDTO(ApprovalTaskDO task) {
         TaskDetailDTO result = new TaskDetailDTO();
         result.setId(task.getId());
         result.setStatus(task.getStatus());
@@ -679,350 +711,352 @@ public class ApprovalServiceImpl implements ApprovalService {
         if (task.getSubWorkflowApproverIds() != null) {
             result.setSubWorkflowApproverIds(task.getSubWorkflowApproverIds());
         }
+        return result;
+    }
 
-        // 获取实例信息
+    /**
+     * 加载实例相关信息（流程、阶段、业务数据等）
+     */
+    private void loadInstanceRelatedInfo(TaskDetailDTO result, ApprovalTaskDO task) {
         ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
-        if (instance != null) {
-            result.setInstanceId(instance.getId());
-            result.setBusinessType(instance.getBusinessType());
-            result.setBusinessId(instance.getBusinessId());
-            result.setWorkflowId(instance.getWorkflowId());
-            result.setCurrentStageId(instance.getCurrentStageId());
-
-            // 获取流程名称
-            WorkflowDO workflow = workflowMapper.selectById(instance.getWorkflowId());
-            if (workflow != null) {
-                result.setWorkflowName(workflow.getName());
-            }
-
-            // 获取当前阶段信息
-            WorkflowStageDO currentStage = workflowStageMapper.selectById(task.getStageId());
-            String approveType = null;
-            if (currentStage != null) {
-                approveType = currentStage.getApproveType();
-                result.setStageId(currentStage.getId());
-                result.setStageName(currentStage.getName());
-                result.setApproveType(approveType);
-
-                // 查找下一阶段
-                WorkflowStageQuery nextStageQuery = new WorkflowStageQuery();
-                nextStageQuery.setWorkflowId(instance.getWorkflowId());
-                nextStageQuery.setOrderByField("stage_order");
-                nextStageQuery.setOrderByDirection("ASC");
-                List<WorkflowStageDO> allNextStages = workflowStageMapper.selectList(nextStageQuery);
-                WorkflowStageDO nextStage = null;
-                for (WorkflowStageDO stage : allNextStages) {
-                    if (stage.getStageOrder() > currentStage.getStageOrder()) {
-                        nextStage = stage;
-                        break;
-                    }
-                }
-                if (nextStage != null) {
-                    result.setNextStageId(nextStage.getId());
-                    result.setNextStageName(nextStage.getName());
-                    result.setNextStageApproveType(nextStage.getApproveType());
-
-                    // 获取下一阶段配置的审批人列表（按配置顺序，排除子流程）
-                    StageApproverQuery approverConfigQuery = new StageApproverQuery();
-                    approverConfigQuery.setStageId(nextStage.getId());
-                    approverConfigQuery.setSubWorkflowIdNull(true);
-                    approverConfigQuery.setOrderByField("id");
-                    approverConfigQuery.setOrderByDirection("ASC");
-                    List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(approverConfigQuery);
-
-                    // 构建下一层审批人配置列表（每个配置项包含类型、名称、可选用户）
-                    List<StageApproverDTO> nextStageApproverConfigs = new ArrayList<>();
-                    for (StageApproverDO config : approverConfigs) {
-                        StageApproverDTO configInfo = new StageApproverDTO();
-                        configInfo.setId(config.getId());
-                        configInfo.setApproverType(config.getApproverType());
-                        configInfo.setApproverId(config.getApproverId());
-                        configInfo.setCheckSecondaryDept(config.getCheckSecondaryDept());
-
-                        // 设置审批人类型名称
-                        String approverTypeName = "";
-                        String approverName = "";
-                        if ("USER".equals(config.getApproverType())) {
-                            UserDO user = userMapper.selectById(config.getApproverId());
-                            if (user != null) {
-                                approverTypeName = "指定用户";
-                                approverName = user.getRealName() != null ? user.getRealName() : user.getUsername();
-                            }
-                        } else if ("ROLE".equals(config.getApproverType())) {
-                            RoleDO role = roleMapper.selectById(config.getApproverId());
-                            if (role != null) {
-                                approverTypeName = "指定角色";
-                                approverName = role.getName();
-                            }
-                        } else if ("DEPT".equals(config.getApproverType())) {
-                            DeptDO dept = deptMapper.selectById(config.getApproverId());
-                            if (dept != null) {
-                                approverTypeName = "指定部门";
-                                approverName = dept.getName();
-                            }
-                        }
-                        configInfo.setApproverTypeName(approverTypeName);
-                        configInfo.setApproverName(approverName);
-
-                        // 获取该配置项的可选用户列表
-                        List<UserDTO> availableUsers = convertToUserDTOList(getAvailableUsersForConfig(config, instance.getApplicantId()));
-                        configInfo.setAvailableUsers(availableUsers);
-
-                        nextStageApproverConfigs.add(configInfo);
-                    }
-                    result.setNextStageApproverConfigs(nextStageApproverConfigs);
-                    result.setNextStageApproverCount(nextStageApproverConfigs.size());
-
-                    // 获取下一阶段配置的子流程列表（当前层的审批人选择下一层的子流程审批人）
-                    StageApproverQuery subWorkflowQuery = new StageApproverQuery();
-                    subWorkflowQuery.setStageId(nextStage.getId());
-                    subWorkflowQuery.setSubWorkflowIdNotNull(true);
-                    List<StageApproverDO> subWorkflowApprovers = stageApproverMapper.selectList(subWorkflowQuery);
-
-                    // 构建子流程信息列表（包含第一层审批人配置）
-                    List<SubWorkflowDTO> subWorkflows = new ArrayList<>();
-                    for (StageApproverDO sw : subWorkflowApprovers) {
-                        WorkflowDO subWorkflow = workflowMapper.selectById(sw.getSubWorkflowId());
-                        if (subWorkflow != null) {
-                            SubWorkflowDTO subWorkflowInfo = new SubWorkflowDTO();
-                            subWorkflowInfo.setId(subWorkflow.getId());
-                            subWorkflowInfo.setName(subWorkflow.getName());
-                            subWorkflowInfo.setWorkflowType(subWorkflow.getWorkflowType());
-
-                            // 获取子流程的第一层阶段
-                            WorkflowStageDO subFirstStage = getFirstStageOfWorkflow(subWorkflow.getId());
-                            logger.info("子流程获取第一阶段: subWorkflowId={}, subFirstStage={}", subWorkflow.getId(), subFirstStage != null ? subFirstStage.getId() : null);
-
-                            if (subFirstStage != null) {
-                                // 设置子流程第一层的审批类型
-                                subWorkflowInfo.setApproveType(subFirstStage.getApproveType());
-
-                                // 获取第一层的审批人配置（排除子流程）
-                                StageApproverQuery subApproverConfigQuery = new StageApproverQuery();
-                                subApproverConfigQuery.setStageId(subFirstStage.getId());
-                                subApproverConfigQuery.setSubWorkflowIdNull(true);
-                                subApproverConfigQuery.setOrderByField("id");
-                                subApproverConfigQuery.setOrderByDirection("ASC");
-                                List<StageApproverDO> subApproverConfigs = stageApproverMapper.selectList(subApproverConfigQuery);
-
-                                logger.info("子流程第一层审批人配置: subWorkflowId={}, stageId={}, approveType={}, configCount={}",
-                                    subWorkflow.getId(), subFirstStage.getId(), subFirstStage.getApproveType(), subApproverConfigs.size());
-
-                                // 构建子流程第一层审批人配置列表
-                                List<StageApproverDTO> subApproverConfigsList = new ArrayList<>();
-                                for (StageApproverDO subConfig : subApproverConfigs) {
-                                    StageApproverDTO subConfigInfo = new StageApproverDTO();
-                                    subConfigInfo.setId(subConfig.getId());
-                                    subConfigInfo.setApproverType(subConfig.getApproverType());
-                                    subConfigInfo.setApproverId(subConfig.getApproverId());
-                                    subConfigInfo.setCheckSecondaryDept(subConfig.getCheckSecondaryDept());
-
-                                    // 设置审批人类型名称
-                                    String subApproverTypeName = "";
-                                    String subApproverName = "";
-                                    if ("USER".equals(subConfig.getApproverType())) {
-                                        UserDO user = userMapper.selectById(subConfig.getApproverId());
-                                        if (user != null) {
-                                            subApproverTypeName = "指定用户";
-                                            subApproverName = user.getRealName() != null ? user.getRealName() : user.getUsername();
-                                        }
-                                    } else if ("ROLE".equals(subConfig.getApproverType())) {
-                                        RoleDO role = roleMapper.selectById(subConfig.getApproverId());
-                                        if (role != null) {
-                                            subApproverTypeName = "指定角色";
-                                            subApproverName = role.getName();
-                                        }
-                                    } else if ("DEPT".equals(subConfig.getApproverType())) {
-                                        DeptDO dept = deptMapper.selectById(subConfig.getApproverId());
-                                        if (dept != null) {
-                                            subApproverTypeName = "指定部门";
-                                            subApproverName = dept.getName();
-                                        }
-                                    }
-                                    subConfigInfo.setApproverTypeName(subApproverTypeName);
-                                    subConfigInfo.setApproverName(subApproverName);
-
-                                    // 获取该配置项的可选用户列表
-                                    List<UserDTO> subAvailableUsers = convertToUserDTOList(getAvailableUsersForConfig(subConfig, instance.getApplicantId()));
-                                    subConfigInfo.setAvailableUsers(subAvailableUsers);
-
-                                    logger.info("子流程配置: configId={}, type={}, name={}, availableUsersCount={}",
-                                        subConfig.getId(), subConfig.getApproverType(), subApproverName, subAvailableUsers.size());
-
-                                    subApproverConfigsList.add(subConfigInfo);
-                                }
-                                subWorkflowInfo.setApproverConfigs(subApproverConfigsList);
-                                subWorkflowInfo.setApproverCount(subApproverConfigsList.size());
-                            } else {
-                                logger.warn("子流程没有找到第一阶段: subWorkflowId={}, subWorkflowName={}",
-                                    subWorkflow.getId(), subWorkflow.getName());
-                                // 设置空的配置列表
-                                subWorkflowInfo.setApproverConfigs(new ArrayList<>());
-                                subWorkflowInfo.setApproverCount(0);
-                            }
-
-                            subWorkflows.add(subWorkflowInfo);
-                        }
-                    }
-                    result.setSubWorkflows(subWorkflows);
-                    result.setHasSubWorkflows(subWorkflows != null && !subWorkflows.isEmpty());
-                } else {
-                    // 没有下一阶段，说明是最后一层
-                    result.setNextStageId(null);
-                    result.setNextStageApproverConfigs(new ArrayList<>());
-                    result.setNextStageApproverCount(0);
-                    result.setSubWorkflows(new ArrayList<>());
-                    result.setHasSubWorkflows(false);
-                }
-            }
-
-            // 获取业务名称和申请人信息
-            if ("MATERIAL_ENTRY".equals(instance.getBusinessType())) {
-                // 素材录入申请：获取申请单信息
-                MaterialApplicationDO materialApplication = materialApplicationMapper.selectById(instance.getBusinessId());
-                if (materialApplication != null) {
-                    result.setApplicationId(materialApplication.getId());
-                    result.setApplicationTitle(materialApplication.getTitle());
-                    result.setBusinessName(materialApplication.getTitle());
-                }
-            } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
-                // 通过中间表查询关联的素材
-                List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
-                if (applyAssets != null && !applyAssets.isEmpty()) {
-                    String businessName = "使用申请：" + applyAssets.get(0).getAssetName();
-                    if (applyAssets.size() > 1) {
-                        businessName += " 等" + applyAssets.size() + "个素材";
-                    }
-                    result.setBusinessName(businessName);
-                    // 设置 applicationId 和 applicationTitle
-                    result.setApplicationId(instance.getBusinessId());
-                    result.setApplicationTitle(businessName);
-                }
-            } else if ("ASSET_DELETION".equals(instance.getBusinessType())) {
-                // 素材删除申请：获取申请单信息
-                com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO deletionApplication =
-                    assetDeletionApplicationMapper.selectById(instance.getBusinessId());
-                if (deletionApplication != null) {
-                    result.setApplicationId(deletionApplication.getId());
-                    result.setApplicationTitle(deletionApplication.getTitle());
-                    result.setBusinessName(deletionApplication.getTitle());
-                    result.setDeleteReason(deletionApplication.getDeleteReason());
-                }
-            }
-
-            UserDO applicant = userMapper.selectById(instance.getApplicantId());
-            if (applicant != null) {
-                result.setApplicantId(applicant.getId());
-                result.setApplicantName(applicant.getRealName());
-            }
-
-            // 获取审批进度
-            List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(instance.getId());
-            result.setApprovalProgress(progress);
+        if (instance == null) {
+            return;
         }
 
-        // 判断当前用户是否可以选择下一层审批人
-        // 条件：存在下一阶段 且 下一层审批人尚未选择
+        // 设置实例基本信息
+        setInstanceBasicInfo(result, instance);
+
+        // 加载流程信息
+        loadWorkflowInfo(result, instance);
+
+        // 加载阶段和下一阶段信息
+        loadStageAndNextStageInfo(result, instance, task);
+
+        // 加载业务信息
+        loadBusinessInfo(result, instance);
+
+        // 加载申请人信息
+        loadApplicantInfo(result, instance);
+
+        // 加载审批进度
+        loadApprovalProgress(result, instance);
+    }
+
+    /**
+     * 设置实例基本信息
+     */
+    private void setInstanceBasicInfo(TaskDetailDTO result, ApprovalInstanceDO instance) {
+        result.setInstanceId(instance.getId());
+        result.setBusinessType(instance.getBusinessType());
+        result.setBusinessId(instance.getBusinessId());
+        result.setWorkflowId(instance.getWorkflowId());
+        result.setCurrentStageId(instance.getCurrentStageId());
+    }
+
+    /**
+     * 加载流程信息
+     */
+    private void loadWorkflowInfo(TaskDetailDTO result, ApprovalInstanceDO instance) {
+        WorkflowDO workflow = workflowMapper.selectById(instance.getWorkflowId());
+        if (workflow != null) {
+            result.setWorkflowName(workflow.getName());
+        }
+    }
+
+    /**
+     * 加载阶段和下一阶段信息
+     */
+    private void loadStageAndNextStageInfo(TaskDetailDTO result, ApprovalInstanceDO instance, ApprovalTaskDO task) {
+        WorkflowStageDO currentStage = workflowStageMapper.selectById(task.getStageId());
+        if (currentStage == null) {
+            return;
+        }
+
+        result.setStageId(currentStage.getId());
+        result.setStageName(currentStage.getName());
+        result.setApproveType(currentStage.getApproveType());
+
+        // 查找并加载下一阶段信息
+        WorkflowStageDO nextStage = findNextStage(instance, currentStage);
+        if (nextStage != null) {
+            loadNextStageInfo(result, instance, nextStage);
+        } else {
+            setEmptyNextStageInfo(result);
+        }
+    }
+
+    /**
+     * 查找下一阶段
+     */
+    private WorkflowStageDO findNextStage(ApprovalInstanceDO instance, WorkflowStageDO currentStage) {
+        WorkflowStageQuery query = new WorkflowStageQuery();
+        query.setWorkflowId(instance.getWorkflowId());
+        query.setOrderByField("stage_order");
+        query.setOrderByDirection("ASC");
+        List<WorkflowStageDO> allStages = workflowStageMapper.selectList(query);
+
+        for (WorkflowStageDO stage : allStages) {
+            if (stage.getStageOrder() > currentStage.getStageOrder()) {
+                return stage;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 加载下一阶段信息
+     */
+    private void loadNextStageInfo(TaskDetailDTO result, ApprovalInstanceDO instance, WorkflowStageDO nextStage) {
+        result.setNextStageId(nextStage.getId());
+        result.setNextStageName(nextStage.getName());
+        result.setNextStageApproveType(nextStage.getApproveType());
+
+        // 加载下一阶段审批人配置
+        loadNextStageApproverConfigs(result, instance, nextStage);
+
+        // 加载子流程信息
+        loadSubWorkflows(result, instance, nextStage);
+    }
+
+    /**
+     * 设置空下一阶段信息
+     */
+    private void setEmptyNextStageInfo(TaskDetailDTO result) {
+        result.setNextStageId(null);
+        result.setNextStageApproverConfigs(new ArrayList<>());
+        result.setNextStageApproverCount(0);
+        result.setSubWorkflows(new ArrayList<>());
+        result.setHasSubWorkflows(false);
+    }
+
+    /**
+     * 加载下一阶段审批人配置
+     */
+    private void loadNextStageApproverConfigs(TaskDetailDTO result, ApprovalInstanceDO instance, WorkflowStageDO nextStage) {
+        StageApproverQuery query = new StageApproverQuery();
+        query.setStageId(nextStage.getId());
+        query.setSubWorkflowIdNull(true);
+        query.setOrderByField("id");
+        query.setOrderByDirection("ASC");
+        List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(query);
+
+        List<StageApproverDTO> configs = new ArrayList<>();
+        for (StageApproverDO config : approverConfigs) {
+            StageApproverDTO configInfo = buildStageApproverDTO(config, instance.getApplicantId());
+            configs.add(configInfo);
+        }
+
+        result.setNextStageApproverConfigs(configs);
+        result.setNextStageApproverCount(configs.size());
+    }
+
+    /**
+     * 加载子流程信息
+     */
+    private void loadSubWorkflows(TaskDetailDTO result, ApprovalInstanceDO instance, WorkflowStageDO nextStage) {
+        StageApproverQuery query = new StageApproverQuery();
+        query.setStageId(nextStage.getId());
+        query.setSubWorkflowIdNotNull(true);
+        List<StageApproverDO> subWorkflowApprovers = stageApproverMapper.selectList(query);
+
+        List<SubWorkflowDTO> subWorkflows = new ArrayList<>();
+        for (StageApproverDO sw : subWorkflowApprovers) {
+            WorkflowDO subWorkflow = workflowMapper.selectById(sw.getSubWorkflowId());
+            if (subWorkflow != null) {
+                SubWorkflowDTO dto = buildSubWorkflowDTO(subWorkflow, instance.getApplicantId());
+                subWorkflows.add(dto);
+            }
+        }
+
+        result.setSubWorkflows(subWorkflows);
+        result.setHasSubWorkflows(!subWorkflows.isEmpty());
+    }
+
+    /**
+     * 加载业务信息
+     */
+    private void loadBusinessInfo(TaskDetailDTO result, ApprovalInstanceDO instance) {
+        String businessType = instance.getBusinessType();
+
+        if ("MATERIAL_ENTRY".equals(businessType)) {
+            loadMaterialEntryInfo(result, instance.getBusinessId());
+        } else if ("ASSET_USAGE".equals(businessType)) {
+            loadAssetUsageInfo(result, instance.getBusinessId());
+        } else if ("ASSET_DELETION".equals(businessType)) {
+            loadAssetDeletionInfo(result, instance.getBusinessId());
+        }
+    }
+
+    /**
+     * 加载素材录入信息
+     */
+    private void loadMaterialEntryInfo(TaskDetailDTO result, Long businessId) {
+        MaterialApplicationDO application = materialApplicationMapper.selectById(businessId);
+        if (application != null) {
+            result.setApplicationId(application.getId());
+            result.setApplicationTitle(application.getTitle());
+            result.setBusinessName(application.getTitle());
+        }
+    }
+
+    /**
+     * 加载素材使用信息
+     */
+    private void loadAssetUsageInfo(TaskDetailDTO result, Long businessId) {
+        List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(businessId);
+        if (applyAssets != null && !applyAssets.isEmpty()) {
+            String businessName = "使用申请：" + applyAssets.get(0).getAssetName();
+            if (applyAssets.size() > 1) {
+                businessName += " 等" + applyAssets.size() + "个素材";
+            }
+            result.setBusinessName(businessName);
+            result.setApplicationId(businessId);
+            result.setApplicationTitle(businessName);
+        }
+    }
+
+    /**
+     * 加载素材删除信息
+     */
+    private void loadAssetDeletionInfo(TaskDetailDTO result, Long businessId) {
+        AssetDeletionApplicationDO deletionApplication = assetDeletionApplicationMapper.selectById(businessId);
+        if (deletionApplication != null) {
+            result.setApplicationId(deletionApplication.getId());
+            result.setApplicationTitle(deletionApplication.getTitle());
+            result.setBusinessName(deletionApplication.getTitle());
+            result.setDeleteReason(deletionApplication.getDeleteReason());
+        }
+    }
+
+    /**
+     * 加载申请人信息
+     */
+    private void loadApplicantInfo(TaskDetailDTO result, ApprovalInstanceDO instance) {
+        UserDO applicant = userMapper.selectById(instance.getApplicantId());
+        if (applicant != null) {
+            result.setApplicantId(applicant.getId());
+            result.setApplicantName(applicant.getRealName());
+        }
+    }
+
+    /**
+     * 加载审批进度
+     */
+    private void loadApprovalProgress(TaskDetailDTO result, ApprovalInstanceDO instance) {
+        List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(instance.getId());
+        result.setApprovalProgress(progress);
+    }
+
+    /**
+     * 判断是否可以选择下一层审批人
+     */
+    private void determineCanSelectNextApprovers(TaskDetailDTO result, ApprovalTaskDO task) {
         boolean hasNextStage = result.getNextStageId() != null;
         boolean nextStageNotSelected = task.getNextStageApproverIds() == null || task.getNextStageApproverIds().isEmpty();
 
-        boolean canSelectNextApprovers = false;
-
         result.setHasNextStage(hasNextStage);
 
+        boolean canSelect = false;
         if (hasNextStage && nextStageNotSelected) {
-            // 或签和会签都使用相同的动态判断逻辑
-            // 第一个完成的审批人可以选择下一层审批人
-            // 检查当前阶段是否已有已完成的任务
-            ApprovalTaskQuery completedTaskQuery = new ApprovalTaskQuery();
-            completedTaskQuery.setInstanceId(task.getInstanceId());
-            completedTaskQuery.setStageId(task.getStageId());
-            completedTaskQuery.setStatus("APPROVED");
-            List<ApprovalTaskDO> completedTasks = taskMapper.selectList(completedTaskQuery);
-
-            // 如果没有已完成的任务，当前任务作为第一个完成的任务，可以选择下一层审批人
-            // 无论或签还是会签，第一个完成的审批人都可以选择
-            canSelectNextApprovers = completedTasks.isEmpty();
+            canSelect = isFirstApproverToComplete(task);
         }
 
-        result.setCanSelectNextApprovers(canSelectNextApprovers);
+        result.setCanSelectNextApprovers(canSelect);
+    }
+
+    /**
+     * 判断是否是第一个完成的审批人
+     */
+    private boolean isFirstApproverToComplete(ApprovalTaskDO task) {
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(task.getInstanceId());
+        query.setStageId(task.getStageId());
+        query.setStatus("APPROVED");
+        List<ApprovalTaskDO> completedTasks = taskMapper.selectList(query);
+        return completedTasks.isEmpty();
+    }
+
+    /**
+     * 解析已选择的审批人
+     */
+    private void parseSelectedApprovers(TaskDetailDTO result, ApprovalTaskDO task) {
+        Boolean canSelect = result.getCanSelectNextApprovers();
+        if (canSelect != null && canSelect) {
+            result.setSelectedNextApprovers(new ArrayList<>());
+            result.setSelectedSubWorkflowApprovers(new HashMap<>());
+            return;
+        }
 
         // 解析已选择的下一层审批人
-        // 只有当不能选择下一层审批人时，才返回已选择的审批人信息（用于只读显示）
-        // 如果可以选择下一层审批人，清空已选择的审批人信息，允许重新选择
-        if (!canSelectNextApprovers && task.getNextStageApproverIds() != null && !task.getNextStageApproverIds().isEmpty()) {
-            try {
-                List<Long> selectedApproverIds = objectMapper.readValue(
-                    task.getNextStageApproverIds(),
-                    new TypeReference<List<Long>>() {}
-                );
-                List<UserDTO> selectedApprovers = new ArrayList<>();
-                for (Long approverId : selectedApproverIds) {
-                    UserDO user = userMapper.selectById(approverId);
-                    if (user != null) {
-                        UserDTO approverInfo = new UserDTO();
-                        approverInfo.setId(user.getId());
-                        approverInfo.setRealName(user.getRealName() != null ? user.getRealName() : user.getUsername());
-                        approverInfo.setUsername(user.getUsername());
-                        selectedApprovers.add(approverInfo);
-                    }
-                }
-                result.setSelectedNextApprovers(selectedApprovers);
-            } catch (Exception e) {
-                // 忽略解析错误
-            }
-        } else {
-            // 如果可以选择下一层审批人，清空已选择的审批人信息
-            result.setSelectedNextApprovers(new ArrayList<>());
+        if (task.getNextStageApproverIds() != null && !task.getNextStageApproverIds().isEmpty()) {
+            parseSelectedNextApprovers(result, task.getNextStageApproverIds());
         }
 
         // 解析已选择的子流程审批人
         if (task.getSubWorkflowApproverIds() != null && !task.getSubWorkflowApproverIds().isEmpty()) {
-            try {
-                Map<Long, List<Long>> subWorkflowApproverIdsMap = objectMapper.readValue(
-                    task.getSubWorkflowApproverIds(),
-                    new TypeReference<Map<Long, List<Long>>>() {}
-                );
-
-                // 构建子流程审批人信息：子流程ID -> 审批人列表
-                Map<Long, List<UserDTO>> selectedSubWorkflowApprovers = new HashMap<>();
-                for (Map.Entry<Long, List<Long>> entry : subWorkflowApproverIdsMap.entrySet()) {
-                    Long subWorkflowId = entry.getKey();
-                    List<Long> approverIds = entry.getValue();
-
-                    List<UserDTO> approvers = new ArrayList<>();
-                    for (Long approverId : approverIds) {
-                        UserDO user = userMapper.selectById(approverId);
-                        if (user != null) {
-                            UserDTO approverInfo = new UserDTO();
-                            approverInfo.setId(user.getId());
-                            approverInfo.setRealName(user.getRealName() != null ? user.getRealName() : user.getUsername());
-                            approverInfo.setUsername(user.getUsername());
-                            approvers.add(approverInfo);
-                        }
-                    }
-                    selectedSubWorkflowApprovers.put(subWorkflowId, approvers);
-                }
-                result.setSelectedSubWorkflowApprovers(selectedSubWorkflowApprovers);
-            } catch (Exception e) {
-                // 忽略解析错误
-            }
+            parseSelectedSubWorkflowApprovers(result, task.getSubWorkflowApproverIds());
         }
+    }
 
-        // 获取同阶段的其他审批人（用于判断是或签还是会签）
-        // 只查询待审批状态的任务，过滤掉已退回、已取消、已完成等无效任务
-        ApprovalTaskQuery taskQuery = new ApprovalTaskQuery();
-        taskQuery.setInstanceId(task.getInstanceId());
-        taskQuery.setStageId(task.getStageId());
-        taskQuery.setIdNotEqual(task.getId());
-        taskQuery.setStatus("PENDING");  // 只查询待审批状态的任务
-        List<ApprovalTaskDO> otherTasks = taskMapper.selectList(taskQuery);
+    /**
+     * 解析已选择的下一层审批人
+     */
+    private void parseSelectedNextApprovers(TaskDetailDTO result, String approverIdsJson) {
+        try {
+            List<Long> selectedApproverIds = objectMapper.readValue(approverIdsJson, new TypeReference<List<Long>>() {});
+            List<UserDTO> selectedApprovers = new ArrayList<>();
+            for (Long approverId : selectedApproverIds) {
+                UserDO user = userMapper.selectById(approverId);
+                if (user != null) {
+                    selectedApprovers.add(convertToUserDTO(user));
+                }
+            }
+            result.setSelectedNextApprovers(selectedApprovers);
+        } catch (Exception e) {
+            // 忽略解析错误
+        }
+    }
 
-        // 使用Set对审批人去重（同一审批人可能有多条任务记录，但只显示一次）
+    /**
+     * 解析已选择的子流程审批人
+     */
+    private void parseSelectedSubWorkflowApprovers(TaskDetailDTO result, String subWorkflowApproverIdsJson) {
+        try {
+            Map<Long, List<Long>> subWorkflowApproverIdsMap = objectMapper.readValue(
+                subWorkflowApproverIdsJson, new TypeReference<Map<Long, List<Long>>>() {});
+
+            Map<Long, List<UserDTO>> selectedSubWorkflowApprovers = new HashMap<>();
+            for (Map.Entry<Long, List<Long>> entry : subWorkflowApproverIdsMap.entrySet()) {
+                List<UserDTO> approvers = new ArrayList<>();
+                for (Long approverId : entry.getValue()) {
+                    UserDO user = userMapper.selectById(approverId);
+                    if (user != null) {
+                        approvers.add(convertToUserDTO(user));
+                    }
+                }
+                selectedSubWorkflowApprovers.put(entry.getKey(), approvers);
+            }
+            result.setSelectedSubWorkflowApprovers(selectedSubWorkflowApprovers);
+        } catch (Exception e) {
+            // 忽略解析错误
+        }
+    }
+
+    /**
+     * 加载其他审批人
+     */
+    private void loadOtherApprovers(TaskDetailDTO result, ApprovalTaskDO task) {
+        ApprovalTaskQuery query = new ApprovalTaskQuery();
+        query.setInstanceId(task.getInstanceId());
+        query.setStageId(task.getStageId());
+        query.setIdNotEqual(task.getId());
+        query.setStatus("PENDING");
+        List<ApprovalTaskDO> otherTasks = taskMapper.selectList(query);
+
         Set<Long> approverIds = new HashSet<>();
         List<UserDTO> otherApprovers = new ArrayList<>();
+
         for (ApprovalTaskDO otherTask : otherTasks) {
-            // 去重：如果该审批人已经添加过，跳过
             if (approverIds.contains(otherTask.getApproverId())) {
                 continue;
             }
@@ -1032,14 +1066,25 @@ public class ApprovalServiceImpl implements ApprovalService {
                 UserDTO approverInfo = new UserDTO();
                 approverInfo.setId(user.getId());
                 approverInfo.setRealName(user.getRealName() != null ? user.getRealName() : user.getUsername());
+                approverInfo.setUsername(user.getUsername());
                 approverInfo.setStatus(user.getStatus());
                 otherApprovers.add(approverInfo);
                 approverIds.add(otherTask.getApproverId());
             }
         }
-        result.setOtherApprovers(otherApprovers);
 
-        return result;
+        result.setOtherApprovers(otherApprovers);
+    }
+
+    /**
+     * 转换为 UserDTO
+     */
+    private UserDTO convertToUserDTO(UserDO user) {
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setRealName(user.getRealName() != null ? user.getRealName() : user.getUsername());
+        dto.setUsername(user.getUsername());
+        return dto;
     }
 
     /**
@@ -1235,6 +1280,111 @@ public class ApprovalServiceImpl implements ApprovalService {
         query.setOrderByDirection("ASC");
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(query);
         return stages.isEmpty() ? null : stages.get(0);
+    }
+
+    /**
+     * 构建审批人配置 DTO
+     */
+    private StageApproverDTO buildStageApproverDTO(StageApproverDO config, Long applicantId) {
+        StageApproverDTO dto = new StageApproverDTO();
+        dto.setId(config.getId());
+        dto.setApproverType(config.getApproverType());
+        dto.setApproverId(config.getApproverId());
+        dto.setCheckSecondaryDept(config.getCheckSecondaryDept());
+
+        // 设置审批人类型名称和审批人名称
+        ApproverInfo info = getApproverInfo(config.getApproverType(), config.getApproverId());
+        dto.setApproverTypeName(info.typeName);
+        dto.setApproverName(info.name);
+
+        // 获取可选用户列表
+        List<UserDTO> availableUsers = convertToUserDTOList(getAvailableUsersForConfig(config, applicantId));
+        dto.setAvailableUsers(availableUsers);
+
+        return dto;
+    }
+
+    /**
+     * 构建子流程 DTO
+     */
+    private SubWorkflowDTO buildSubWorkflowDTO(WorkflowDO subWorkflow, Long applicantId) {
+        SubWorkflowDTO dto = new SubWorkflowDTO();
+        dto.setId(subWorkflow.getId());
+        dto.setName(subWorkflow.getName());
+        dto.setWorkflowType(subWorkflow.getWorkflowType());
+
+        // 获取第一层阶段
+        WorkflowStageDO firstStage = getFirstStageOfWorkflow(subWorkflow.getId());
+        if (firstStage != null) {
+            dto.setApproveType(firstStage.getApproveType());
+            dto.setApproverConfigs(buildSubWorkflowApproverConfigs(firstStage, applicantId));
+            dto.setApproverCount(dto.getApproverConfigs() != null ? dto.getApproverConfigs().size() : 0);
+        } else {
+            dto.setApproverConfigs(new ArrayList<>());
+            dto.setApproverCount(0);
+            logger.warn("子流程没有找到第一阶段: subWorkflowId={}, subWorkflowName={}",
+                subWorkflow.getId(), subWorkflow.getName());
+        }
+
+        return dto;
+    }
+
+    /**
+     * 构建子流程审批人配置列表
+     */
+    private List<StageApproverDTO> buildSubWorkflowApproverConfigs(WorkflowStageDO firstStage, Long applicantId) {
+        StageApproverQuery query = new StageApproverQuery();
+        query.setStageId(firstStage.getId());
+        query.setSubWorkflowIdNull(true);
+        query.setOrderByField("id");
+        query.setOrderByDirection("ASC");
+        List<StageApproverDO> configs = stageApproverMapper.selectList(query);
+
+        List<StageApproverDTO> dtoList = new ArrayList<>();
+        for (StageApproverDO config : configs) {
+            dtoList.add(buildStageApproverDTO(config, applicantId));
+        }
+        return dtoList;
+    }
+
+    /**
+     * 获取审批人信息
+     */
+    private ApproverInfo getApproverInfo(String approverType, Long approverId) {
+        ApproverInfo info = new ApproverInfo();
+
+        if ("USER".equals(approverType)) {
+            UserDO user = userMapper.selectById(approverId);
+            if (user != null) {
+                info.typeName = "指定用户";
+                info.name = user.getRealName() != null ? user.getRealName() : user.getUsername();
+            }
+        } else if ("ROLE".equals(approverType)) {
+            RoleDO role = roleMapper.selectById(approverId);
+            if (role != null) {
+                info.typeName = "指定角色";
+                info.name = role.getName();
+            }
+        } else if ("DEPT".equals(approverType)) {
+            DeptDO dept = deptMapper.selectById(approverId);
+            if (dept != null) {
+                info.typeName = "指定部门";
+                info.name = dept.getName();
+            }
+        } else {
+            info.typeName = "";
+            info.name = "";
+        }
+
+        return info;
+    }
+
+    /**
+     * 审批人信息内部类
+     */
+    private static class ApproverInfo {
+        String typeName;
+        String name;
     }
 
     @Override
