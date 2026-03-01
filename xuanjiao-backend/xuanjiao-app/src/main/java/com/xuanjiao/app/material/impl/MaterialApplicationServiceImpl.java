@@ -26,6 +26,9 @@ import com.xuanjiao.infrastructure.material.MaterialApplicationWithDetailsDO;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationQuery;
 import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.BusinessException;
+import com.xuanjiao.common.exception.NotFoundException;
+import com.xuanjiao.common.exception.SystemException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -85,7 +88,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         // 获取当前用户信息作为默认维护人
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
-            throw new RuntimeException("用户不存在");
+            throw new NotFoundException("用户不存在");
         }
 
         MaterialApplication application = new MaterialApplication();
@@ -107,15 +110,15 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public MaterialApplicationDTO update(Long id, MaterialApplicationCmd cmd, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿状态可以修改，且只能修改自己的申请单
         if (!"DRAFT".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿状态可以修改");
+            throw new BusinessException("只有草稿状态可以修改");
         }
         if (!application.getApplicantId().equals(userId)) {
-            throw new RuntimeException("只能修改自己的申请单");
+            throw new BusinessException("只能修改自己的申请单");
         }
 
         application.setTitle(cmd.getTitle());
@@ -138,15 +141,15 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public Long submit(Long id, Long workflowId, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿或已驳回状态可以提交，且只能提交自己的申请单
         if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿或已驳回状态可以提交");
+            throw new BusinessException("只有草稿或已驳回状态可以提交");
         }
         if (!application.getApplicantId().equals(userId)) {
-            throw new RuntimeException("只能提交自己的申请单");
+            throw new BusinessException("只能提交自己的申请单");
         }
 
         // 检查是否有至少一个文件
@@ -154,7 +157,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         query.setApplicationId(id);
         Long count = assetMapper.selectCount(query);
         if (count == 0) {
-            throw new RuntimeException("请至少上传一个素材文件");
+            throw new BusinessException("请至少上传一个素材文件");
         }
 
         // 更新素材状态：将所有关联素材的状态统一更新为PENDING
@@ -185,15 +188,15 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public void delete(Long id, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿状态可以删除，且只能删除自己的申请单
         if (!"DRAFT".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿状态可以删除");
+            throw new BusinessException("只有草稿状态可以删除");
         }
         if (!application.getApplicantId().equals(userId)) {
-            throw new RuntimeException("只能删除自己的申请单");
+            throw new BusinessException("只能删除自己的申请单");
         }
 
         // Cascade delete: First delete all associated assets
@@ -474,7 +477,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public void updateStatus(Long id, String status) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
         application.setStatus(status);
         materialApplicationRepository.update(application);
@@ -540,7 +543,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         // 1. 获取原申请单
         MaterialApplication original = materialApplicationRepository.findById(id);
         if (original == null) {
-            throw new RuntimeException("原申请单不存在");
+            throw new NotFoundException("原申请单不存在");
         }
 
         // 2. 创建新申请单（草稿状态）
@@ -587,7 +590,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
                         newAsset.setFilePath(targetPath.toString());
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("复制文件失败: " + originalAsset.getName(), e);
+                    throw new SystemException("复制文件失败: " + originalAsset.getName(), e);
                 }
             }
 

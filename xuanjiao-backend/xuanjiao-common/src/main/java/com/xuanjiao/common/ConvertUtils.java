@@ -1,5 +1,6 @@
 package com.xuanjiao.common;
 
+import com.xuanjiao.common.exception.SystemException;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 
@@ -45,7 +46,7 @@ public class ConvertUtils {
             copyProperties(source, target);
             return target;
         } catch (Exception e) {
-            throw new RuntimeException("对象转换失败: " + targetClass.getName(), e);
+            throw new SystemException("对象转换失败: " + targetClass.getName(), e);
         }
     }
 

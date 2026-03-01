@@ -57,6 +57,8 @@ import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
+import com.xuanjiao.common.exception.NotFoundException;
+import com.xuanjiao.common.exception.SystemException;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
@@ -285,7 +287,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     public InstanceDetailDTO getInstanceDetail(Long instanceId) {
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
         Map<String, Object> map = buildInstanceInfo(instance);
         InstanceDetailDTO result = convertToInstanceDetailDTO(map);
@@ -357,13 +359,13 @@ public class ApprovalServiceImpl implements ApprovalService {
             ApprovalTaskDO task = taskMapper.selectById(taskId);
             if (task == null) {
                 logger.error("任务不存在: taskId={}", taskId);
-                throw new RuntimeException("任务不存在: " + taskId);
+                throw new NotFoundException("任务不存在: " + taskId);
             }
 
             ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
             if (instance == null) {
                 logger.error("审批实例不存在: instanceId={}", task.getInstanceId());
-                throw new RuntimeException("审批实例不存在: " + task.getInstanceId());
+                throw new NotFoundException("审批实例不存在: " + task.getInstanceId());
             }
 
             String businessType = instance.getBusinessType();
@@ -379,7 +381,7 @@ public class ApprovalServiceImpl implements ApprovalService {
             logger.info("审批处理完成: taskId={}, userId={}", taskId, userId);
         } catch (Exception e) {
             logger.error("审批处理失败: taskId={}, userId={}, error={}", taskId, userId, e.getMessage(), e);
-            throw new RuntimeException("审批处理失败: " + e.getMessage(), e);
+            throw new SystemException("审批处理失败: " + e.getMessage(), e);
         }
     }
 
@@ -395,7 +397,7 @@ public class ApprovalServiceImpl implements ApprovalService {
             logger.info("退回处理完成: taskId={}, userId={}", taskId, userId);
         } catch (Exception e) {
             logger.error("退回处理失败: taskId={}, userId={}, error={}", taskId, userId, e.getMessage(), e);
-            throw new RuntimeException("退回处理失败: " + e.getMessage(), e);
+            throw new SystemException("退回处理失败: " + e.getMessage(), e);
         }
     }
 
@@ -658,7 +660,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     public TaskDetailDTO getTaskDetail(Long taskId) {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
-            throw new RuntimeException("任务不存在");
+            throw new NotFoundException("任务不存在");
         }
 
         TaskDetailDTO result = new TaskDetailDTO();

@@ -29,6 +29,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.xuanjiao.common.exception.BusinessException;
+import com.xuanjiao.common.exception.NotFoundException;
 
 /**
  * 素材使用申请服务实现类
@@ -73,7 +75,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         // 获取当前用户信息
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
-            throw new RuntimeException("用户不存在");
+            throw new NotFoundException("用户不存在");
         }
 
         // 创建使用申请单
@@ -93,20 +95,20 @@ public class UsageApplyServiceImpl implements UsageApplyService {
             for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
                 AssetDO asset = assetMapper.selectById(config.getAssetId());
                 if (asset == null) {
-                    throw new RuntimeException("素材不存在: " + config.getAssetId());
+                    throw new NotFoundException("素材不存在: " + config.getAssetId());
                 }
 
                 // 检查素材状态：只能使用APPROVED状态的素材
                 // DRAFT/PENDING/DELETED状态的素材不允许使用
                 // 软删除（deleted=1）的素材不允许使用
                 if (asset.getDeleted() != null && asset.getDeleted() == 1) {
-                    throw new RuntimeException("该素材已被删除，无法使用: " + asset.getName());
+                    throw new BusinessException("该素材已被删除，无法使用: " + asset.getName());
                 }
                 if (!"APPROVED".equals(asset.getStatus())) {
                     String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
                                      "PENDING".equals(asset.getStatus()) ? "待审批" :
                                      "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
-                    throw new RuntimeException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
+                    throw new BusinessException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
                 }
 
                 UsageApplyAsset applyAsset = new UsageApplyAsset();
@@ -129,15 +131,15 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     public UsageApplyDTO updateDraft(Long id, UsageApplyCmd cmd, Long userId) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿状态可以修改
         if (usageApply.getDraft() != 1) {
-            throw new RuntimeException("只有草稿状态可以修改");
+            throw new BusinessException("只有草稿状态可以修改");
         }
         if (!usageApply.getUserId().equals(userId)) {
-            throw new RuntimeException("只能修改自己的申请单");
+            throw new BusinessException("只能修改自己的申请单");
         }
 
         // 更新标题
@@ -153,18 +155,18 @@ public class UsageApplyServiceImpl implements UsageApplyService {
             for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
                 AssetDO asset = assetMapper.selectById(config.getAssetId());
                 if (asset == null) {
-                    throw new RuntimeException("素材不存在: " + config.getAssetId());
+                    throw new NotFoundException("素材不存在: " + config.getAssetId());
                 }
 
                 // 检查素材状态：只能使用APPROVED状态的素材
                 if (asset.getDeleted() != null && asset.getDeleted() == 1) {
-                    throw new RuntimeException("该素材已被删除，无法使用: " + asset.getName());
+                    throw new BusinessException("该素材已被删除，无法使用: " + asset.getName());
                 }
                 if (!"APPROVED".equals(asset.getStatus())) {
                     String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
                                      "PENDING".equals(asset.getStatus()) ? "待审批" :
                                      "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
-                    throw new RuntimeException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
+                    throw new BusinessException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
                 }
 
                 UsageApplyAsset applyAsset = new UsageApplyAsset();
@@ -193,15 +195,15 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
         if (usageApply == null) {
             logger.error("UsageApply.submit - 申请单不存在，id: {}", id);
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿或已驳回状态可以提交
         if (usageApply.getDraft() != 1 && !"REJECTED".equals(usageApply.getStatus())) {
-            throw new RuntimeException("只有草稿或已驳回状态可以提交");
+            throw new BusinessException("只有草稿或已驳回状态可以提交");
         }
         if (!usageApply.getUserId().equals(userId)) {
-            throw new RuntimeException("只能提交自己的申请单");
+            throw new BusinessException("只能提交自己的申请单");
         }
 
         // 检查是否有至少一个素材
@@ -209,7 +211,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         logger.info("UsageApply.submit - 关联素材数量: {}", assets.size());
 
         if (assets.isEmpty()) {
-            throw new RuntimeException("请至少选择一个素材并配置使用信息");
+            throw new BusinessException("请至少选择一个素材并配置使用信息");
         }
 
         usageApply.setWorkflowId(workflowId);
@@ -228,15 +230,15 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     public void delete(Long id, Long userId) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿状态可以删除
         if (usageApply.getDraft() != 1) {
-            throw new RuntimeException("只有草稿状态可以删除");
+            throw new BusinessException("只有草稿状态可以删除");
         }
         if (!usageApply.getUserId().equals(userId)) {
-            throw new RuntimeException("只能删除自己的申请单");
+            throw new BusinessException("只能删除自己的申请单");
         }
 
         // 删除申请单（Repository会自动清理中间表关联）
@@ -379,7 +381,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     public void updateStatus(Long id, String status) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
         usageApply.setStatus(status);
         usageApplyRepository.update(usageApply);
@@ -391,7 +393,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         // 1. 获取原申请单
         UsageApply original = usageApplyRepository.findById(id);
         if (original == null) {
-            throw new RuntimeException("原申请单不存在");
+            throw new NotFoundException("原申请单不存在");
         }
 
         // 2. 创建新申请单（草稿状态）

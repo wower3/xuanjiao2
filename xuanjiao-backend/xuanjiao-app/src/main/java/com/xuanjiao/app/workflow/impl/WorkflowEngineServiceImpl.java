@@ -28,6 +28,9 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.user.UserQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
+import com.xuanjiao.common.exception.BusinessException;
+import com.xuanjiao.common.exception.NotFoundException;
+import com.xuanjiao.common.exception.SystemException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -112,10 +115,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 检查流程是否存在且已启用
         WorkflowDO workflow = workflowMapper.selectById(workflowId);
         if (workflow == null) {
-            throw new RuntimeException("流程不存在，ID: " + workflowId);
+            throw new NotFoundException("流程不存在，ID: " + workflowId);
         }
         if (workflow.getStatus() == null || workflow.getStatus() != 1) {
-            throw new RuntimeException("流程已禁用，无法创建审批实例。流程名称：《" + workflow.getName() + "》");
+            throw new BusinessException("流程已禁用，无法创建审批实例。流程名称：《" + workflow.getName() + "》");
         }
 
         // 创建审批实例
@@ -154,16 +157,16 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
             logger.error("任务不存在: taskId={}", taskId);
-            throw new RuntimeException("任务不存在");
+            throw new NotFoundException("任务不存在");
         }
         if (!task.getApproverId().equals(userId)) {
             logger.error("无权操作: taskId={}, taskApproverId={}, userId={}", taskId, task.getApproverId(), userId);
-            throw new RuntimeException("无权操作此任务");
+            throw new BusinessException("无权操作此任务");
         }
         // 检查任务状态：只有 PENDING 状态的任务才能被审批
         if (!"PENDING".equals(task.getStatus())) {
             logger.error("任务状态不允许审批: taskId={}, status={}", taskId, task.getStatus());
-            throw new RuntimeException("任务状态不允许审批，当前状态：" + task.getStatus());
+            throw new BusinessException("任务状态不允许审批，当前状态：" + task.getStatus());
         }
 
         // 更新任务状态
@@ -232,21 +235,21 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
             logger.error("任务不存在: taskId={}", taskId);
-            throw new RuntimeException("任务不存在");
+            throw new NotFoundException("任务不存在");
         }
         if (!task.getApproverId().equals(userId)) {
             logger.error("无权操作: taskId={}, taskApproverId={}, userId={}", taskId, task.getApproverId(), userId);
-            throw new RuntimeException("无权操作此任务");
+            throw new BusinessException("无权操作此任务");
         }
         if (!"PENDING".equals(task.getStatus())) {
             logger.error("任务状态不允许退回: taskId={}, status={}", taskId, task.getStatus());
-            throw new RuntimeException("只有待审批任务才能退回");
+            throw new BusinessException("只有待审批任务才能退回");
         }
 
         // 2. 获取实例和阶段信息
         ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
 
         // 检查是否为子流程任务
@@ -260,7 +263,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 主流程退回
         WorkflowStageDO currentStage = stageMapper.selectById(task.getStageId());
         if (currentStage == null) {
-            throw new RuntimeException("当前阶段不存在");
+            throw new NotFoundException("当前阶段不存在");
         }
 
         // 3. 判断是否为第一层
@@ -309,7 +312,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         WorkflowStageDO previousStage = prevStageList.isEmpty() ? null : prevStageList.get(0);
 
         if (previousStage == null) {
-            throw new RuntimeException("上一层不存在，无法退回");
+            throw new NotFoundException("上一层不存在，无法退回");
         }
 
         logger.info("找到上一层: previousStageId={}, previousStageOrder={}, previousStageName={}",
@@ -390,7 +393,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 判断是否是第一层退回
         WorkflowStageDO currentStage = stageMapper.selectById(task.getStageId());
         if (currentStage == null) {
-            throw new RuntimeException("当前阶段不存在，无法处理退回");
+            throw new NotFoundException("当前阶段不存在，无法处理退回");
         }
 
         if (currentStage.getStageOrder() == 1) {
@@ -430,7 +433,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         Long parentInstanceId = subInstance.getRootInstanceId();
         ApprovalInstanceDO parentInstance = instanceMapper.selectById(parentInstanceId);
         if (parentInstance == null) {
-            throw new RuntimeException("主流程实例不存在，无法创建重新发起任务");
+            throw new NotFoundException("主流程实例不存在，无法创建重新发起任务");
         }
 
         Long parentTaskId = subInstance.getParentTaskId();
@@ -445,7 +448,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             logger.info("子流程属于主流程非第一层，给上一层审批人创建重新发起任务");
             ApprovalTaskDO parentTask = taskMapper.selectById(parentTaskId);
             if (parentTask == null) {
-                throw new RuntimeException("父任务不存在，无法创建重新发起任务");
+                throw new NotFoundException("父任务不存在，无法创建重新发起任务");
             }
             createRestartSubWorkflowTask(parentInstance, parentTask, subInstance.getWorkflowId(), comment);
         }
@@ -677,12 +680,12 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     public void selectFirstStageApprovers(Long instanceId, List<Long> approverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
 
         WorkflowStageDO firstStage = getFirstStage(instance.getWorkflowId());
         if (firstStage == null) {
-            throw new RuntimeException("未找到第一阶段");
+            throw new NotFoundException("未找到第一阶段");
         }
 
         // 保存子流程审批人选择到实例
@@ -692,7 +695,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
                 instance.setSubWorkflowApproverIds(subWorkflowApproverIdsJson);
                 instanceMapper.updateById(instance);
             } catch (Exception e) {
-                throw new RuntimeException("保存子流程审批人选择失败", e);
+                throw new SystemException("保存子流程审批人选择失败", e);
             }
         }
 
@@ -729,13 +732,13 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         WorkflowStageDO stage = stageMapper.selectById(currentStageId);
         if (stage == null) {
             logger.error("阶段不存在: stageId={}", currentStageId);
-            throw new RuntimeException("阶段不存在: " + currentStageId);
+            throw new NotFoundException("阶段不存在: " + currentStageId);
         }
 
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
             logger.error("审批实例不存在: instanceId={}", instanceId);
-            throw new RuntimeException("审批实例不存在: " + instanceId);
+            throw new NotFoundException("审批实例不存在: " + instanceId);
         }
 
         ApprovalTaskQuery query = new ApprovalTaskQuery();
@@ -838,13 +841,13 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
             logger.error("审批实例不存在: instanceId={}", instanceId);
-            throw new RuntimeException("审批实例不存在: " + instanceId);
+            throw new NotFoundException("审批实例不存在: " + instanceId);
         }
 
         WorkflowStageDO currentStage = stageMapper.selectById(currentStageId);
         if (currentStage == null) {
             logger.error("当前阶段不存在: stageId={}", currentStageId);
-            throw new RuntimeException("当前阶段不存在: " + currentStageId);
+            throw new NotFoundException("当前阶段不存在: " + currentStageId);
         }
 
         // 查找下一阶段
@@ -1031,7 +1034,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
         ApprovalInstanceDO parentInstance = instanceMapper.selectById(parentInstanceId);
         if (parentInstance == null) {
-            throw new RuntimeException("父实例不存在，无法启动子流程");
+            throw new NotFoundException("父实例不存在，无法启动子流程");
         }
 
         // 为每个子流程创建独立的审批实例
@@ -1206,7 +1209,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     public void startSubProcess(Long parentInstanceId, Long parentTaskId, Long subWorkflowId) {
         ApprovalInstanceDO parentInstance = instanceMapper.selectById(parentInstanceId);
         if (parentInstance == null) {
-            throw new RuntimeException("父实例不存在");
+            throw new NotFoundException("父实例不存在");
         }
 
         // 创建子流程实例
@@ -1650,17 +1653,17 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 1. 验证实例存在
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
 
         // 2. 验证是否为发起人
         if (!instance.getApplicantId().equals(userId)) {
-            throw new RuntimeException("只有发起人才能追回工单");
+            throw new BusinessException("只有发起人才能追回工单");
         }
 
         // 3. 验证实例状态：只有审批中的工单才能追回
         if (!"PENDING".equals(instance.getStatus())) {
-            throw new RuntimeException("只有审批中的工单才能追回，当前状态：" + instance.getStatus());
+            throw new BusinessException("只有审批中的工单才能追回，当前状态：" + instance.getStatus());
         }
 
         // 4. 执行追回（复用驳回逻辑）
@@ -1692,40 +1695,40 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 1. 验证任务
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
-            throw new RuntimeException("任务不存在");
+            throw new NotFoundException("任务不存在");
         }
         if (!task.getApproverId().equals(userId)) {
-            throw new RuntimeException("无权操作此任务");
+            throw new BusinessException("无权操作此任务");
         }
         if (!"RESTART_SUB_WORKFLOW".equals(task.getTaskType())) {
-            throw new RuntimeException("该任务不是重新发起子流程任务");
+            throw new BusinessException("该任务不是重新发起子流程任务");
         }
         if (!"PENDING".equals(task.getStatus())) {
-            throw new RuntimeException("任务已处理，无法重新发起");
+            throw new BusinessException("任务已处理，无法重新发起");
         }
 
         // 2. 解析子流程信息
         if (task.getSubWorkflowApproverIds() == null) {
-            throw new RuntimeException("子流程信息不存在");
+            throw new BusinessException("子流程信息不存在");
         }
         Map<String, Long> subWorkflowInfo;
         try {
             subWorkflowInfo = objectMapper.readValue(task.getSubWorkflowApproverIds(),
                 new TypeReference<Map<String, Long>>() {});
         } catch (Exception e) {
-            throw new RuntimeException("解析子流程信息失败: " + e.getMessage());
+            throw new SystemException("解析子流程信息失败: " + e.getMessage());
         }
 
         Long subWorkflowId = subWorkflowInfo.get("subWorkflowId");
         Long originalParentTaskId = subWorkflowInfo.get("originalParentTaskId");
         if (subWorkflowId == null) {
-            throw new RuntimeException("子流程ID不存在");
+            throw new BusinessException("子流程ID不存在");
         }
 
         // 3. 获取主流程实例和父任务
         ApprovalInstanceDO parentInstance = instanceMapper.selectById(task.getInstanceId());
         if (parentInstance == null) {
-            throw new RuntimeException("主流程实例不存在");
+            throw new NotFoundException("主流程实例不存在");
         }
 
         // 4. 创建新的子流程实例
@@ -1743,7 +1746,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 5. 获取子流程的第一阶段并设置当前阶段ID
         WorkflowStageDO firstStage = getFirstStage(subWorkflowId);
         if (firstStage == null) {
-            throw new RuntimeException("子流程未配置阶段");
+            throw new NotFoundException("子流程未配置阶段");
         }
         newSubInstance.setCurrentStageId(firstStage.getId());
         instanceMapper.updateById(newSubInstance);

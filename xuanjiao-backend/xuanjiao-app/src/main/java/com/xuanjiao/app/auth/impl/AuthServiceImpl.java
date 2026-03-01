@@ -12,6 +12,7 @@ import com.xuanjiao.domain.user.repository.UserRepository;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.BusinessException;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 
@@ -41,14 +42,14 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(cmd.getUsername());
         // 统一错误提示，不区分用户不存在和密码错误
         if (user == null) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException("用户名或密码错误");
         }
         String encryptPwd = DigestUtil.md5Hex(cmd.getPassword());
         if (!encryptPwd.equals(user.getPassword())) {
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException("用户名或密码错误");
         }
         if (user.getStatus() != 1) {
-            throw new RuntimeException("用户已被禁用");
+            throw new BusinessException("用户已被禁用");
         }
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
         LoginResultDTO result = new LoginResultDTO();

@@ -26,6 +26,7 @@ import com.xuanjiao.infrastructure.notification.NotificationMapper;
 import com.xuanjiao.infrastructure.notification.NotificationRecordDO;
 import com.xuanjiao.infrastructure.usage.UsageApplyMapper;
 import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -358,7 +359,7 @@ public class NotificationServiceImpl implements NotificationService {
         // 获取审批实例信息
         ApprovalInstanceDO instance = approvalInstanceMapper.selectById(cmd.getInstanceId());
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
 
         // 获取业务标题（申请标题）

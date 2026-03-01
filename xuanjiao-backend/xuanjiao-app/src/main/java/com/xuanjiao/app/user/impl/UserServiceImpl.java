@@ -6,6 +6,8 @@ import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.client.PageResult;
 import com.xuanjiao.client.user.UserDTO;
 import com.xuanjiao.client.user.UserGetListWithFilterQry;
+import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.NotFoundException;
 import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
@@ -14,7 +16,6 @@ import com.xuanjiao.infrastructure.dept.DeptQuery;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.user.UserQuery;
-import com.xuanjiao.common.ConvertUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -149,7 +150,7 @@ public class UserServiceImpl implements UserService {
     public void update(UserDTO dto) {
         UserDO user = userMapper.selectById(dto.getId());
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new NotFoundException("用户不存在");
         }
         user.setRealName(dto.getRealName());
         user.setPhone(dto.getPhone());

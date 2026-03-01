@@ -3,6 +3,8 @@ package com.xuanjiao.app.workflow.impl;
 import com.xuanjiao.app.workflow.ApproverSelectionService;
 import com.xuanjiao.app.user.UserService;
 import com.xuanjiao.app.workflow.WorkflowEngineService;
+import com.xuanjiao.common.exception.NotFoundException;
+import com.xuanjiao.common.exception.SystemException;
 import org.springframework.context.annotation.Lazy;
 import com.xuanjiao.client.workflow.ApproverSelectionDTO;
 import com.xuanjiao.client.workflow.FirstStageApproversDTO;
@@ -221,7 +223,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectNextStageApprovers(Long taskId, List<Long> approverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
         ApprovalTaskDO task = approvalTaskMapper.selectById(taskId);
         if (task == null) {
-            throw new RuntimeException("任务不存在");
+            throw new NotFoundException("任务不存在");
         }
 
         try {
@@ -238,7 +240,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
 
             approvalTaskMapper.updateById(task);
         } catch (Exception e) {
-            throw new RuntimeException("保存审批人选择失败", e);
+            throw new SystemException("保存审批人选择失败", e);
         }
     }
 
@@ -247,7 +249,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectFirstStageApproversWithSubWorkflows(Long instanceId, List<Long> approverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
         ApprovalInstanceDO instance = approvalInstanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
 
         // 获取第一阶段
@@ -258,7 +260,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(stageQuery);
         WorkflowStageDO firstStage = stages.isEmpty() ? null : stages.get(0);
         if (firstStage == null) {
-            throw new RuntimeException("未找到第一阶段");
+            throw new NotFoundException("未找到第一阶段");
         }
 
         // 保存子流程审批人选择到实例
@@ -268,7 +270,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
                 instance.setSubWorkflowApproverIds(subWorkflowApproverIdsJson);
                 approvalInstanceMapper.updateById(instance);
             } catch (Exception e) {
-                throw new RuntimeException("保存子流程审批人选择失败", e);
+                throw new SystemException("保存子流程审批人选择失败", e);
             }
         }
 
@@ -648,7 +650,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectFirstStageApprovers(Long instanceId, List<Long> approverIds) {
         ApprovalInstanceDO instance = approvalInstanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new RuntimeException("审批实例不存在");
+            throw new NotFoundException("审批实例不存在");
         }
 
         // 获取第一阶段
@@ -659,7 +661,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(stageQuery);
         WorkflowStageDO firstStage = stages.isEmpty() ? null : stages.get(0);
         if (firstStage == null) {
-            throw new RuntimeException("未找到第一阶段");
+            throw new NotFoundException("未找到第一阶段");
         }
 
         // 为选中的审批人创建任务
@@ -1159,7 +1161,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectSubWorkflowFirstStageApprovers(Long subInstanceId, List<Long> approverIds) {
         ApprovalInstanceDO subInstance = approvalInstanceMapper.selectById(subInstanceId);
         if (subInstance == null) {
-            throw new RuntimeException("子流程实例不存在");
+            throw new NotFoundException("子流程实例不存在");
         }
 
         // 获取子流程第一阶段
@@ -1170,7 +1172,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         List<WorkflowStageDO> firstStageList = workflowStageMapper.selectList(firstStageQuery);
         WorkflowStageDO firstStage = firstStageList.isEmpty() ? null : firstStageList.get(0);
         if (firstStage == null) {
-            throw new RuntimeException("未找到子流程第一阶段");
+            throw new NotFoundException("未找到子流程第一阶段");
         }
 
         // 为选中的审批人创建任务
