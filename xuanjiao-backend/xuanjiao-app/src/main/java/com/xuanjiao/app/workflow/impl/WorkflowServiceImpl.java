@@ -21,6 +21,8 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
 import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.BusinessException;
+import com.xuanjiao.common.exception.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.Resource;
@@ -181,7 +183,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         // 获取当前流程
         WorkflowDO currentWorkflow = workflowMapper.selectById(id);
         if (currentWorkflow == null) {
-            throw new RuntimeException("流程不存在");
+            throw new NotFoundException("流程不存在");
         }
 
         // 如果是启用操作，检查是否有冲突
@@ -207,7 +209,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                     for (WorkflowDO wf : conflictingWorkflows) {
                         errorMsg.append("《").append(wf.getName()).append("》");
                     }
-                    throw new RuntimeException(errorMsg.toString());
+                    throw new BusinessException(errorMsg.toString());
                 }
             }
         }
@@ -237,7 +239,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         // 获取当前流程
         WorkflowDO currentWorkflow = workflowMapper.selectById(id);
         if (currentWorkflow == null) {
-            throw new RuntimeException("流程不存在");
+            throw new NotFoundException("流程不存在");
         }
 
         // 检查是否有其他同角色+流程类型的已启用流程
@@ -260,7 +262,7 @@ public class WorkflowServiceImpl implements WorkflowService {
             for (WorkflowDO wf : conflictingWorkflows) {
                 errorMsg.append("《").append(wf.getName()).append("》");
             }
-            throw new RuntimeException(errorMsg.toString());
+            throw new BusinessException(errorMsg.toString());
         }
 
         // 绑定角色和流程类型，并启用当前流程
@@ -288,7 +290,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         // 获取原流程
         WorkflowDO originalWorkflow = workflowMapper.selectById(id);
         if (originalWorkflow == null) {
-            throw new RuntimeException("原流程不存在");
+            throw new NotFoundException("原流程不存在");
         }
 
         // 获取原流程的所有阶段

@@ -19,14 +19,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ApprovalInstanceMapperIntegrationTest {
+class ApprovalInstanceMapperIntegrationTest {
 
     @Autowired
     private ApprovalInstanceMapper approvalInstanceMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         ApprovalInstanceDO result = approvalInstanceMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -38,7 +38,7 @@ public class ApprovalInstanceMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         ApprovalInstanceQuery query = new ApprovalInstanceQuery();
         java.util.List<ApprovalInstanceDO> list = approvalInstanceMapper.selectList(query);
         assertNotNull(list);
@@ -47,7 +47,7 @@ public class ApprovalInstanceMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithParentInstanceId() {
+    void testSelectList_WithParentInstanceId() {
         ApprovalInstanceQuery query = new ApprovalInstanceQuery();
         query.setParentInstanceIdIsNull(true);  // 只查询主流程
         java.util.List<ApprovalInstanceDO> list = approvalInstanceMapper.selectList(query);
@@ -60,7 +60,7 @@ public class ApprovalInstanceMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithStatus() {
+    void testSelectList_WithStatus() {
         ApprovalInstanceQuery query = new ApprovalInstanceQuery();
         query.setStatus("PENDING");
         java.util.List<ApprovalInstanceDO> list = approvalInstanceMapper.selectList(query);
@@ -73,7 +73,7 @@ public class ApprovalInstanceMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         ApprovalInstanceQuery query = new ApprovalInstanceQuery();
         Long count = approvalInstanceMapper.selectCount(query);
         assertNotNull(count);
@@ -83,7 +83,7 @@ public class ApprovalInstanceMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectPage() {
+    void testSelectPage() {
         ApprovalInstanceQuery query = new ApprovalInstanceQuery();
         query.setParentInstanceIdIsNull(true);  // 只查询主流程
         Page<ApprovalInstanceDO> page = new Page<>(1, 10);

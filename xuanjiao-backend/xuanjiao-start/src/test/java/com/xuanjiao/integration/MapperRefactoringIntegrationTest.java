@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MapperRefactoringIntegrationTest {
+class MapperRefactoringIntegrationTest {
 
     @Autowired
     private UserMapper userMapper;
@@ -48,7 +48,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(1)
-    public void testUserSelectById() {
+    void testUserSelectById() {
         UserDO user = userMapper.selectById(1L);
         assertNotNull(user);
         assertEquals("admin", user.getUsername());
@@ -58,7 +58,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(2)
-    public void testUserSelectOneByUsername() {
+    void testUserSelectOneByUsername() {
         UserDO user = userMapper.selectOneByUsername("admin");
         assertNotNull(user);
         assertEquals(1L, user.getId());
@@ -67,7 +67,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(3)
-    public void testUserSelectList_EmptyQuery() {
+    void testUserSelectList_EmptyQuery() {
         UserQuery query = new UserQuery();
         List<UserDO> users = userMapper.selectList(query);
         assertNotNull(users);
@@ -77,7 +77,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(4)
-    public void testUserSelectList_ByDeptId() {
+    void testUserSelectList_ByDeptId() {
         UserQuery query = new UserQuery();
         query.setDeptId(100L);
         query.setStatus(1);
@@ -92,7 +92,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(5)
-    public void testUserSelectList_ByRoleIds() {
+    void testUserSelectList_ByRoleIds() {
         UserQuery query = new UserQuery();
         query.setRoleIds(Arrays.asList(1L, 4L));
         query.setStatus(1);
@@ -104,7 +104,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(6)
-    public void testUserSelectList_WithKeyword() {
+    void testUserSelectList_WithKeyword() {
         UserQuery query = new UserQuery();
         query.setKeyword("admin");
         List<UserDO> users = userMapper.selectList(query);
@@ -115,7 +115,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(7)
-    public void testUserSelectList_Combined() {
+    void testUserSelectList_Combined() {
         UserQuery query = new UserQuery();
         query.setRoleId(4L);
         query.setDeptIds(Arrays.asList(201L));
@@ -130,7 +130,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(20)
-    public void testRoleSelectById() {
+    void testRoleSelectById() {
         RoleDO role = roleMapper.selectById(1L);
         assertNotNull(role);
         assertEquals("系统管理员", role.getName());
@@ -140,7 +140,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(21)
-    public void testRoleSelectList_Empty() {
+    void testRoleSelectList_Empty() {
         RoleQuery query = new RoleQuery();
         List<RoleDO> roles = roleMapper.selectList(query);
         assertNotNull(roles);
@@ -150,7 +150,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(22)
-    public void testRoleSelectList_ByRoleType() {
+    void testRoleSelectList_ByRoleType() {
         RoleQuery query = new RoleQuery();
         query.setRoleType("SYSTEM_ADMIN");
         List<RoleDO> roles = roleMapper.selectList(query);
@@ -161,7 +161,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(23)
-    public void testRoleSelectCount() {
+    void testRoleSelectCount() {
         RoleQuery query = new RoleQuery();
         Long count = roleMapper.selectCount(query);
         assertNotNull(count);
@@ -171,7 +171,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(24)
-    public void testRoleSelectList_Combined() {
+    void testRoleSelectList_Combined() {
         RoleQuery query = new RoleQuery();
         query.setRoleType("GENERAL_MGMT");
         query.setStatus(1);
@@ -185,7 +185,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(30)
-    public void testDeptSelectById() {
+    void testDeptSelectById() {
         // First query all departments to get a valid ID
         List<DeptDO> depts = deptMapper.selectAll();
         assertNotNull(depts);
@@ -200,7 +200,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(31)
-    public void testDeptSelectAll() {
+    void testDeptSelectAll() {
         List<DeptDO> depts = deptMapper.selectAll();
         assertNotNull(depts);
         assertTrue(depts.size() >= 1);
@@ -210,7 +210,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(32)
-    public void testDeptSelectByParentId() {
+    void testDeptSelectByParentId() {
         // First get a valid parent ID
         List<DeptDO> depts = deptMapper.selectAll();
         assertNotNull(depts);
@@ -237,7 +237,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(33)
-    public void testDeptSelectList_Empty() {
+    void testDeptSelectList_Empty() {
         DeptQuery query = new DeptQuery();
         List<DeptDO> depts = deptMapper.selectList(query);
         assertNotNull(depts);
@@ -247,7 +247,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(34)
-    public void testDeptSelectList_ByLevel() {
+    void testDeptSelectList_ByLevel() {
         DeptQuery query = new DeptQuery();
         query.setLevel(1);
         List<DeptDO> depts = deptMapper.selectList(query);
@@ -260,7 +260,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(35)
-    public void testDeptSelectByCode() {
+    void testDeptSelectByCode() {
         // First query to get a valid code
         List<DeptDO> depts = deptMapper.selectAll();
         assertNotNull(depts);
@@ -284,7 +284,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(40)
-    public void testAssetSelectById() {
+    void testAssetSelectById() {
         AssetDO asset = assetMapper.selectById(1L);
         // Assuming there's at least one asset in the database
         if (asset != null) {
@@ -298,7 +298,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(41)
-    public void testAssetSelectList_Empty() {
+    void testAssetSelectList_Empty() {
         AssetQuery query = new AssetQuery();
         List<AssetDO> assets = assetMapper.selectList(query);
         assertNotNull(assets);
@@ -307,7 +307,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(42)
-    public void testAssetSelectList_WithStatus() {
+    void testAssetSelectList_WithStatus() {
         AssetQuery query = new AssetQuery();
         query.setStatus("APPROVED");
         List<AssetDO> assets = assetMapper.selectList(query);
@@ -320,7 +320,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(43)
-    public void testAssetSelectList_WithStatusList() {
+    void testAssetSelectList_WithStatusList() {
         AssetQuery query = new AssetQuery();
         query.setStatusList(Arrays.asList("APPROVED", "DELETED"));
         List<AssetDO> assets = assetMapper.selectList(query);
@@ -333,7 +333,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(44)
-    public void testAssetSelectByApplicationId() {
+    void testAssetSelectByApplicationId() {
         // Query by application_id - assuming there might be some
         AssetQuery query = new AssetQuery();
         query.setApplicationId(1L);
@@ -344,7 +344,7 @@ public class MapperRefactoringIntegrationTest {
 
     @Test
     @Order(45)
-    public void testAssetSelectCount() {
+    void testAssetSelectCount() {
         AssetQuery query = new AssetQuery();
         Long count = assetMapper.selectCount(query);
         assertNotNull(count);

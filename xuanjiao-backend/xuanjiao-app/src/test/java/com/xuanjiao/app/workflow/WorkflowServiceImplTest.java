@@ -42,7 +42,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class WorkflowServiceImplTest {
+class WorkflowServiceImplTest {
 
     @Mock
     private WorkflowMapper workflowMapper;
@@ -62,7 +62,7 @@ public class WorkflowServiceImplTest {
     private WorkflowDO testWorkflow;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testWorkflow = new WorkflowDO();
         testWorkflow.setId(1L);
         testWorkflow.setName("测试流程");
@@ -80,30 +80,28 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(1)
-    public void testList() {
+    void testList() {
         // 测试获取流程列表
-        // This tests: workflowMapper.selectList with empty query
+        // This tests: workflowMapper.selectListWithRoleName with query
 
-        when(workflowMapper.selectList(any(WorkflowQuery.class)))
+        when(workflowMapper.selectListWithRoleName(any(WorkflowQuery.class)))
                 .thenReturn(Arrays.asList(testWorkflow));
-        when(roleMapper.selectById(1L)).thenReturn(new RoleDO());
-        when(stageMapper.selectList(any())).thenReturn(new ArrayList<>());
 
         List<WorkflowDTO> result = workflowService.list();
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        // 验证 workflowMapper.selectList 被调用
-        verify(workflowMapper).selectList(argThat(query ->
+        // 验证 workflowMapper.selectListWithRoleName 被调用
+        verify(workflowMapper).selectListWithRoleName(argThat(query ->
                 query != null && "id".equals(query.getOrderByField()) &&
                 "DESC".equals(query.getOrderByDirection())
         ));
-        System.out.println("✓ WorkflowService.list() - workflowMapper.selectList 测试通过");
+        System.out.println("✓ WorkflowService.list() - workflowMapper.selectListWithRoleName 测试通过");
     }
 
     @Test
     @Order(2)
-    public void testGetById() {
+    void testGetById() {
         // 测试根据ID获取流程
         // This tests: workflowMapper.selectById
 
@@ -122,7 +120,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(3)
-    public void testSave() {
+    void testSave() {
         // 测试保存流程
         // This tests: workflowMapper.insert, selectById
 
@@ -151,7 +149,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(4)
-    public void testUpdate() {
+    void testUpdate() {
         // 测试更新流程
         // This tests: workflowMapper.updateById, selectList (for old stages)
 
@@ -179,7 +177,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(5)
-    public void testDelete() {
+    void testDelete() {
         // 测试删除流程
         // This tests: workflowMapper.deleteById, selectList (for stages)
 
@@ -198,7 +196,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(6)
-    public void testUpdateStatus_EnableWithConflict() {
+    void testUpdateStatus_EnableWithConflict() {
         // 测试启用流程（有冲突）
         // This tests: workflowMapper.selectById, selectList with conflict check query
 
@@ -233,7 +231,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(7)
-    public void testUpdateStatus_EnableWithoutConflict() {
+    void testUpdateStatus_EnableWithoutConflict() {
         // 测试启用流程（无冲突）
         // This tests: workflowMapper.selectById, selectList, updateById
 
@@ -255,7 +253,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(8)
-    public void testBindRole_WithConflict() {
+    void testBindRole_WithConflict() {
         // 测试绑定角色（有冲突）
         // This tests: workflowMapper.selectById, selectList with conflict check query
 
@@ -289,7 +287,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(9)
-    public void testBindRole_WithoutConflict() {
+    void testBindRole_WithoutConflict() {
         // 测试绑定角色（无冲突）
         // This tests: workflowMapper.selectById, selectList, updateById
 
@@ -313,7 +311,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(10)
-    public void testUnbindRole() {
+    void testUnbindRole() {
         // 测试解绑角色
         // This tests: workflowMapper.updateById
 
@@ -332,7 +330,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(11)
-    public void testCopy() {
+    void testCopy() {
         // 测试复制流程
         // This tests: workflowMapper.selectById, selectList, insert
 
@@ -363,48 +361,30 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(12)
-    public void testList_WorkflowStageQuery() {
-        // 测试获取流程列表 - 验证 stageMapper.selectList 调用
-        // This tests: list() -> stageMapper.selectList for each workflow's stages
+    void testList_WorkflowStageQuery() {
+        // 测试获取流程列表 - 使用新的 selectListWithRoleName 实现
+        // Note: 新实现使用JOIN查询，不再单独加载阶段和审批人
 
-        when(workflowMapper.selectList(any(WorkflowQuery.class)))
+        testWorkflow.setRoleName("系统管理员");  // 设置JOIN查询返回的角色名称
+
+        when(workflowMapper.selectListWithRoleName(any(WorkflowQuery.class)))
                 .thenReturn(Arrays.asList(testWorkflow));
-        when(roleMapper.selectById(1L)).thenReturn(new RoleDO());
-
-        // Mock stageMapper.selectList 返回阶段列表
-        WorkflowStageDO stage1 = new WorkflowStageDO();
-        stage1.setId(1L);
-        stage1.setWorkflowId(1L);
-        stage1.setName("第一阶段");
-        stage1.setStageOrder(1);
-        stage1.setApproveType("OR");
-
-        when(stageMapper.selectList(argThat(query ->
-                query != null &&
-                query.getWorkflowId() != null &&
-                query.getWorkflowId() == 1L &&
-                "stage_order".equals(query.getOrderByField()) &&
-                "ASC".equals(query.getOrderByDirection())
-        ))).thenReturn(Arrays.asList(stage1));
-        when(approverMapper.selectList(any())).thenReturn(new ArrayList<>());
 
         List<WorkflowDTO> result = workflowService.list();
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        // 验证 stageMapper.selectList 被正确调用
-        verify(stageMapper).selectList(argThat(query ->
-                query != null &&
-                query.getWorkflowId() == 1L &&
-                "stage_order".equals(query.getOrderByField()) &&
-                "ASC".equals(query.getOrderByDirection())
-        ));
-        System.out.println("✓ WorkflowService.list() - stageMapper.selectList 测试通过");
+        assertEquals("系统管理员", result.get(0).getRoleName());
+        // 验证 selectListWithRoleName 被调用
+        verify(workflowMapper).selectListWithRoleName(any(WorkflowQuery.class));
+        // 验证不再调用 stageMapper.selectList（新实现不需要）
+        verify(stageMapper, never()).selectList(any());
+        System.out.println("✓ WorkflowService.list() - selectListWithRoleName (新实现) 测试通过");
     }
 
     @Test
     @Order(13)
-    public void testGetById_WorkflowStageQuery() {
+    void testGetById_WorkflowStageQuery() {
         // 测试根据ID获取流程 - 验证 stageMapper.selectList 调用
         // This tests: getById() -> stageMapper.selectList for workflow stages
 
@@ -443,46 +423,33 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(14)
-    public void testList_StageApproverQuery() {
-        // 测试获取流程列表 - 验证 approverMapper.selectList 调用
-        // This tests: list() -> approverMapper.selectList for stage approvers
+    void testList_StageApproverQuery() {
+        // 测试获取流程列表 - 使用新的 selectListWithRoleName 实现
+        // Note: 新实现使用JOIN查询，不再单独加载阶段和审批人
 
-        when(workflowMapper.selectList(any())).thenReturn(Arrays.asList(testWorkflow));
-        when(roleMapper.selectById(1L)).thenReturn(new RoleDO());
+        testWorkflow.setRoleName("系统管理员");  // 设置JOIN查询返回的角色名称
 
-        // Mock stageMapper.selectList 返回阶段列表
-        WorkflowStageDO stage1 = new WorkflowStageDO();
-        stage1.setId(1L);
-        stage1.setWorkflowId(1L);
-        stage1.setName("第一阶段");
-        stage1.setStageOrder(1);
-
-        when(stageMapper.selectList(any())).thenReturn(Arrays.asList(stage1));
-
-        // Mock approverMapper.selectList 返回审批人列表
-        when(approverMapper.selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
-                query != null &&
-                query.getStageId() != null &&
-                query.getStageId() == 1L
-        ))).thenReturn(new ArrayList<>());
+        when(workflowMapper.selectListWithRoleName(any(WorkflowQuery.class)))
+                .thenReturn(Arrays.asList(testWorkflow));
 
         List<WorkflowDTO> result = workflowService.list();
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        // 验证 approverMapper.selectList 被正确调用
-        verify(approverMapper).selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
-                query != null &&
-                query.getStageId() == 1L
-        ));
-        System.out.println("✓ WorkflowService.list() - approverMapper.selectList 测试通过");
+        assertEquals("系统管理员", result.get(0).getRoleName());
+        // 验证 selectListWithRoleName 被调用
+        verify(workflowMapper).selectListWithRoleName(any(WorkflowQuery.class));
+        // 验证不再调用 stageMapper.selectList（新实现不需要）
+        verify(stageMapper, never()).selectList(any());
+        verify(approverMapper, never()).selectList(any(StageApproverQuery.class));
+        System.out.println("✓ WorkflowService.list() - selectListWithRoleName (新实现) 测试通过");
     }
 
     @Test
     @Order(15)
-    public void testGetById_StageApproverQuery() {
-        // 测试根据ID获取流程 - 验证 approverMapper.selectList 调用
-        // This tests: getById() -> approverMapper.selectList for stage approvers
+    void testGetById_StageApproverQuery() {
+        // 测试根据ID获取流程 - 验证 approverMapper.selectWithDetails 调用
+        // This tests: getById() -> approverMapper.selectWithDetails with stageIds
 
         when(workflowMapper.selectById(1L)).thenReturn(testWorkflow);
         when(roleMapper.selectById(1L)).thenReturn(new RoleDO());
@@ -496,28 +463,29 @@ public class WorkflowServiceImplTest {
 
         when(stageMapper.selectList(any())).thenReturn(Arrays.asList(stage1));
 
-        // Mock approverMapper.selectList 返回审批人列表
-        when(approverMapper.selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
+        // Mock approverMapper.selectWithDetails 返回审批人列表
+        when(approverMapper.selectWithDetails(ArgumentMatchers.<StageApproverQuery>argThat(query ->
                 query != null &&
-                query.getStageId() != null &&
-                query.getStageId() == 1L
+                query.getStageIds() != null &&
+                query.getStageIds().contains(1L)
         ))).thenReturn(new ArrayList<>());
 
         WorkflowDTO result = workflowService.getById(1L);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
-        // 验证 approverMapper.selectList 被正确调用
-        verify(approverMapper).selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
+        // 验证 approverMapper.selectWithDetails 被正确调用，使用 stageIds (列表) 而不是 stageId (单个值)
+        verify(approverMapper).selectWithDetails(ArgumentMatchers.<StageApproverQuery>argThat(query ->
                 query != null &&
-                query.getStageId() == 1L
+                query.getStageIds() != null &&
+                query.getStageIds().contains(1L)
         ));
-        System.out.println("✓ WorkflowService.getById() - approverMapper.selectList 测试通过");
+        System.out.println("✓ WorkflowService.getById() - approverMapper.selectWithDetails 测试通过");
     }
 
     @Test
     @Order(16)
-    public void testCopy_StageApproverQuery() {
+    void testCopy_StageApproverQuery() {
         // 测试复制流程 - 验证 approverMapper.selectList 调用
         // This tests: copy() -> approverMapper.selectList for copying approvers
 
@@ -594,7 +562,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(17)
-    public void testUpdate_StageApproverDelete() {
+    void testUpdate_StageApproverDelete() {
         // 测试更新流程 - 验证 approverMapper.delete 调用
         // This tests: update() -> approverMapper.delete for removing old approvers
 
@@ -633,7 +601,7 @@ public class WorkflowServiceImplTest {
 
     @Test
     @Order(18)
-    public void testDelete_StageApproverDelete() {
+    void testDelete_StageApproverDelete() {
         // 测试删除流程 - 验证 approverMapper.delete 调用
         // This tests: delete() -> approverMapper.delete for removing approvers
 

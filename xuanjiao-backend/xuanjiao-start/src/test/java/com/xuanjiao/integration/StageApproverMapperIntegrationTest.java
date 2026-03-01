@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class StageApproverMapperIntegrationTest {
+class StageApproverMapperIntegrationTest {
 
     @Autowired
     private StageApproverMapper stageApproverMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         StageApproverDO result = stageApproverMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -37,7 +37,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         StageApproverQuery query = new StageApproverQuery();
         java.util.List<StageApproverDO> list = stageApproverMapper.selectList(query);
         assertNotNull(list);
@@ -46,7 +46,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithStageId() {
+    void testSelectList_WithStageId() {
         StageApproverQuery query = new StageApproverQuery();
         query.setStageId(1L);
         java.util.List<StageApproverDO> list = stageApproverMapper.selectList(query);
@@ -59,7 +59,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithApproverType() {
+    void testSelectList_WithApproverType() {
         StageApproverQuery query = new StageApproverQuery();
         query.setApproverType("USER");
         java.util.List<StageApproverDO> list = stageApproverMapper.selectList(query);
@@ -72,7 +72,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectList_WithSubWorkflowId() {
+    void testSelectList_WithSubWorkflowId() {
         StageApproverQuery query = new StageApproverQuery();
         // Try to find a stage with sub-workflow
         java.util.List<StageApproverDO> allApprovers = stageApproverMapper.selectList(query);
@@ -99,7 +99,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectList_SubWorkflowIdNotNull() {
+    void testSelectList_SubWorkflowIdNotNull() {
         // Test IS NOT NULL query
         StageApproverQuery query = new StageApproverQuery();
         query.setSubWorkflowIdNotNull(true);
@@ -113,7 +113,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectList_SubWorkflowIdNull() {
+    void testSelectList_SubWorkflowIdNull() {
         // Test IS NULL query
         StageApproverQuery query = new StageApproverQuery();
         query.setSubWorkflowIdNull(true);
@@ -127,7 +127,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectList_WithOrderBy() {
+    void testSelectList_WithOrderBy() {
         StageApproverQuery query = new StageApproverQuery();
         query.setStageId(1L);
         query.setOrderByField("id");
@@ -143,7 +143,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(9)
-    public void testSelectCount() {
+    void testSelectCount() {
         StageApproverQuery query = new StageApproverQuery();
         Long count = stageApproverMapper.selectCount(query);
         assertNotNull(count);
@@ -153,7 +153,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(10)
-    public void testSelectList_ComplexQuery() {
+    void testSelectList_ComplexQuery() {
         // Test complex query: stageId + approverType + orderBy
         StageApproverQuery query = new StageApproverQuery();
         query.setStageId(1L);
@@ -173,7 +173,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(11)
-    public void testSelectList_AllApproversForStage() {
+    void testSelectList_AllApproversForStage() {
         // Test query for all approvers of a stage (common pattern in WorkflowServiceImpl)
         StageApproverQuery query = new StageApproverQuery();
         query.setStageId(1L);
@@ -184,7 +184,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(12)
-    public void testSelectList_SubWorkflowApprovers() {
+    void testSelectList_SubWorkflowApprovers() {
         // Test query for sub-workflow approvers only (used in startSubProcessesForStage)
         StageApproverQuery query = new StageApproverQuery();
         query.setStageId(1L);
@@ -200,7 +200,7 @@ public class StageApproverMapperIntegrationTest {
 
     @Test
     @Order(13)
-    public void testSelectList_NonSubWorkflowApprovers() {
+    void testSelectList_NonSubWorkflowApprovers() {
         // Test query for non-sub-workflow approvers (used in getTaskDetail)
         StageApproverQuery query = new StageApproverQuery();
         query.setStageId(1L);

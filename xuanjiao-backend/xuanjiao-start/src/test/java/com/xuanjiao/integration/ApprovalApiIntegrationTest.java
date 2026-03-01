@@ -25,14 +25,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ApprovalApiIntegrationTest {
+class ApprovalApiIntegrationTest {
 
     @Autowired
     private ApprovalService approvalService;
 
     @Test
     @Order(1)
-    public void testGetMyTasks_Api() {
+    void testGetMyTasks_Api() {
         PageResult<PendingTaskDTO> result = approvalService.getMyTasks(1L, 1, 10, null);
         assertNotNull(result);
         System.out.println("✓ Approval API: getMyTasks - count=" + result.getTotal());
@@ -40,7 +40,7 @@ public class ApprovalApiIntegrationTest {
 
     @Test
     @Order(2)
-    public void testGetInstanceDetail_Api() {
+    void testGetInstanceDetail_Api() {
         PageResult<PendingTaskDTO> tasks = approvalService.getMyTasks(1L, 1, 10, null);
         if (tasks.getList().isEmpty()) {
             System.out.println("⚠ Approval API: 没有待办任务，跳过详情测试");

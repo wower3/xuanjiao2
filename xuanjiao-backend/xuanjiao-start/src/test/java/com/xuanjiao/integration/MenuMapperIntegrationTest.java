@@ -20,14 +20,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MenuMapperIntegrationTest {
+class MenuMapperIntegrationTest {
 
     @Autowired
     private MenuMapper menuMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         MenuDO result = menuMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -40,7 +40,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         MenuQuery query = new MenuQuery();
         List<MenuDO> list = menuMapper.selectList(query);
         assertNotNull(list);
@@ -49,7 +49,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithType() {
+    void testSelectList_WithType() {
         MenuQuery query = new MenuQuery();
         query.setType("MENU");
         query.setStatus(1);
@@ -66,7 +66,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithParentId() {
+    void testSelectList_WithParentId() {
         MenuQuery query = new MenuQuery();
         query.setParentId(0L);
         List<MenuDO> list = menuMapper.selectList(query);
@@ -79,7 +79,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         MenuQuery query = new MenuQuery();
         Long count = menuMapper.selectCount(query);
         assertNotNull(count);
@@ -89,7 +89,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectCount_WithType() {
+    void testSelectCount_WithType() {
         MenuQuery query = new MenuQuery();
         query.setType("MENU");
         query.setStatus(1);
@@ -101,7 +101,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectMenuIdsByRoleId() {
+    void testSelectMenuIdsByRoleId() {
         List<Long> menuIds = menuMapper.selectMenuIdsByRoleId(1L);
         assertNotNull(menuIds);
         System.out.println("✓ Menu selectMenuIdsByRoleId (roleId=1): " + menuIds.size() + " menu IDs");
@@ -109,7 +109,7 @@ public class MenuMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectMenusByUserId() {
+    void testSelectMenusByUserId() {
         List<MenuDO> menus = menuMapper.selectMenusByUserId(1L);
         assertNotNull(menus);
         System.out.println("✓ Menu selectMenusByUserId (userId=1): " + menus.size() + " menus");

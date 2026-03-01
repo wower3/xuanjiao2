@@ -22,21 +22,21 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class FlowItemsApiIntegrationTest {
+class FlowItemsApiIntegrationTest {
 
     @Autowired
     private ApprovalService approvalService;
 
     @Test
     @Order(1)
-    public void testGetMyFlowItems_Basic() {
+    void testGetMyFlowItems_Basic() {
         PageResult<FlowItemDTO> result = approvalService.getMyFlowItems(1L, 1, 10, null, null);
         assertNotNull(result);
     }
 
     @Test
     @Order(2)
-    public void testGetMyFlowItems_FilterByBusinessType() {
+    void testGetMyFlowItems_FilterByBusinessType() {
         PageResult<FlowItemDTO> result1 = approvalService.getMyFlowItems(1L, 1, 10, "MATERIAL_ENTRY", null);
         assertNotNull(result1);
 
@@ -49,7 +49,7 @@ public class FlowItemsApiIntegrationTest {
 
     @Test
     @Order(3)
-    public void testGetMyFlowItems_FilterByStatus() {
+    void testGetMyFlowItems_FilterByStatus() {
         PageResult<FlowItemDTO> result1 = approvalService.getMyFlowItems(1L, 1, 10, null, "PENDING");
         assertNotNull(result1);
 
@@ -62,7 +62,7 @@ public class FlowItemsApiIntegrationTest {
 
     @Test
     @Order(4)
-    public void testGetMyFlowItems_WithPagination() {
+    void testGetMyFlowItems_WithPagination() {
         PageResult<FlowItemDTO> page1 = approvalService.getMyFlowItems(1L, 1, 5, null, null);
         assertNotNull(page1);
         assertNotNull(page1.getList());
@@ -75,7 +75,7 @@ public class FlowItemsApiIntegrationTest {
 
     @Test
     @Order(5)
-    public void testGetMyFlowItems_WithMyRole() {
+    void testGetMyFlowItems_WithMyRole() {
         PageResult<FlowItemDTO> result = approvalService.getMyFlowItems(1L, 1, 20, null, null);
         assertNotNull(result);
 
@@ -88,14 +88,14 @@ public class FlowItemsApiIntegrationTest {
 
     @Test
     @Order(6)
-    public void testGetMyFlowItems_CombinedFilters() {
+    void testGetMyFlowItems_CombinedFilters() {
         PageResult<FlowItemDTO> result = approvalService.getMyFlowItems(1L, 1, 10, "MATERIAL_ENTRY", "APPROVED");
         assertNotNull(result);
     }
 
     @Test
     @Order(7)
-    public void testGetMyFlowItems_DifferentUsers() {
+    void testGetMyFlowItems_DifferentUsers() {
         PageResult<FlowItemDTO> user1Result = approvalService.getMyFlowItems(1L, 1, 10, null, null);
         assertNotNull(user1Result);
 
@@ -105,7 +105,7 @@ public class FlowItemsApiIntegrationTest {
 
     @Test
     @Order(8)
-    public void testGetMyFlowItems_DataIntegrity() {
+    void testGetMyFlowItems_DataIntegrity() {
         PageResult<FlowItemDTO> result = approvalService.getMyFlowItems(1L, 1, 10, null, null);
 
         assertNotNull(result.getTotal());

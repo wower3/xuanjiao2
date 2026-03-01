@@ -21,14 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class WorkflowMapperIntegrationTest {
+class WorkflowMapperIntegrationTest {
 
     @Autowired
     private WorkflowMapper workflowMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         WorkflowDO result = workflowMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -41,7 +41,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         WorkflowQuery query = new WorkflowQuery();
         List<WorkflowDO> list = workflowMapper.selectList(query);
         assertNotNull(list);
@@ -50,7 +50,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithBoundRoleId() {
+    void testSelectList_WithBoundRoleId() {
         WorkflowQuery query = new WorkflowQuery();
         query.setBoundRoleId(1L);
         List<WorkflowDO> list = workflowMapper.selectList(query);
@@ -63,7 +63,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithWorkflowType() {
+    void testSelectList_WithWorkflowType() {
         WorkflowQuery query = new WorkflowQuery();
         query.setWorkflowType("ASSET_UPLOAD");
         List<WorkflowDO> list = workflowMapper.selectList(query);
@@ -76,7 +76,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectList_WithStatus() {
+    void testSelectList_WithStatus() {
         WorkflowQuery query = new WorkflowQuery();
         query.setStatus(1);
         List<WorkflowDO> list = workflowMapper.selectList(query);
@@ -89,7 +89,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectList_WithExcludeIds() {
+    void testSelectList_WithExcludeIds() {
         WorkflowQuery query = new WorkflowQuery();
         query.setExcludeIds(Arrays.asList(1L));
         List<WorkflowDO> list = workflowMapper.selectList(query);
@@ -102,7 +102,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectCount() {
+    void testSelectCount() {
         WorkflowQuery query = new WorkflowQuery();
         Long count = workflowMapper.selectCount(query);
         assertNotNull(count);
@@ -112,7 +112,7 @@ public class WorkflowMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectList_ComplexQuery() {
+    void testSelectList_ComplexQuery() {
         // Test conflict check query: boundRoleId + workflowType + status + deleted + excludeIds
         WorkflowQuery query = new WorkflowQuery();
         query.setBoundRoleId(1L);

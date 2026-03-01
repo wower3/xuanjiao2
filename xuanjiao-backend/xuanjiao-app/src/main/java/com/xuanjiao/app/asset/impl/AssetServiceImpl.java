@@ -32,6 +32,10 @@ import com.xuanjiao.app.usage.UsageApplyService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.BusinessException;
+import com.xuanjiao.common.exception.NotFoundException;
+import com.xuanjiao.common.exception.PermissionException;
+import com.xuanjiao.common.exception.SystemException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -186,7 +190,7 @@ public class AssetServiceImpl implements AssetService {
 
             return convertWithTags(asset);
         } catch (IOException e) {
-            throw new RuntimeException("文件上传失败", e);
+            throw new SystemException("文件上传失败", e);
         }
     }
 
@@ -211,12 +215,12 @@ public class AssetServiceImpl implements AssetService {
         // Get user's role to determine filtering rules
         UserDO user = userMapper.selectById(userId);
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new NotFoundException("用户不存在");
         }
 
         RoleDO role = roleMapper.selectById(user.getRoleId());
         if (role == null) {
-            throw new RuntimeException("用户角色不存在");
+            throw new NotFoundException("用户角色不存在");
         }
 
         // Determine allowed statuses based on role
@@ -323,13 +327,13 @@ public class AssetServiceImpl implements AssetService {
     public void adminDelete(Long assetId, String reason, Long userId, Boolean isAdmin) {
         // 验证管理员权限
         if (!isAdmin) {
-            throw new RuntimeException("只有管理员才能执行此操作");
+            throw new PermissionException("只有管理员才能执行此操作");
         }
 
         // 获取素材信息
         com.xuanjiao.infrastructure.dataobject.AssetDO asset = assetMapper.selectById(assetId);
         if (asset == null) {
-            throw new RuntimeException("素材不存在");
+            throw new NotFoundException("素材不存在");
         }
 
         logger.info("管理员彻底删除素材 - id={}, name={}, status={}, deleted={}",
@@ -337,13 +341,13 @@ public class AssetServiceImpl implements AssetService {
 
         // 只能删除已通过审批的素材或已删除状态的素材
         if (!"APPROVED".equals(asset.getStatus()) && !"DELETED".equals(asset.getStatus())) {
-            throw new RuntimeException("只能删除已通过审批或已删除状态的素材");
+            throw new BusinessException("只能删除已通过审批或已删除状态的素材");
         }
 
         // 获取用户信息
         UserDO user = userMapper.selectById(userId);
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new NotFoundException("用户不存在");
         }
 
         // 使用 AssetMapper 的方法直接更新 deleted 字段为 1
@@ -368,18 +372,18 @@ public class AssetServiceImpl implements AssetService {
     public void adjustDeleteTime(Long assetId, Boolean isAdmin) {
         // 验证管理员权限
         if (!isAdmin) {
-            throw new RuntimeException("只有管理员才能执行此操作");
+            throw new PermissionException("只有管理员才能执行此操作");
         }
 
         // 获取素材信息
         com.xuanjiao.infrastructure.dataobject.AssetDO asset = assetMapper.selectById(assetId);
         if (asset == null) {
-            throw new RuntimeException("素材不存在");
+            throw new NotFoundException("素材不存在");
         }
 
         // 只能对DELETED状态的素材执行模拟时间操作
         if (!"DELETED".equals(asset.getStatus())) {
-            throw new RuntimeException("只能对已删除状态的素材执行此操作");
+            throw new BusinessException("只能对已删除状态的素材执行此操作");
         }
 
         // 将删除审批通过时间设置为一周前（测试用）
@@ -392,7 +396,7 @@ public class AssetServiceImpl implements AssetService {
     public int triggerCleanupTask(Boolean isAdmin) {
         // 验证管理员权限
         if (!isAdmin) {
-            throw new RuntimeException("只有管理员才能执行此操作");
+            throw new PermissionException("只有管理员才能执行此操作");
         }
 
         // 手动触发定时任务，执行素材软删除

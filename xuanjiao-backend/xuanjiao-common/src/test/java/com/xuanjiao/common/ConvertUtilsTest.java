@@ -7,13 +7,13 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * ConvertUtils 单元测试
  */
-public class ConvertUtilsTest {
+class ConvertUtilsTest {
 
     /**
      * 测试基本属性复制
      */
     @Test
-    public void testCopyProperties_basicCopy() {
+    void testCopyProperties_basicCopy() {
         SourceBean source = new SourceBean();
         source.setId(1L);
         source.setName("test");
@@ -31,7 +31,7 @@ public class ConvertUtilsTest {
      * 测试忽略 null 值
      */
     @Test
-    public void testCopyProperties_ignoreNull() {
+    void testCopyProperties_ignoreNull() {
         SourceBean source = new SourceBean();
         source.setId(1L);
         source.setName("test");
@@ -50,7 +50,7 @@ public class ConvertUtilsTest {
      * 测试包含 null 值（覆盖目标）
      */
     @Test
-    public void testCopyPropertiesIncludeNull() {
+    void testCopyPropertiesIncludeNull() {
         SourceBean source = new SourceBean();
         source.setId(1L);
         source.setName("test");
@@ -69,7 +69,7 @@ public class ConvertUtilsTest {
      * 测试 source 为 null 时不做处理
      */
     @Test
-    public void testCopyProperties_sourceNull() {
+    void testCopyProperties_sourceNull() {
         TargetBean target = new TargetBean();
         target.setId(1L);
         target.setName("original");
@@ -85,7 +85,7 @@ public class ConvertUtilsTest {
      * 测试复制并创建新对象
      */
     @Test
-    public void testCopyProperties_withClass() {
+    void testCopyProperties_withClass() {
         SourceBean source = new SourceBean();
         source.setId(1L);
         source.setName("test");
@@ -103,7 +103,7 @@ public class ConvertUtilsTest {
      * 测试 source 为 null 时 copyProperties 返回 null
      */
     @Test
-    public void testCopyProperties_class_sourceNull() {
+    void testCopyProperties_class_sourceNull() {
         TargetBean target = ConvertUtils.copyProperties(null, TargetBean.class);
         assertNull(target);
     }
@@ -112,7 +112,7 @@ public class ConvertUtilsTest {
      * 测试部分字段匹配（source 有更多字段）
      */
     @Test
-    public void testCopyProperties_partialFields() {
+    void testCopyProperties_partialFields() {
         SourceBean source = new SourceBean();
         source.setId(1L);
         source.setName("test");

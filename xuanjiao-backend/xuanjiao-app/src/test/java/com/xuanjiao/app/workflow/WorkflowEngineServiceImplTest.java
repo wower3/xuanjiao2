@@ -52,7 +52,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class WorkflowEngineServiceImplTest {
+class WorkflowEngineServiceImplTest {
 
     @Mock
     private WorkflowMapper workflowMapper;
@@ -95,7 +95,7 @@ public class WorkflowEngineServiceImplTest {
     private DeptDO userDept;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         // 手动创建实例并注入依赖，避免 @PostConstruct 问题
         workflowEngineService = new WorkflowEngineServiceImpl();
         ReflectionTestUtils.setField(workflowEngineService, "userMapper", userMapper);
@@ -140,7 +140,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(1)
-    public void testGetActualApproverIds_RoleWithSecondaryDept() throws Exception {
+    void testGetActualApproverIds_RoleWithSecondaryDept() throws Exception {
         // 测试按角色+二级部门查询审批人
         // This tests: UserQuery with roleId + deptIds + status at line 1237-1241
 
@@ -177,7 +177,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetActualApproverIds_DeptType() throws Exception {
+    void testGetActualApproverIds_DeptType() throws Exception {
         // 测试按部门查询审批人
         // This tests: UserQuery with deptId + status at line 1251-1254
 
@@ -208,7 +208,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(3)
-    public void testGetActualApproverIds_RoleWithoutSecondaryDept() throws Exception {
+    void testGetActualApproverIds_RoleWithoutSecondaryDept() throws Exception {
         // 测试按角色查询审批人（不需要校验二级部门）
         // This should call userMapper.selectUserIdsByRoleId instead of selectList
 
@@ -239,7 +239,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(4)
-    public void testGetFirstStage_WorkflowStageQuery() throws Exception {
+    void testGetFirstStage_WorkflowStageQuery() throws Exception {
         // 测试获取第一阶段 - 验证 stageMapper.selectList 调用
         // This tests: getFirstStage() -> stageMapper.selectList with WorkflowStageQuery
 
@@ -279,7 +279,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(5)
-    public void testGetFirstStage_NotFound() throws Exception {
+    void testGetFirstStage_NotFound() throws Exception {
         // 测试获取第一阶段（未找到）- 验证返回null
         // This tests: getFirstStage() -> stageMapper.selectList returns empty
 
@@ -297,7 +297,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(6)
-    public void testStartSubProcessesForStage_StageApproverQuery() {
+    void testStartSubProcessesForStage_StageApproverQuery() {
         // 测试启动子流程 - 验证 approverMapper.selectList 调用
         // This tests: startSubProcessesForStage() -> approverMapper.selectList with subWorkflowIdNotNull
 
@@ -322,7 +322,7 @@ public class WorkflowEngineServiceImplTest {
 
     @Test
     @Order(7)
-    public void testCreateTasksForStage_StageApproverQuery() throws Exception {
+    void testCreateTasksForStage_StageApproverQuery() throws Exception {
         // 测试创建阶段任务 - 验证 approverMapper.selectList 调用
         // This tests: createTasksForStage() -> approverMapper.selectList
 

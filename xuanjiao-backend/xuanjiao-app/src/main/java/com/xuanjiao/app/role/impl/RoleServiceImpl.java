@@ -3,6 +3,7 @@ package com.xuanjiao.app.role.impl;
 import com.xuanjiao.app.menu.MenuService;
 import com.xuanjiao.app.role.RoleService;
 import com.xuanjiao.client.role.RoleDTO;
+import com.xuanjiao.common.exception.ValidationException;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.role.RoleQuery;
@@ -104,13 +105,13 @@ public class RoleServiceImpl implements RoleService {
      */
     private void validateRoleType(String roleType, Long excludeId) {
         if (roleType == null || roleType.trim().isEmpty()) {
-            throw new RuntimeException("角色类型不能为空");
+            throw new ValidationException("角色类型不能为空");
         }
 
         // 校验格式：只允许大写字母、数字和下划线
         Pattern pattern = Pattern.compile("^[A-Z0-9_]+$");
         if (!pattern.matcher(roleType).matches()) {
-            throw new RuntimeException("角色类型只能包含大写字母、数字和下划线");
+            throw new ValidationException("角色类型只能包含大写字母、数字和下划线");
         }
 
         // 校验唯一性
@@ -121,7 +122,7 @@ public class RoleServiceImpl implements RoleService {
         }
         Long count = roleMapper.selectCount(query);
         if (count > 0) {
-            throw new RuntimeException("角色类型已存在：" + roleType);
+            throw new ValidationException("角色类型已存在：" + roleType);
         }
     }
 }

@@ -19,6 +19,9 @@ import com.xuanjiao.infrastructure.dataobject.DeptDO;
 import com.xuanjiao.infrastructure.dataobject.TagDO;
 import com.xuanjiao.infrastructure.dataobject.UserDO;
 import com.xuanjiao.infrastructure.dept.DeptMapper;
+import com.xuanjiao.infrastructure.material.MaterialApplicationMapper;
+import com.xuanjiao.infrastructure.material.MaterialApplicationQuery;
+import com.xuanjiao.infrastructure.material.MaterialApplicationWithDetailsDO;
 import com.xuanjiao.infrastructure.user.UserMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
@@ -48,7 +51,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MaterialApplicationServiceImplTest {
+class MaterialApplicationServiceImplTest {
 
     @Mock
     private MaterialApplicationRepository materialApplicationRepository;
@@ -74,6 +77,9 @@ public class MaterialApplicationServiceImplTest {
     @Mock
     private DeptMapper deptMapper;
 
+    @Mock
+    private MaterialApplicationMapper materialApplicationMapper;
+
     @InjectMocks
     private MaterialApplicationServiceImpl materialApplicationService;
 
@@ -83,7 +89,7 @@ public class MaterialApplicationServiceImplTest {
     private AssetDO testAsset;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testUser = new UserDO();
         testUser.setId(1L);
         testUser.setUsername("test_user");
@@ -120,7 +126,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(1)
-    public void testCreate_RepositorySave() {
+    void testCreate_RepositorySave() {
         // 测试创建时调用 Repository.save -> MaterialApplicationMapper.insert
 
         when(userMapper.selectById(1L)).thenReturn(testUser);
@@ -147,7 +153,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(2)
-    public void testGetById_RepositoryFindById() {
+    void testGetById_RepositoryFindById() {
         // 测试获取详情时调用 Repository.findById -> MaterialApplicationMapper.selectById
 
         when(materialApplicationRepository.findById(100L)).thenReturn(testApplication);
@@ -168,7 +174,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(3)
-    public void testUpdate_RepositoryUpdate() {
+    void testUpdate_RepositoryUpdate() {
         // 测试更新时调用 Repository.update -> MaterialApplicationMapper.updateById
 
         when(materialApplicationRepository.findById(100L)).thenReturn(testApplication);
@@ -188,7 +194,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(4)
-    public void testDelete_RepositoryDeleteById() {
+    void testDelete_RepositoryDeleteById() {
         // 测试删除时调用 Repository.deleteById -> MaterialApplicationMapper.deleteById
 
         when(materialApplicationRepository.findById(100L)).thenReturn(testApplication);
@@ -204,7 +210,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(5)
-    public void testSubmit_RepositoryFindByIdAndUpdate() {
+    void testSubmit_RepositoryFindByIdAndUpdate() {
         // 测试提交时调用 Repository.findById 和 Repository.update
 
         when(materialApplicationRepository.findById(100L)).thenReturn(testApplication);
@@ -226,43 +232,73 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(6)
-    public void testQueryDrafts_RepositoryFindByApplicant() {
-        // 测试查询草稿时调用 Repository.findByApplicant
+    void testQueryDrafts_MapperSelectListWithDetails() {
+        // 测试查询草稿时调用 Mapper.selectListWithDetails (重构后使用JOIN查询避免N+1问题)
 
-        when(materialApplicationRepository.findByApplicant(eq(1L), anyInt(), anyInt()))
-                .thenReturn(Arrays.asList(testApplication));
-        when(materialApplicationRepository.countByApplicant(1L)).thenReturn(1L);
+        // Mock mapper返回包含用户和部门信息的结果
+        MaterialApplicationWithDetailsDO withDetails = new MaterialApplicationWithDetailsDO();
+        withDetails.setId(100L);
+        withDetails.setTitle("测试素材录入申请");
+        withDetails.setApplicantId(1L);
+        withDetails.setMaintainerId(1L);
+        withDetails.setDeptId(100L);
+        withDetails.setStatus("DRAFT"); // 草稿状态
+        withDetails.setApplicantName("测试用户");
+        withDetails.setMaintainerName("测试用户");
+        withDetails.setDeptName("总公司");
+
+        when(materialApplicationMapper.selectListWithDetails(any(MaterialApplicationQuery.class)))
+                .thenReturn(Arrays.asList(withDetails));
+        when(materialApplicationMapper.selectCount(any(MaterialApplicationQuery.class))).thenReturn(1L);
 
         PageResult<MaterialApplicationDTO> result = materialApplicationService.queryDrafts(1L, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
-        // Verify Repository.findByApplicant was called
-        verify(materialApplicationRepository).findByApplicant(eq(1L), eq(0), eq(10));
-        System.out.println("✓ MaterialApplicationService.queryDrafts() - Repository.findByApplicant 测试通过");
+        // Verify mapper.selectListWithDetails was called
+        verify(materialApplicationMapper).selectListWithDetails(argThat(query ->
+                query != null && query.getApplicantId() == 1L && "create_time".equals(query.getOrderByField())
+        ));
+        verify(materialApplicationMapper).selectCount(any(MaterialApplicationQuery.class));
+        System.out.println("✓ MaterialApplicationService.queryDrafts() - Mapper.selectListWithDetails 测试通过");
     }
 
     @Test
     @Order(7)
-    public void testQueryMyApplications_RepositoryFindByApplicant() {
-        // 测试查询我的申请时调用 Repository.findByApplicant
+    void testQueryMyApplications_MapperSelectListWithDetails() {
+        // 测试查询我的申请时调用 Mapper.selectListWithDetails (重构后使用JOIN查询避免N+1问题)
 
-        when(materialApplicationRepository.findByApplicant(eq(1L), anyInt(), anyInt()))
-                .thenReturn(Arrays.asList(testApplication));
-        when(materialApplicationRepository.countByApplicant(1L)).thenReturn(1L);
+        // Mock mapper返回包含用户和部门信息的结果
+        MaterialApplicationWithDetailsDO withDetails = new MaterialApplicationWithDetailsDO();
+        withDetails.setId(100L);
+        withDetails.setTitle("测试素材录入申请");
+        withDetails.setApplicantId(1L);
+        withDetails.setMaintainerId(1L);
+        withDetails.setDeptId(100L);
+        withDetails.setStatus("APPROVED");
+        withDetails.setApplicantName("测试用户");
+        withDetails.setMaintainerName("测试用户");
+        withDetails.setDeptName("总公司");
+
+        when(materialApplicationMapper.selectListWithDetails(any(MaterialApplicationQuery.class)))
+                .thenReturn(Arrays.asList(withDetails));
+        when(materialApplicationMapper.selectCount(any(MaterialApplicationQuery.class))).thenReturn(1L);
 
         PageResult<MaterialApplicationDTO> result = materialApplicationService.queryMyApplications(1L, 1, 10);
 
         assertNotNull(result);
         assertEquals(1, result.getList().size());
-        // Verify Repository.findByApplicant was called
-        verify(materialApplicationRepository).findByApplicant(eq(1L), eq(0), eq(10));
-        System.out.println("✓ MaterialApplicationService.queryMyApplications() - Repository.findByApplicant 测试通过");
+        // Verify mapper.selectListWithDetails was called
+        verify(materialApplicationMapper).selectListWithDetails(argThat(query ->
+                query != null && query.getApplicantId() == 1L && "create_time".equals(query.getOrderByField())
+        ));
+        verify(materialApplicationMapper).selectCount(any(MaterialApplicationQuery.class));
+        System.out.println("✓ MaterialApplicationService.queryMyApplications() - Mapper.selectListWithDetails 测试通过");
     }
 
     @Test
     @Order(8)
-    public void testCopyApplication_RepositoryMethods() {
+    void testCopyApplication_RepositoryMethods() {
         // 测试复制申请时调用 Repository 方法
 
         MaterialApplication newApplication = new MaterialApplication();
@@ -306,7 +342,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(11)
-    public void testSubmit_CheckAssetCount() {
+    void testSubmit_CheckAssetCount() {
         // 测试提交前检查素材数量
         // This tests: AssetMapper.selectCount with applicationId
 
@@ -331,7 +367,7 @@ public class MaterialApplicationServiceImplTest {
 
     @Test
     @Order(12)
-    public void testDelete_GetAssociatedAssets() {
+    void testDelete_GetAssociatedAssets() {
         // 测试删除时获取关联素材
 
         AssetDO asset2 = new AssetDO();

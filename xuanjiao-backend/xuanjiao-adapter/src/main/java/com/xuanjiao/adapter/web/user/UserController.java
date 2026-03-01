@@ -10,6 +10,7 @@ import com.xuanjiao.client.user.UserGetDefaultFilterDeptQry;
 import com.xuanjiao.client.user.UserGetListQry;
 import com.xuanjiao.client.user.UserGetListWithFilterQry;
 import com.xuanjiao.client.user.UserUpdateCmd;
+import com.xuanjiao.common.exception.PermissionException;
 import com.xuanjiao.infrastructure.dataobject.RoleDO;
 import com.xuanjiao.infrastructure.role.RoleMapper;
 import com.xuanjiao.infrastructure.user.UserMapper;
@@ -313,17 +314,17 @@ public class UserController {
      *
      * @param currentUserId 当前登录用户ID
      * @param targetDeptId 目标用户所属部门ID
-     * @throws RuntimeException 当用户无权操作时抛出异常
+     * @throws PermissionException 当用户无权操作时抛出异常
      */
     private void checkCreateUpdatePermission(Long currentUserId, Long targetDeptId) {
         UserDTO currentUser = userService.getCurrentUser(currentUserId);
         if (currentUser == null || currentUser.getRoleId() == null) {
-            throw new RuntimeException("无权操作");
+            throw new PermissionException("无权操作");
         }
 
         RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
         if (currentRole == null) {
-            throw new RuntimeException("无权操作");
+            throw new PermissionException("无权操作");
         }
 
         // 系统管理员和总消保管理岗可以操作所有用户
@@ -336,13 +337,13 @@ public class UserController {
         if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
             Set<Long> allowedDeptIds = userService.getAllowedDeptIds(currentUser, currentRole);
             if (targetDeptId == null || !allowedDeptIds.contains(targetDeptId)) {
-                throw new RuntimeException("分消保管理岗只能管理其所属二级机构的用户");
+                throw new PermissionException("分消保管理岗只能管理其所属二级机构的用户");
             }
             return;
         }
 
         // 其他角色无权操作
-        throw new RuntimeException("无权操作");
+        throw new PermissionException("无权操作");
     }
 
     /**
@@ -353,17 +354,17 @@ public class UserController {
      *
      * @param currentUserId 当前登录用户ID
      * @param targetRoleId 要分配的目标角色ID
-     * @throws RuntimeException 当用户无权分配该角色时抛出异常
+     * @throws PermissionException 当用户无权分配该角色时抛出异常
      */
     private void checkRoleAssignmentPermission(Long currentUserId, Long targetRoleId) {
         UserDTO currentUser = userService.getCurrentUser(currentUserId);
         if (currentUser == null || currentUser.getRoleId() == null) {
-            throw new RuntimeException("无权操作");
+            throw new PermissionException("无权操作");
         }
 
         RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
         if (currentRole == null) {
-            throw new RuntimeException("无权操作");
+            throw new PermissionException("无权操作");
         }
 
         // 系统管理员和总消保管理岗可以分配所有角色
@@ -376,14 +377,14 @@ public class UserController {
         if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
             if (targetRoleId != null) {
                 if (targetRoleId.equals(1L) || targetRoleId.equals(4L)) {
-                    throw new RuntimeException("分消保管理岗不能分配系统管理员和总消保管理岗角色");
+                    throw new PermissionException("分消保管理岗不能分配系统管理员和总消保管理岗角色");
                 }
             }
             return;
         }
 
         // 其他角色无权分配角色
-        throw new RuntimeException("无权分配角色");
+        throw new PermissionException("无权分配角色");
     }
 
     /**

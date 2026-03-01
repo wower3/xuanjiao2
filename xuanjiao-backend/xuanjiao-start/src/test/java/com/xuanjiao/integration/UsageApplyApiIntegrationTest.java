@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class UsageApplyApiIntegrationTest {
+class UsageApplyApiIntegrationTest {
 
     @Autowired
     private UsageApplyService usageApplyService;
@@ -30,7 +30,7 @@ public class UsageApplyApiIntegrationTest {
     @Test
     @Order(1)
     @Transactional
-    public void testCreateDraft_Api() {
+    void testCreateDraft_Api() {
         UsageApplyCmd cmd = new UsageApplyCmd();
         cmd.setTitle("API测试使用申请");
         cmd.setAssetConfigs(new ArrayList<>());
@@ -41,7 +41,7 @@ public class UsageApplyApiIntegrationTest {
 
     @Test
     @Order(2)
-    public void testQueryDrafts_Api() {
+    void testQueryDrafts_Api() {
         PageResult<UsageApplyDTO> result = usageApplyService.queryDrafts(1L, 1, 10);
         assertNotNull(result);
         System.out.println("✓ UsageApply API: queryDrafts - count=" + result.getTotal());
@@ -49,7 +49,7 @@ public class UsageApplyApiIntegrationTest {
 
     @Test
     @Order(3)
-    public void testQueryMyApplications_Api() {
+    void testQueryMyApplications_Api() {
         PageResult<UsageApplyDTO> result = usageApplyService.queryMyApplications(1L, 1, 10);
         assertNotNull(result);
         System.out.println("✓ UsageApply API: queryMyApplications - count=" + result.getTotal());

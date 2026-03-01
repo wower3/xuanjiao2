@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class RoleMenuMapperIntegrationTest {
+class RoleMenuMapperIntegrationTest {
 
     @Autowired
     private RoleMenuMapper roleMenuMapper;
 
     @Test
     @Order(1)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         RoleMenuQuery query = new RoleMenuQuery();
         java.util.List<RoleMenuDO> list = roleMenuMapper.selectList(query);
         assertNotNull(list);
@@ -34,7 +34,7 @@ public class RoleMenuMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_WithRoleId() {
+    void testSelectList_WithRoleId() {
         // Find a role with menus
         RoleMenuQuery query = new RoleMenuQuery();
         java.util.List<RoleMenuDO> allRoleMenus = roleMenuMapper.selectList(query);
@@ -56,7 +56,7 @@ public class RoleMenuMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithMenuId() {
+    void testSelectList_WithMenuId() {
         // Find a menu with roles
         RoleMenuQuery query = new RoleMenuQuery();
         java.util.List<RoleMenuDO> allRoleMenus = roleMenuMapper.selectList(query);
@@ -78,7 +78,7 @@ public class RoleMenuMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectCount() {
+    void testSelectCount() {
         RoleMenuQuery query = new RoleMenuQuery();
         Long count = roleMenuMapper.selectCount(query);
         assertNotNull(count);
@@ -88,7 +88,7 @@ public class RoleMenuMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testInsertAndDelete() {
+    void testInsertAndDelete() {
         // Test insert
         RoleMenuDO newRoleMenu = new RoleMenuDO();
         newRoleMenu.setRoleId(999999L); // Use a non-existent role ID for testing
@@ -109,7 +109,7 @@ public class RoleMenuMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testDeleteByRoleId() {
+    void testDeleteByRoleId() {
         // First insert a test record
         RoleMenuDO newRoleMenu = new RoleMenuDO();
         newRoleMenu.setRoleId(888888L);

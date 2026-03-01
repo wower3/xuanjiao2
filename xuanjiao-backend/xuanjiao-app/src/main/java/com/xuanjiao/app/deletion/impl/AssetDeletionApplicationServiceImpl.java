@@ -23,6 +23,8 @@ import com.xuanjiao.infrastructure.user.UserMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xuanjiao.common.ConvertUtils;
+import com.xuanjiao.common.exception.BusinessException;
+import com.xuanjiao.common.exception.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,7 +76,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 获取当前用户信息
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
-            throw new RuntimeException("用户不存在");
+            throw new NotFoundException("用户不存在");
         }
 
         // 创建删除申请单
@@ -97,12 +99,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
             for (Long assetId : cmd.getAssetIds()) {
                 AssetDO asset = assetMapper.selectById(assetId);
                 if (asset == null) {
-                    throw new RuntimeException("素材不存在: " + assetId);
+                    throw new NotFoundException("素材不存在: " + assetId);
                 }
 
                 // 只能删除已通过审批的素材
                 if (!"APPROVED".equals(asset.getStatus())) {
-                    throw new RuntimeException("只能删除已通过审批的素材: " + asset.getName());
+                    throw new BusinessException("只能删除已通过审批的素材: " + asset.getName());
                 }
 
                 AssetDeletionAsset deletionAsset = new AssetDeletionAsset();
@@ -123,12 +125,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public AssetDeletionApplicationDTO update(Long id, AssetDeletionApplicationCmd cmd) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿状态可以修改
         if (!"DRAFT".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿状态可以修改");
+            throw new BusinessException("只有草稿状态可以修改");
         }
 
         // 更新基本信息
@@ -149,12 +151,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
             for (Long assetId : cmd.getAssetIds()) {
                 AssetDO asset = assetMapper.selectById(assetId);
                 if (asset == null) {
-                    throw new RuntimeException("素材不存在: " + assetId);
+                    throw new NotFoundException("素材不存在: " + assetId);
                 }
 
                 // 只能删除已通过审批的素材
                 if (!"APPROVED".equals(asset.getStatus())) {
-                    throw new RuntimeException("只能删除已通过审批的素材: " + asset.getName());
+                    throw new BusinessException("只能删除已通过审批的素材: " + asset.getName());
                 }
 
                 AssetDeletionAsset deletionAsset = new AssetDeletionAsset();
@@ -224,12 +226,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public void deleteById(Long id) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿或已驳回状态可以删除
         if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿或已驳回状态可以删除");
+            throw new BusinessException("只有草稿或已驳回状态可以删除");
         }
 
         // 先删除关联的素材
@@ -244,16 +246,16 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public Long submitApproval(Long id, Long workflowId, Long userId) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 只有草稿或已驳回状态可以提交
         if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
-            throw new RuntimeException("只有草稿或已驳回状态可以提交");
+            throw new BusinessException("只有草稿或已驳回状态可以提交");
         }
 
         if (!application.getApplicantId().equals(userId)) {
-            throw new RuntimeException("只能提交自己的申请单");
+            throw new BusinessException("只能提交自己的申请单");
         }
 
         // 更新状态为待审批
@@ -272,7 +274,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public void updateStatus(Long id, String status) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         application.setStatus(status);
@@ -287,7 +289,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new RuntimeException("申请单不存在");
+            throw new NotFoundException("申请单不存在");
         }
 
         // 获取关联的所有素材
@@ -338,7 +340,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 1. 获取原申请单
         AssetDeletionApplication original = deletionApplicationRepository.findById(id);
         if (original == null) {
-            throw new RuntimeException("原申请单不存在");
+            throw new NotFoundException("原申请单不存在");
         }
 
         // 2. 创建新申请单（草稿状态）

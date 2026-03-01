@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class AssetDeletionApiIntegrationTest {
+class AssetDeletionApiIntegrationTest {
 
     @Autowired
     private AssetDeletionApplicationService deletionApplicationService;
@@ -30,7 +30,7 @@ public class AssetDeletionApiIntegrationTest {
     @Test
     @Order(1)
     @Transactional
-    public void testCreate_Api() {
+    void testCreate_Api() {
         AssetDeletionApplicationCmd cmd = new AssetDeletionApplicationCmd();
         cmd.setTitle("API测试删除申请");
         cmd.setWorkflowId(1L);
@@ -43,7 +43,7 @@ public class AssetDeletionApiIntegrationTest {
 
     @Test
     @Order(2)
-    public void testQueryDrafts_Api() {
+    void testQueryDrafts_Api() {
         PageResult<AssetDeletionApplicationDTO> result = deletionApplicationService.queryDrafts(1L, 1, 10, null);
         assertNotNull(result);
         System.out.println("✓ AssetDeletion API: queryDrafts - count=" + result.getTotal());

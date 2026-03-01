@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class WorkflowStageMapperIntegrationTest {
+class WorkflowStageMapperIntegrationTest {
 
     @Autowired
     private WorkflowStageMapper workflowStageMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         WorkflowStageDO result = workflowStageMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -38,7 +38,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setDeleted(null); // Default to deleted=0
         java.util.List<WorkflowStageDO> list = workflowStageMapper.selectList(query);
@@ -48,7 +48,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithWorkflowId() {
+    void testSelectList_WithWorkflowId() {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(1L);
         query.setDeleted(null);
@@ -62,7 +62,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithStageOrder() {
+    void testSelectList_WithStageOrder() {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setStageOrder(1);
         query.setDeleted(null);
@@ -76,7 +76,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectList_WithApproveType() {
+    void testSelectList_WithApproveType() {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setApproveType("OR");
         query.setDeleted(null);
@@ -90,7 +90,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectList_WithOrderBy() {
+    void testSelectList_WithOrderBy() {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(1L);
         query.setOrderByField("stage_order");
@@ -107,7 +107,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectCount() {
+    void testSelectCount() {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setDeleted(null);
         Long count = workflowStageMapper.selectCount(query);
@@ -118,7 +118,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectList_ComplexQuery() {
+    void testSelectList_ComplexQuery() {
         // Test complex query: workflowId + stageOrder + approveType + orderBy
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(1L);
@@ -139,7 +139,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(9)
-    public void testSelectList_FirstStageQuery() {
+    void testSelectList_FirstStageQuery() {
         // Test query for first stage: workflowId + orderBy
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(1L);
@@ -159,7 +159,7 @@ public class WorkflowStageMapperIntegrationTest {
 
     @Test
     @Order(10)
-    public void testSelectList_NextStageQuery() {
+    void testSelectList_NextStageQuery() {
         // Test query for next stages with filtering (simulates gt query)
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(1L);

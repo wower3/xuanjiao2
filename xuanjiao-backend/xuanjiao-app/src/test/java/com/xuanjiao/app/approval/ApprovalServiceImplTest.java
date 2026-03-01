@@ -7,6 +7,7 @@ import com.xuanjiao.app.workflow.WorkflowEngineService;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceMapper;
 import com.xuanjiao.infrastructure.approval.ApprovalInstanceQuery;
 import com.xuanjiao.infrastructure.approval.ApprovalTaskMapper;
+import com.xuanjiao.infrastructure.approval.MyAppliedDO;
 import com.xuanjiao.infrastructure.asset.AssetMapper;
 import com.xuanjiao.infrastructure.asset.AssetQuery;
 import com.xuanjiao.infrastructure.dataobject.ApprovalInstanceDO;
@@ -68,7 +69,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class ApprovalServiceImplTest {
+class ApprovalServiceImplTest {
 
     @Mock
     private ApprovalTaskMapper taskMapper;
@@ -127,7 +128,7 @@ public class ApprovalServiceImplTest {
     private ApprovalInstanceDO testInstance;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         testRole = new RoleDO();
         testRole.setId(1L);
         testRole.setName("系统管理员");
@@ -157,26 +158,26 @@ public class ApprovalServiceImplTest {
 
     @Test
     @Order(1)
-    public void testGetMyApplied_WithDeptIdFilter() {
+    void testGetMyApplied_WithDeptIdFilter() {
         // 测试按部门ID筛选申请人
         // This tests: UserQuery with deptId+status at line 122-124
-
-        // Mock the instance query
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
 
         // Mock user query by dept
         when(userMapper.selectList(any(UserQuery.class)))
                 .thenReturn(Arrays.asList(testUser));
 
-        // Mock for buildInstanceInfo (minimal)
-        when(workflowMapper.selectById(any())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("ASSET_UPLOAD");
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
+
+        when(instanceMapper.selectMyAppliedList(isNull(), anyList(), isNull(), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
@@ -189,21 +190,19 @@ public class ApprovalServiceImplTest {
         verify(userMapper).selectList(argThat(query ->
                 query != null && query.getDeptId() == 100L && query.getStatus() == 1
         ));
+        // Verify selectMyAppliedList was called with the filtered applicant IDs
+        verify(instanceMapper).selectMyAppliedList(isNull(), argThat(ids ->
+                ids != null && ids.contains(1L)
+        ), isNull(), isNull());
         System.out.println("✓ ApprovalService.getMyApplied(deptId筛选) - UserMapper测试通过");
     }
 
     @Test
     @Order(2)
-    public void testGetMyApplied_WithRoleTypeFilter() {
+    void testGetMyApplied_WithRoleTypeFilter() {
         // 测试按角色类型筛选申请人
         // This tests: RoleQuery with roleType+status at line 133-136
         //             UserQuery with roleIds+status at line 141-144
-
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
 
         // Mock role query by roleType
         when(roleMapper.selectList(any(RoleQuery.class)))
@@ -213,13 +212,18 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectList(any(UserQuery.class)))
                 .thenReturn(Arrays.asList(testUser));
 
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
-        when(userMapper.selectById(1L)).thenReturn(testUser);
-        when(roleMapper.selectById(1L)).thenReturn(testRole);
-        when(deptMapper.selectById(100L)).thenReturn(testDept);
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("ASSET_UPLOAD");
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
+
+        when(instanceMapper.selectMyAppliedList(isNull(), anyList(), isNull(), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
@@ -236,20 +240,18 @@ public class ApprovalServiceImplTest {
         verify(userMapper).selectList(argThat(query ->
                 query != null && query.getRoleIds() != null && query.getRoleIds().contains(1L) && query.getStatus() == 1
         ));
+        // Verify selectMyAppliedList was called with the filtered applicant IDs
+        verify(instanceMapper).selectMyAppliedList(isNull(), argThat(ids ->
+                ids != null && ids.contains(1L)
+        ), isNull(), isNull());
         System.out.println("✓ ApprovalService.getMyApplied(roleType筛选) - RoleMapper+UserMapper测试通过");
     }
 
     @Test
     @Order(3)
-    public void testGetMyApplied_WithBothFilters() {
+    void testGetMyApplied_WithBothFilters() {
         // 测试同时按部门和角色类型筛选
         // This tests both UserMapper call sites work together
-
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
 
         when(userMapper.selectList(any(UserQuery.class)))
                 .thenReturn(Arrays.asList(testUser));
@@ -257,13 +259,18 @@ public class ApprovalServiceImplTest {
         when(roleMapper.selectList(any(RoleQuery.class)))
                 .thenReturn(Arrays.asList(testRole));
 
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
-        when(userMapper.selectById(1L)).thenReturn(testUser);
-        when(roleMapper.selectById(1L)).thenReturn(testRole);
-        when(deptMapper.selectById(100L)).thenReturn(testDept);
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("ASSET_UPLOAD");
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
+
+        when(instanceMapper.selectMyAppliedList(isNull(), anyList(), isNull(), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
@@ -274,6 +281,10 @@ public class ApprovalServiceImplTest {
         assertEquals(1, result.getTotal());
         // Verify both UserMapper call sites were invoked
         verify(userMapper, atLeastOnce()).selectList(any(UserQuery.class));
+        // Verify selectMyAppliedList was called with the filtered applicant IDs
+        verify(instanceMapper).selectMyAppliedList(isNull(), argThat(ids ->
+                ids != null && ids.contains(1L)
+        ), isNull(), isNull());
         System.out.println("✓ ApprovalService.getMyApplied(deptId+roleType组合筛选) - 测试通过");
     }
 
@@ -281,7 +292,7 @@ public class ApprovalServiceImplTest {
 
     @Test
     @Order(10)
-    public void testRoleMapperSelectList_WithRoleTypeAndStatus() {
+    void testRoleMapperSelectList_WithRoleTypeAndStatus() {
         // 独立测试 RoleMapper.selectList 与 roleType+status
         // This tests the RoleMapper call at line 133-136
 
@@ -291,19 +302,18 @@ public class ApprovalServiceImplTest {
         when(userMapper.selectList(any(UserQuery.class)))
                 .thenReturn(Arrays.asList(testUser));
 
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("ASSET_UPLOAD");
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
 
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
-        when(userMapper.selectById(1L)).thenReturn(testUser);
-        when(roleMapper.selectById(1L)).thenReturn(testRole);
-        when(deptMapper.selectById(100L)).thenReturn(testDept);
+        when(instanceMapper.selectMyAppliedList(isNull(), anyList(), isNull(), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
@@ -322,41 +332,24 @@ public class ApprovalServiceImplTest {
 
     @Test
     @Order(20)
-    public void testAssetMapper_ForMaterialEntry() {
-        // 测试素材录入申请的 AssetMapper 调用
-        // This tests: AssetMapper.selectList with applicationId at line 273
+    void testAssetMapper_ForMaterialEntry() {
+        // 测试素材录入申请 - 使用新的 selectMyAppliedList 实现
+        // This tests: instanceMapper.selectMyAppliedList with businessType
 
-        AssetDO testAsset = new AssetDO();
-        testAsset.setId(1L);
-        testAsset.setName("测试素材.jpg");
-        testAsset.setType("IMAGE");
-        testAsset.setApplicationId(100L);
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("MATERIAL_ENTRY");
+        myApplied.setBusinessId(100L);
+        myApplied.setApplicationTitle("测试素材录入申请");
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
 
-        testInstance.setBusinessType("MATERIAL_ENTRY");
-        testInstance.setBusinessId(100L);
-
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
-
-        // Mock material application
-        MaterialApplicationDO materialApp = new MaterialApplicationDO();
-        materialApp.setId(100L);
-        materialApp.setTitle("测试素材录入申请");
-        when(materialApplicationMapper.selectById(100L)).thenReturn(materialApp);
-
-        // Mock assetMapper.selectList for get asset count/type
-        when(assetMapper.selectList(argThat(query ->
-                query != null && query.getApplicationId() == 100L
-        ))).thenReturn(Arrays.asList(testAsset));
-
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
-        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(instanceMapper.selectMyAppliedList(eq(1L), isNull(), eq("MATERIAL_ENTRY"), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
@@ -365,101 +358,65 @@ public class ApprovalServiceImplTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
-        // Verify AssetMapper.selectList was called with applicationId
-        verify(assetMapper, atLeastOnce()).selectList(argThat(query ->
-                query != null && query.getApplicationId() == 100L
-        ));
-        System.out.println("✓ ApprovalService - AssetMapper.selectList(applicationId) for MATERIAL_ENTRY 测试通过");
+        assertEquals("MATERIAL_ENTRY", result.getList().get(0).getBusinessType());
+        // Verify selectMyAppliedList was called with correct parameters
+        verify(instanceMapper).selectMyAppliedList(eq(1L), isNull(), eq("MATERIAL_ENTRY"), isNull());
+        System.out.println("✓ ApprovalService - selectMyAppliedList(MATERIAL_ENTRY) 测试通过");
     }
 
     @Test
     @Order(21)
-    public void testAssetMapper_ForAssetUpload() {
-        // 测试素材上传申请的 AssetMapper.selectById 调用
-        // This tests: AssetMapper.selectById at line 280
+    void testAssetMapper_ForAssetUpload() {
+        // 测试素材上传申请 - 使用新的 selectMyAppliedList 实现
+        // Note: ASSET_UPLOAD is the correct businessType, not ASSET
 
-        AssetDO testAsset = new AssetDO();
-        testAsset.setId(1L);
-        testAsset.setName("测试素材.jpg");
-        testAsset.setType("IMAGE");
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("ASSET_UPLOAD");
+        myApplied.setBusinessId(1L);
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
 
-        testInstance.setBusinessType("ASSET");
-        testInstance.setBusinessId(1L);
-
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
-
-        // Mock assetMapper.selectById for business name
-        when(assetMapper.selectById(1L)).thenReturn(testAsset);
-
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
-        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(instanceMapper.selectMyAppliedList(eq(1L), isNull(), eq("ASSET_UPLOAD"), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
-                1L, 1, 10, "ASSET", false, null, null, null, null
+                1L, 1, 10, "ASSET_UPLOAD", false, null, null, null, null
         );
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
-        // Verify AssetMapper.selectById was called
-        verify(assetMapper, atLeastOnce()).selectById(1L);
-        System.out.println("✓ ApprovalService - AssetMapper.selectById for ASSET 测试通过");
+        assertEquals("ASSET_UPLOAD", result.getList().get(0).getBusinessType());
+        // Verify selectMyAppliedList was called with correct parameters
+        verify(instanceMapper).selectMyAppliedList(eq(1L), isNull(), eq("ASSET_UPLOAD"), isNull());
+        System.out.println("✓ ApprovalService - selectMyAppliedList(ASSET_UPLOAD) 测试通过");
     }
 
     @Test
     @Order(22)
-    public void testAssetMapper_ForAssetDeletion() {
-        // 测试素材删除申请的 AssetMapper 调用
-        // This tests: AssetMapper.selectById for deletion assets at line 419
+    void testAssetMapper_ForAssetDeletion() {
+        // 测试素材删除申请 - 使用新的 selectMyAppliedList 实现
+        // This tests: instanceMapper.selectMyAppliedList with businessType ASSET_DELETION
 
-        AssetDO testAsset1 = new AssetDO();
-        testAsset1.setId(1L);
-        testAsset1.setName("待删除素材1.jpg");
-        testAsset1.setType("IMAGE");
+        // Mock the instance query using selectMyAppliedList
+        MyAppliedDO myApplied = new MyAppliedDO();
+        myApplied.setId(1L);
+        myApplied.setApplicantId(1L);
+        myApplied.setApplicantName("测试用户");
+        myApplied.setStatus("PENDING");
+        myApplied.setBusinessType("ASSET_DELETION");
+        myApplied.setBusinessId(100L);
+        myApplied.setDeletionTitle("测试素材删除申请");
+        myApplied.setWorkflowId(1L);
+        myApplied.setWorkflowName("测试流程");
 
-        AssetDO testAsset2 = new AssetDO();
-        testAsset2.setId(2L);
-        testAsset2.setName("待删除素材2.jpg");
-        testAsset2.setType("VIDEO");
-
-        testInstance.setBusinessType("ASSET_DELETION");
-        testInstance.setBusinessId(100L);
-
-        Page<ApprovalInstanceDO> mockPage = new Page<>(1, 10);
-        mockPage.setRecords(Arrays.asList(testInstance));
-        mockPage.setTotal(1);
-        when(instanceMapper.selectPage(any(Page.class), any(ApprovalInstanceQuery.class)))
-                .thenReturn(mockPage);
-
-        // Mock deletion application
-        AssetDeletionApplicationDO deletionApp = new AssetDeletionApplicationDO();
-        deletionApp.setId(100L);
-        deletionApp.setTitle("测试素材删除申请");
-        when(assetDeletionApplicationMapper.selectById(100L)).thenReturn(deletionApp);
-
-        // Mock deletion assets
-        AssetDeletionAssetDO deletionAsset1 = new AssetDeletionAssetDO();
-        deletionAsset1.setAssetId(1L);
-        AssetDeletionAssetDO deletionAsset2 = new AssetDeletionAssetDO();
-        deletionAsset2.setAssetId(2L);
-        when(assetDeletionAssetMapper.selectList(any())).thenReturn(Arrays.asList(deletionAsset1, deletionAsset2));
-
-        // Mock assetMapper.selectById for each deletion asset
-        when(assetMapper.selectById(1L)).thenReturn(testAsset1);
-        when(assetMapper.selectById(2L)).thenReturn(testAsset2);
-
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(new ApprovalTaskDO()));
-        when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(instanceMapper.selectMyAppliedList(eq(1L), isNull(), eq("ASSET_DELETION"), isNull()))
+                .thenReturn(Arrays.asList(myApplied));
 
         @SuppressWarnings("unchecked")
         PageResult<MyAppliedDTO> result = approvalService.getMyApplied(
@@ -468,57 +425,74 @@ public class ApprovalServiceImplTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());
-        // Verify AssetMapper.selectById was called for both assets
-        verify(assetMapper, atLeastOnce()).selectById(1L);
-        verify(assetMapper, atLeastOnce()).selectById(2L);
-        System.out.println("✓ ApprovalService - AssetMapper.selectById for ASSET_DELETION 测试通过");
+        assertEquals("ASSET_DELETION", result.getList().get(0).getBusinessType());
+        // Verify selectMyAppliedList was called with correct parameters
+        verify(instanceMapper).selectMyAppliedList(eq(1L), isNull(), eq("ASSET_DELETION"), isNull());
+        System.out.println("✓ ApprovalService - selectMyAppliedList(ASSET_DELETION) 测试通过");
     }
 
     @Test
     @Order(23)
-    public void testAssetMapper_InGetTaskDetail() {
-        // 测试 getTaskDetail 中的 AssetMapper 调用
-        // This tests: AssetMapper.selectById at line 690
+    void testAssetMapper_InGetTaskDetail() {
+        // 测试 getTaskDetail 中的业务类型处理
+        // This tests: getTaskDetail handles different business types correctly
 
         ApprovalTaskDO testTask = new ApprovalTaskDO();
         testTask.setId(1L);
         testTask.setInstanceId(1L);
+        testTask.setStageId(1L);
         testTask.setApproverId(1L);
         testTask.setStatus("PENDING");
 
-        testInstance.setBusinessType("ASSET");
-        testInstance.setBusinessId(1L);
+        // Test with MATERIAL_ENTRY business type
+        ApprovalInstanceDO instance = new ApprovalInstanceDO();
+        instance.setId(1L);
+        instance.setWorkflowId(1L);
+        instance.setBusinessType("MATERIAL_ENTRY");
+        instance.setBusinessId(100L);
+        instance.setCurrentStageId(1L);
+        instance.setApplicantId(1L);
 
-        AssetDO testAsset = new AssetDO();
-        testAsset.setId(1L);
-        testAsset.setName("测试素材.jpg");
+        MaterialApplicationDO materialApp = new MaterialApplicationDO();
+        materialApp.setId(100L);
+        materialApp.setTitle("测试素材录入申请");
 
-        when(taskMapper.selectList(any())).thenReturn(Arrays.asList(testTask));
+        WorkflowDO workflow = new WorkflowDO();
+        workflow.setId(1L);
+        workflow.setName("素材录入流程");
+
+        WorkflowStageDO stage = new WorkflowStageDO();
+        stage.setId(1L);
+        stage.setName("第一阶段");
+        stage.setStageOrder(1);
+        stage.setApproveType("OR");
+
         when(taskMapper.selectById(1L)).thenReturn(testTask);
-        when(instanceMapper.selectById(1L)).thenReturn(testInstance);
-
-        // Mock assetMapper.selectById for business name
-        when(assetMapper.selectById(1L)).thenReturn(testAsset);
-
-        when(workflowMapper.selectById(anyLong())).thenReturn(new WorkflowDO());
-        when(workflowStageMapper.selectList(any())).thenReturn(Arrays.asList(new WorkflowStageDO()));
-        when(stageApproverMapper.selectList(any())).thenReturn(Arrays.asList(new StageApproverDO()));
+        when(instanceMapper.selectById(1L)).thenReturn(instance);
+        when(workflowMapper.selectById(1L)).thenReturn(workflow);
+        when(workflowStageMapper.selectById(1L)).thenReturn(stage);
+        when(materialApplicationMapper.selectById(100L)).thenReturn(materialApp);
         when(userMapper.selectById(1L)).thenReturn(testUser);
+        when(taskMapper.selectList(any())).thenReturn(new ArrayList<>());
+        when(workflowStageMapper.selectList(any())).thenReturn(new ArrayList<>());
+        when(stageApproverMapper.selectList(any())).thenReturn(new ArrayList<>());
+        when(approverSelectionService.getApprovalProgress(1L)).thenReturn(new ArrayList<>());
 
         TaskDetailDTO result = approvalService.getTaskDetail(1L);
 
         assertNotNull(result);
-        assertEquals("测试素材.jpg", result.getBusinessName());
-        // Verify AssetMapper.selectById was called
-        verify(assetMapper, atLeastOnce()).selectById(1L);
-        System.out.println("✓ ApprovalService - AssetMapper.selectById in getTaskDetail 测试通过");
+        assertEquals("MATERIAL_ENTRY", result.getBusinessType());
+        assertEquals("测试素材录入申请", result.getApplicationTitle());
+        // Verify materialApplicationMapper.selectById was called
+        verify(materialApplicationMapper).selectById(100L);
+        System.out.println("✓ ApprovalService - getTaskDetail(MATERIAL_ENTRY) 测试通过");
     }
 
     // ==================== WorkflowStageMapper Call Site Tests ====================
 
     @Test
     @Order(30)
-    public void testGetTaskDetail_WorkflowStageQuery() {
+    void testGetTaskDetail_WorkflowStageQuery() {
         // 测试获取任务详情 - 验证 workflowStageMapper.selectList 调用
         // This tests: getTaskDetail() -> getFirstStageOfWorkflow() -> workflowStageMapper.selectList
 
@@ -585,7 +559,7 @@ public class ApprovalServiceImplTest {
 
     @Test
     @Order(24)
-    public void testStageApproverMapper_GetTaskDetail() {
+    void testStageApproverMapper_GetTaskDetail() {
         // 测试获取任务详情 - 验证 stageApproverMapper.selectList 调用
         // This tests: getTaskDetail() -> stageApproverMapper.selectList with subWorkflowIdNull
 
@@ -679,7 +653,7 @@ public class ApprovalServiceImplTest {
 
     @Test
     @Order(25)
-    public void testStageApproverMapper_SubWorkflowInGetTaskDetail() {
+    void testStageApproverMapper_SubWorkflowInGetTaskDetail() {
         // 测试获取任务详情（含子流程）- 验证 stageApproverMapper.selectList 对子流程的调用
         // This tests: getTaskDetail() -> stageApproverMapper.selectList for sub-workflow first stage
 

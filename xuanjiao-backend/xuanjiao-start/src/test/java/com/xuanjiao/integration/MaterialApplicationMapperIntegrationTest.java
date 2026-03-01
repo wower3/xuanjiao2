@@ -21,14 +21,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class MaterialApplicationMapperIntegrationTest {
+class MaterialApplicationMapperIntegrationTest {
 
     @Autowired
     private MaterialApplicationMapper materialApplicationMapper;
 
     @Test
     @Order(1)
-    public void testSelectById() {
+    void testSelectById() {
         MaterialApplicationDO result = materialApplicationMapper.selectById(1L);
         if (result != null) {
             assertNotNull(result.getId());
@@ -40,7 +40,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
         assertNotNull(list);
@@ -49,7 +49,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithApplicantId() {
+    void testSelectList_WithApplicantId() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setApplicantId(1L);
         List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
@@ -66,7 +66,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_WithStatus() {
+    void testSelectList_WithStatus() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setStatus("DRAFT");
         List<MaterialApplicationDO> list = materialApplicationMapper.selectList(query);
@@ -83,7 +83,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectList_WithOrderBy() {
+    void testSelectList_WithOrderBy() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setOrderByField("create_time");
         query.setOrderByDirection("DESC");
@@ -94,7 +94,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectList_WithPagination() {
+    void testSelectList_WithPagination() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setOffset(0);
         query.setLimit(10);
@@ -106,7 +106,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testSelectCount() {
+    void testSelectCount() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         Long count = materialApplicationMapper.selectCount(query);
         assertNotNull(count);
@@ -116,7 +116,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(8)
-    public void testSelectCount_WithApplicantId() {
+    void testSelectCount_WithApplicantId() {
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setApplicantId(1L);
         Long count = materialApplicationMapper.selectCount(query);
@@ -127,7 +127,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(9)
-    public void testInsertAndDelete() {
+    void testInsertAndDelete() {
         // 插入一条新记录
         MaterialApplicationDO newApplication = new MaterialApplicationDO();
         String uniqueTitle = "测试素材申请_test_" + System.currentTimeMillis();
@@ -167,7 +167,7 @@ public class MaterialApplicationMapperIntegrationTest {
 
     @Test
     @Order(10)
-    public void testUpdateById() {
+    void testUpdateById() {
         // First, get an existing application
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setStatus("DRAFT");

@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class AssetTagMapperIntegrationTest {
+class AssetTagMapperIntegrationTest {
 
     @Autowired
     private AssetTagMapper assetTagMapper;
 
     @Test
     @Order(1)
-    public void testSelectList_EmptyQuery() {
+    void testSelectList_EmptyQuery() {
         AssetTagQuery query = new AssetTagQuery();
         java.util.List<AssetTagDO> list = assetTagMapper.selectList(query);
         assertNotNull(list);
@@ -34,7 +34,7 @@ public class AssetTagMapperIntegrationTest {
 
     @Test
     @Order(2)
-    public void testSelectList_WithAssetId() {
+    void testSelectList_WithAssetId() {
         // Find an asset with tags
         AssetTagQuery query = new AssetTagQuery();
         java.util.List<AssetTagDO> allAssetTags = assetTagMapper.selectList(query);
@@ -56,7 +56,7 @@ public class AssetTagMapperIntegrationTest {
 
     @Test
     @Order(3)
-    public void testSelectList_WithTagId() {
+    void testSelectList_WithTagId() {
         // Find a tag with assets
         AssetTagQuery query = new AssetTagQuery();
         java.util.List<AssetTagDO> allAssetTags = assetTagMapper.selectList(query);
@@ -78,7 +78,7 @@ public class AssetTagMapperIntegrationTest {
 
     @Test
     @Order(4)
-    public void testSelectList_ComplexQuery() {
+    void testSelectList_ComplexQuery() {
         // Test query with both assetId and tagId
         AssetTagQuery query = new AssetTagQuery();
         java.util.List<AssetTagDO> allAssetTags = assetTagMapper.selectList(query);
@@ -102,7 +102,7 @@ public class AssetTagMapperIntegrationTest {
 
     @Test
     @Order(5)
-    public void testSelectCount() {
+    void testSelectCount() {
         AssetTagQuery query = new AssetTagQuery();
         Long count = assetTagMapper.selectCount(query);
         assertNotNull(count);
@@ -112,7 +112,7 @@ public class AssetTagMapperIntegrationTest {
 
     @Test
     @Order(6)
-    public void testSelectCount_WithAssetId() {
+    void testSelectCount_WithAssetId() {
         AssetTagQuery query = new AssetTagQuery();
         java.util.List<AssetTagDO> allAssetTags = assetTagMapper.selectList(query);
 
@@ -131,7 +131,7 @@ public class AssetTagMapperIntegrationTest {
 
     @Test
     @Order(7)
-    public void testInsertAndDelete() {
+    void testInsertAndDelete() {
         // Test insert
         AssetTagDO newTag = new AssetTagDO();
         newTag.setAssetId(999999L); // Use a non-existent asset ID for testing
