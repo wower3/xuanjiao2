@@ -44,6 +44,7 @@ public interface UsageApplyService {
      * @return 申请单DTO
      * @deprecated 建议使用 {@link #createDraft} + {@link #submit}
      */
+    @Deprecated
     UsageApplyDTO apply(UsageApplyCmd cmd, Long userId);
 
     /**

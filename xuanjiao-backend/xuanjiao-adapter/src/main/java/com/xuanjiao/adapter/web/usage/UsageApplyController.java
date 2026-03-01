@@ -70,6 +70,7 @@ public class UsageApplyController {
      * @return 创建后的申请单信息
      * @deprecated 建议使用 {@link #createDraft} 支持多素材申请
      */
+    @Deprecated
     @ApiOperation("申请使用素材（旧API，单素材）")
     @PostMapping("/apply")
     public Result<UsageApplyDTO> apply(
@@ -88,6 +89,7 @@ public class UsageApplyController {
      * @return 分页的申请单列表
      * @deprecated 建议使用 {@link #queryMyApplications}
      */
+    @Deprecated
     @ApiOperation("查询我的申请列表（旧API，按条件查询）")
     @GetMapping("/my-applications")
     public Result<PageResult<UsageApplyDTO>> queryMyApplications(

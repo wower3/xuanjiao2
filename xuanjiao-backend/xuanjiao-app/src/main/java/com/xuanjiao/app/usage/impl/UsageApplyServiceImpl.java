@@ -315,6 +315,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     // ========== 旧API（保持兼容） ==========
 
+    @Deprecated
     @Override
     @Transactional
     public UsageApplyDTO apply(UsageApplyCmd cmd, Long userId) {
@@ -322,6 +323,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         return createDraft(cmd, userId);
     }
 
+    @Deprecated
     @Override
     public PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQueryCmd cmd, Long userId) {
         // 使用JOIN查询一次性获取申请及关联的申请人信息，避免N+1问题
