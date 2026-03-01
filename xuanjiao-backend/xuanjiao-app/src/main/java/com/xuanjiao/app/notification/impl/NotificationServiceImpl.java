@@ -49,6 +49,9 @@ import java.util.stream.Collectors;
 @Service
 public class NotificationServiceImpl implements NotificationService {
 
+    /** 消息常量 */
+    private static final String MSG_INSTANCE_NOT_FOUND = "审批实例不存在";
+
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -359,7 +362,7 @@ public class NotificationServiceImpl implements NotificationService {
         // 获取审批实例信息
         ApprovalInstanceDO instance = approvalInstanceMapper.selectById(cmd.getInstanceId());
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
 
         // 获取业务标题（申请标题）

@@ -65,6 +65,11 @@ public class AssetServiceImpl implements AssetService {
 
     private static final Logger logger = LoggerFactory.getLogger(AssetServiceImpl.class);
 
+    /** 消息常量 */
+    private static final String MSG_ADMIN_ONLY = "只有管理员才能执行此操作";
+    private static final String MSG_USER_NOT_FOUND = "用户不存在";
+    private static final String MSG_ASSET_NOT_FOUND = "素材不存在";
+
     @Resource
     private AssetRepository assetRepository;
 
@@ -215,7 +220,7 @@ public class AssetServiceImpl implements AssetService {
         // Get user's role to determine filtering rules
         UserDO user = userMapper.selectById(userId);
         if (user == null) {
-            throw new NotFoundException("用户不存在");
+            throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
 
         RoleDO role = roleMapper.selectById(user.getRoleId());
@@ -327,13 +332,13 @@ public class AssetServiceImpl implements AssetService {
     public void adminDelete(Long assetId, String reason, Long userId, Boolean isAdmin) {
         // 验证管理员权限
         if (!isAdmin) {
-            throw new PermissionException("只有管理员才能执行此操作");
+            throw new PermissionException(MSG_ADMIN_ONLY);
         }
 
         // 获取素材信息
         com.xuanjiao.infrastructure.dataobject.AssetDO asset = assetMapper.selectById(assetId);
         if (asset == null) {
-            throw new NotFoundException("素材不存在");
+            throw new NotFoundException(MSG_ASSET_NOT_FOUND);
         }
 
         logger.info("管理员彻底删除素材 - id={}, name={}, status={}, deleted={}",
@@ -347,7 +352,7 @@ public class AssetServiceImpl implements AssetService {
         // 获取用户信息
         UserDO user = userMapper.selectById(userId);
         if (user == null) {
-            throw new NotFoundException("用户不存在");
+            throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
 
         // 使用 AssetMapper 的方法直接更新 deleted 字段为 1
@@ -372,13 +377,13 @@ public class AssetServiceImpl implements AssetService {
     public void adjustDeleteTime(Long assetId, Boolean isAdmin) {
         // 验证管理员权限
         if (!isAdmin) {
-            throw new PermissionException("只有管理员才能执行此操作");
+            throw new PermissionException(MSG_ADMIN_ONLY);
         }
 
         // 获取素材信息
         com.xuanjiao.infrastructure.dataobject.AssetDO asset = assetMapper.selectById(assetId);
         if (asset == null) {
-            throw new NotFoundException("素材不存在");
+            throw new NotFoundException(MSG_ASSET_NOT_FOUND);
         }
 
         // 只能对DELETED状态的素材执行模拟时间操作
@@ -396,7 +401,7 @@ public class AssetServiceImpl implements AssetService {
     public int triggerCleanupTask(Boolean isAdmin) {
         // 验证管理员权限
         if (!isAdmin) {
-            throw new PermissionException("只有管理员才能执行此操作");
+            throw new PermissionException(MSG_ADMIN_ONLY);
         }
 
         // 手动触发定时任务，执行素材软删除

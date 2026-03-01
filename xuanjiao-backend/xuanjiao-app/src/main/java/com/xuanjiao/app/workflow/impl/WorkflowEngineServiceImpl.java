@@ -64,6 +64,10 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkflowEngineServiceImpl.class);
 
+    /** 消息常量 */
+    private static final String MSG_INSTANCE_NOT_FOUND = "审批实例不存在";
+    private static final String MSG_TASK_NOT_FOUND = "任务不存在";
+
     @Resource
     private WorkflowMapper workflowMapper;
     @Resource
@@ -157,7 +161,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
             logger.error("任务不存在: taskId={}", taskId);
-            throw new NotFoundException("任务不存在");
+            throw new NotFoundException(MSG_TASK_NOT_FOUND);
         }
         if (!task.getApproverId().equals(userId)) {
             logger.error("无权操作: taskId={}, taskApproverId={}, userId={}", taskId, task.getApproverId(), userId);
@@ -235,7 +239,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
             logger.error("任务不存在: taskId={}", taskId);
-            throw new NotFoundException("任务不存在");
+            throw new NotFoundException(MSG_TASK_NOT_FOUND);
         }
         if (!task.getApproverId().equals(userId)) {
             logger.error("无权操作: taskId={}, taskApproverId={}, userId={}", taskId, task.getApproverId(), userId);
@@ -249,7 +253,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 2. 获取实例和阶段信息
         ApprovalInstanceDO instance = instanceMapper.selectById(task.getInstanceId());
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
 
         // 检查是否为子流程任务
@@ -680,7 +684,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     public void selectFirstStageApprovers(Long instanceId, List<Long> approverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
 
         WorkflowStageDO firstStage = getFirstStage(instance.getWorkflowId());
@@ -1653,7 +1657,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 1. 验证实例存在
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
 
         // 2. 验证是否为发起人
@@ -1695,7 +1699,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         // 1. 验证任务
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
-            throw new NotFoundException("任务不存在");
+            throw new NotFoundException(MSG_TASK_NOT_FOUND);
         }
         if (!task.getApproverId().equals(userId)) {
             throw new BusinessException("无权操作此任务");

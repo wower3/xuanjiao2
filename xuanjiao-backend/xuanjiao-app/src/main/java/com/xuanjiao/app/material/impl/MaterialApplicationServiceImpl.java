@@ -55,6 +55,11 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
     private static final Logger logger = LoggerFactory.getLogger(MaterialApplicationServiceImpl.class);
 
+    /** 消息常量 */
+    private static final String MSG_USER_NOT_FOUND = "用户不存在";
+    private static final String MSG_APPLICATION_NOT_FOUND = "申请单不存在";
+    private static final String MSG_ONLY_DRAFT_CAN_MODIFY = "只有草稿状态可以修改";
+
     @Autowired
     private MaterialApplicationRepository materialApplicationRepository;
 
@@ -88,7 +93,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         // 获取当前用户信息作为默认维护人
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
-            throw new NotFoundException("用户不存在");
+            throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
 
         MaterialApplication application = new MaterialApplication();
@@ -110,12 +115,12 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public MaterialApplicationDTO update(Long id, MaterialApplicationCmd cmd, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿状态可以修改，且只能修改自己的申请单
         if (!"DRAFT".equals(application.getStatus())) {
-            throw new BusinessException("只有草稿状态可以修改");
+            throw new BusinessException(MSG_ONLY_DRAFT_CAN_MODIFY);
         }
         if (!application.getApplicantId().equals(userId)) {
             throw new BusinessException("只能修改自己的申请单");
@@ -141,7 +146,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public Long submit(Long id, Long workflowId, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿或已驳回状态可以提交，且只能提交自己的申请单
@@ -188,7 +193,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public void delete(Long id, Long userId) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿状态可以删除，且只能删除自己的申请单
@@ -477,7 +482,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     public void updateStatus(Long id, String status) {
         MaterialApplication application = materialApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
         application.setStatus(status);
         materialApplicationRepository.update(application);

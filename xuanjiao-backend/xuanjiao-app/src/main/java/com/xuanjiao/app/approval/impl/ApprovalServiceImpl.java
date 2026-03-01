@@ -92,6 +92,10 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private static final Logger logger = LoggerFactory.getLogger(ApprovalServiceImpl.class);
 
+    /** 消息常量 */
+    private static final String MSG_INSTANCE_NOT_FOUND = "审批实例不存在";
+    private static final String MSG_TASK_NOT_FOUND = "任务不存在";
+
     @Resource
     private ApprovalTaskMapper taskMapper;
     @Resource
@@ -287,7 +291,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     public InstanceDetailDTO getInstanceDetail(Long instanceId) {
         ApprovalInstanceDO instance = instanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
         Map<String, Object> map = buildInstanceInfo(instance);
         InstanceDetailDTO result = convertToInstanceDetailDTO(map);
@@ -660,7 +664,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     public TaskDetailDTO getTaskDetail(Long taskId) {
         ApprovalTaskDO task = taskMapper.selectById(taskId);
         if (task == null) {
-            throw new NotFoundException("任务不存在");
+            throw new NotFoundException(MSG_TASK_NOT_FOUND);
         }
 
         TaskDetailDTO result = new TaskDetailDTO();

@@ -46,6 +46,12 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsageApplyServiceImpl.class);
 
+    /** 消息常量 */
+    private static final String MSG_USER_NOT_FOUND = "用户不存在";
+    private static final String MSG_APPLICATION_NOT_FOUND = "申请单不存在";
+    private static final String MSG_ASSET_NOT_FOUND = "素材不存在";
+    private static final String MSG_ONLY_DRAFT_CAN_MODIFY = "只有草稿状态可以修改";
+
     @Autowired
     private UsageApplyRepository usageApplyRepository;
 
@@ -75,7 +81,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         // 获取当前用户信息
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
-            throw new NotFoundException("用户不存在");
+            throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
 
         // 创建使用申请单
@@ -95,7 +101,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
             for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
                 AssetDO asset = assetMapper.selectById(config.getAssetId());
                 if (asset == null) {
-                    throw new NotFoundException("素材不存在: " + config.getAssetId());
+                    throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + config.getAssetId());
                 }
 
                 // 检查素材状态：只能使用APPROVED状态的素材
@@ -131,12 +137,12 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     public UsageApplyDTO updateDraft(Long id, UsageApplyCmd cmd, Long userId) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿状态可以修改
         if (usageApply.getDraft() != 1) {
-            throw new BusinessException("只有草稿状态可以修改");
+            throw new BusinessException(MSG_ONLY_DRAFT_CAN_MODIFY);
         }
         if (!usageApply.getUserId().equals(userId)) {
             throw new BusinessException("只能修改自己的申请单");
@@ -155,7 +161,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
             for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
                 AssetDO asset = assetMapper.selectById(config.getAssetId());
                 if (asset == null) {
-                    throw new NotFoundException("素材不存在: " + config.getAssetId());
+                    throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + config.getAssetId());
                 }
 
                 // 检查素材状态：只能使用APPROVED状态的素材
@@ -195,7 +201,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
         if (usageApply == null) {
             logger.error("UsageApply.submit - 申请单不存在，id: {}", id);
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿或已驳回状态可以提交
@@ -230,7 +236,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     public void delete(Long id, Long userId) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿状态可以删除
@@ -381,7 +387,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     public void updateStatus(Long id, String status) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
         usageApply.setStatus(status);
         usageApplyRepository.update(usageApply);

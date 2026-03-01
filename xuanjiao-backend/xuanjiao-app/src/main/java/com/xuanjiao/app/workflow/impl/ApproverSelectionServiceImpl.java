@@ -69,6 +69,10 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class ApproverSelectionServiceImpl implements ApproverSelectionService {
 
+    /** 消息常量 */
+    private static final String MSG_INSTANCE_NOT_FOUND = "审批实例不存在";
+    private static final String MSG_TASK_NOT_FOUND = "任务不存在";
+
     @Resource
     private WorkflowStageMapper workflowStageMapper;
 
@@ -223,7 +227,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectNextStageApprovers(Long taskId, List<Long> approverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
         ApprovalTaskDO task = approvalTaskMapper.selectById(taskId);
         if (task == null) {
-            throw new NotFoundException("任务不存在");
+            throw new NotFoundException(MSG_TASK_NOT_FOUND);
         }
 
         try {
@@ -249,7 +253,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectFirstStageApproversWithSubWorkflows(Long instanceId, List<Long> approverIds, Map<Long, List<Long>> subWorkflowApproverIds) {
         ApprovalInstanceDO instance = approvalInstanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
 
         // 获取第一阶段
@@ -650,7 +654,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     public void selectFirstStageApprovers(Long instanceId, List<Long> approverIds) {
         ApprovalInstanceDO instance = approvalInstanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new NotFoundException("审批实例不存在");
+            throw new NotFoundException(MSG_INSTANCE_NOT_FOUND);
         }
 
         // 获取第一阶段

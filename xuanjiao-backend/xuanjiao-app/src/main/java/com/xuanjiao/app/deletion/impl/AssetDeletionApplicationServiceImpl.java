@@ -49,6 +49,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
     private static final Logger logger = LoggerFactory.getLogger(AssetDeletionApplicationServiceImpl.class);
 
+    /** 消息常量 */
+    private static final String MSG_USER_NOT_FOUND = "用户不存在";
+    private static final String MSG_APPLICATION_NOT_FOUND = "申请单不存在";
+    private static final String MSG_ASSET_NOT_FOUND = "素材不存在";
+    private static final String MSG_ONLY_DRAFT_CAN_MODIFY = "只有草稿状态可以修改";
+
     @Autowired
     private AssetDeletionApplicationRepository deletionApplicationRepository;
 
@@ -76,7 +82,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 获取当前用户信息
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
-            throw new NotFoundException("用户不存在");
+            throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
 
         // 创建删除申请单
@@ -99,7 +105,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
             for (Long assetId : cmd.getAssetIds()) {
                 AssetDO asset = assetMapper.selectById(assetId);
                 if (asset == null) {
-                    throw new NotFoundException("素材不存在: " + assetId);
+                    throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + assetId);
                 }
 
                 // 只能删除已通过审批的素材
@@ -125,12 +131,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public AssetDeletionApplicationDTO update(Long id, AssetDeletionApplicationCmd cmd) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿状态可以修改
         if (!"DRAFT".equals(application.getStatus())) {
-            throw new BusinessException("只有草稿状态可以修改");
+            throw new BusinessException(MSG_ONLY_DRAFT_CAN_MODIFY);
         }
 
         // 更新基本信息
@@ -151,7 +157,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
             for (Long assetId : cmd.getAssetIds()) {
                 AssetDO asset = assetMapper.selectById(assetId);
                 if (asset == null) {
-                    throw new NotFoundException("素材不存在: " + assetId);
+                    throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + assetId);
                 }
 
                 // 只能删除已通过审批的素材
@@ -226,7 +232,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public void deleteById(Long id) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿或已驳回状态可以删除
@@ -246,7 +252,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public Long submitApproval(Long id, Long workflowId, Long userId) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 只有草稿或已驳回状态可以提交
@@ -274,7 +280,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     public void updateStatus(Long id, String status) {
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         application.setStatus(status);
@@ -289,7 +295,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
         AssetDeletionApplication application = deletionApplicationRepository.findById(id);
         if (application == null) {
-            throw new NotFoundException("申请单不存在");
+            throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
 
         // 获取关联的所有素材
@@ -340,7 +346,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 1. 获取原申请单
         AssetDeletionApplication original = deletionApplicationRepository.findById(id);
         if (original == null) {
-            throw new NotFoundException("原申请单不存在");
+            throw new NotFoundException("原" + MSG_APPLICATION_NOT_FOUND);
         }
 
         // 2. 创建新申请单（草稿状态）
