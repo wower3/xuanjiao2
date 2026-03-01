@@ -380,27 +380,6 @@ public class WorkflowServiceImpl implements WorkflowService {
         return ConvertUtils.copyProperties(entity, WorkflowStageDTO.class);
     }
 
-    private StageApproverDTO convertApprover(StageApproverDO entity) {
-        StageApproverDTO dto = new StageApproverDTO();
-        dto.setId(entity.getId());
-        dto.setStageId(entity.getStageId());
-        dto.setApproverType(entity.getApproverType());
-        dto.setApproverId(entity.getApproverId());
-        dto.setCheckSecondaryDept(entity.getCheckSecondaryDept());
-        dto.setSubWorkflowId(entity.getSubWorkflowId());
-        // 根据类型查询名称
-        String name = getApproverName(entity.getApproverType(), entity.getApproverId());
-        dto.setApproverName(name);
-        // 如果是子流程，加载子流程名称
-        if (entity.getSubWorkflowId() != null) {
-            WorkflowDO subWorkflow = workflowMapper.selectById(entity.getSubWorkflowId());
-            if (subWorkflow != null) {
-                dto.setSubWorkflowName(subWorkflow.getName());
-            }
-        }
-        return dto;
-    }
-
     /**
      * 使用预加载的详情转换审批人（优化N+1问题）
      */

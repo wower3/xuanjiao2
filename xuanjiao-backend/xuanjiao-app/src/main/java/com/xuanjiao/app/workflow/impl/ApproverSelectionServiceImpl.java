@@ -909,23 +909,8 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     }
 
     /**
-     * 获取指定配置的可用用户列表
+     * 获取指定配置的可用用户列表（返回 DTO 列表）
      */
-    /**
-     * 获取指定配置的可用用户列表（优化版，使用JOIN查询）
-     */
-    /**
-     * 获取指定配置的可用用户列表（兼容旧版StageApproverDO）
-     */
-    private List<Map<String, Object>> getAvailableUsersForConfig(StageApproverDO config, Long applicantId, String keyword) {
-        // 转换为优化版需要的StageApproverWithDetailsDO
-        StageApproverWithDetailsDO detailsDO = new StageApproverWithDetailsDO();
-        detailsDO.setApproverType(config.getApproverType());
-        detailsDO.setApproverId(config.getApproverId());
-        detailsDO.setCheckSecondaryDept(config.getCheckSecondaryDept());
-        return getAvailableUsersForConfigOptimized(detailsDO, applicantId, keyword);
-    }
-
     /**
      * 获取指定配置的可用用户列表（返回 DTO 列表）
      */

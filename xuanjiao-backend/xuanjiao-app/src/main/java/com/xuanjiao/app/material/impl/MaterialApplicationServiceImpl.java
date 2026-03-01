@@ -488,33 +488,6 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         materialApplicationRepository.update(application);
     }
 
-    private AssetDTO convertAsset(AssetDO assetDO) {
-        if (assetDO == null) return null;
-        AssetDTO dto = new AssetDTO();
-        ConvertUtils.copyProperties(assetDO, dto);
-
-        // 填充标签
-        AssetTagQuery tagQuery = new AssetTagQuery();
-        tagQuery.setAssetId(assetDO.getId());
-        List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagQuery);
-
-        if (!assetTags.isEmpty()) {
-            List<Long> tagIds = assetTags.stream()
-                    .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
-                    .collect(Collectors.toList());
-            if (!tagIds.isEmpty()) {
-                List<TagDO> tags = tagMapper.selectBatchIds(tagIds);
-                dto.setTags(tags.stream().map(tag -> {
-                    com.xuanjiao.client.asset.TagDTO tagDTO = new com.xuanjiao.client.asset.TagDTO();
-                    ConvertUtils.copyProperties(tag, tagDTO);
-                    return tagDTO;
-                }).collect(Collectors.toList()));
-            }
-        }
-
-        return dto;
-    }
-
     /**
      * 使用预加载的标签转换素材为DTO（优化N+1问题）
      *

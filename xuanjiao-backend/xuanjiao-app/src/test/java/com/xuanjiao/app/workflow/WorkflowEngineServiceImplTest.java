@@ -319,33 +319,4 @@ class WorkflowEngineServiceImplTest {
         ));
         System.out.println("✓ WorkflowEngineService.startSubProcessesForStage() - approverMapper测试通过");
     }
-
-    @Test
-    @Order(7)
-    void testCreateTasksForStage_StageApproverQuery() throws Exception {
-        // 测试创建阶段任务 - 验证 approverMapper.selectList 调用
-        // This tests: createTasksForStage() -> approverMapper.selectList
-
-        // Mock approverMapper.selectList 返回审批人列表
-        when(approverMapper.selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
-                query != null &&
-                query.getStageId() != null &&
-                query.getStageId() == 1L
-        ))).thenReturn(new ArrayList<>());
-
-        when(instanceMapper.selectById(1L)).thenReturn(new ApprovalInstanceDO());
-
-        // Use reflection to call private method
-        Method method = WorkflowEngineServiceImpl.class.getDeclaredMethod("createTasksForStage", Long.class, Long.class, Long.class);
-        method.setAccessible(true);
-
-        method.invoke(workflowEngineService, 1L, 1L, 1L);
-
-        // 验证 approverMapper.selectList 被正确调用
-        verify(approverMapper).selectList(ArgumentMatchers.<StageApproverQuery>argThat(query ->
-                query != null &&
-                query.getStageId() == 1L
-        ));
-        System.out.println("✓ WorkflowEngineService.createTasksForStage() - approverMapper测试通过");
-    }
 }

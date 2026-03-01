@@ -1097,42 +1097,6 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     }
 
     /**
-     * 为阶段创建任务（根据审批人配置创建任务，跳过子流程配置）
-     * @param instanceId 实例ID
-     * @param stageId 阶段ID
-     * @param applicantId 申请人ID（用于二级部门校验）
-     */
-    private void createTasksForStage(Long instanceId, Long stageId, Long applicantId) {
-        StageApproverQuery query = new StageApproverQuery();
-        query.setStageId(stageId);
-        List<StageApproverDO> approvers = approverMapper.selectList(query);
-
-        // 收集所有实际审批人ID，避免重复
-        Set<Long> actualApproverIds = new HashSet<>();
-        for (StageApproverDO approver : approvers) {
-            // 跳过子流程配置（sub_workflow_id 不为空的）
-            if (approver.getSubWorkflowId() != null) {
-                continue;
-            }
-            List<Long> userIds = getActualApproverIds(approver, applicantId);
-            actualApproverIds.addAll(userIds);
-        }
-
-        // 为每个实际审批人创建任务
-        boolean isFirst = true;
-        for (Long approverId : actualApproverIds) {
-            ApprovalTaskDO task = new ApprovalTaskDO();
-            task.setInstanceId(instanceId);
-            task.setStageId(stageId);
-            task.setApproverId(approverId);
-            task.setStatus("PENDING");
-            task.setIsFirstApprover(isFirst ? 1 : 0); // 标记第一个审批人
-            taskMapper.insert(task);
-            isFirst = false;
-        }
-    }
-
-    /**
      * 为子流程创建进度记录（带唯一性检查）
      */
     private void createProgressRecordForSubWorkflow(Long instanceId, WorkflowStageDO stage, Long parentInstanceId, Long parentTaskId, String status) {
