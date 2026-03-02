@@ -74,6 +74,9 @@ public class AssetController {
      */
     private static final Logger logger = LoggerFactory.getLogger(AssetController.class);
 
+    /** MIME 类型常量 */
+    private static final String MEDIA_TYPE_VIDEO_MP4 = "video/mp4";
+
     /**
      * 素材服务
      *
@@ -462,7 +465,7 @@ public class AssetController {
     private MediaType getMediaType(String type) {
         switch (type) {
             case "IMAGE": return MediaType.IMAGE_JPEG;
-            case "VIDEO": return MediaType.valueOf("video/mp4");
+            case "VIDEO": return MediaType.valueOf(MEDIA_TYPE_VIDEO_MP4);
             case "DOCUMENT": return MediaType.APPLICATION_PDF;
             default: return MediaType.APPLICATION_OCTET_STREAM;
         }
@@ -478,11 +481,11 @@ public class AssetController {
      */
     private MediaType getVideoMediaType(String filePath) {
         if (filePath == null) {
-            return MediaType.valueOf("video/mp4");
+            return MediaType.valueOf(MEDIA_TYPE_VIDEO_MP4);
         }
         String lowerPath = filePath.toLowerCase();
         if (lowerPath.endsWith(".mp4")) {
-            return MediaType.valueOf("video/mp4");
+            return MediaType.valueOf(MEDIA_TYPE_VIDEO_MP4);
         } else if (lowerPath.endsWith(".webm")) {
             return MediaType.valueOf("video/webm");
         } else if (lowerPath.endsWith(".ogg")) {
@@ -494,7 +497,7 @@ public class AssetController {
         } else if (lowerPath.endsWith(".mkv")) {
             return MediaType.valueOf("video/x-matroska");
         } else {
-            return MediaType.valueOf("video/mp4"); // 默认返回mp4
+            return MediaType.valueOf(MEDIA_TYPE_VIDEO_MP4); // 默认返回mp4
         }
     }
 }

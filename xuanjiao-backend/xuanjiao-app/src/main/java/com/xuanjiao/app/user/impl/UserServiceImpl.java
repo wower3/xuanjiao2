@@ -275,77 +275,137 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResult<UserDTO> searchUsers(Long userId, UserGetListWithFilterQry qry) {
-        // 获取当前用户信息和角色
         UserDTO currentUser = getCurrentUser(userId);
         if (currentUser == null) {
             return PageResult.of(new ArrayList<>(), 0L, qry.getPageNum(), qry.getPageSize());
         }
 
-        RoleDO currentRole = null;
-        if (currentUser.getRoleId() != null) {
-            currentRole = roleMapper.selectById(currentUser.getRoleId());
-        }
-
-        // 确定可查询的部门范围
+        RoleDO currentRole = getCurrentRole(currentUser);
         Set<Long> allowedDeptIds = getAllowedDeptIds(currentUser, currentRole);
+        Set<Long> filterDeptIds = calculateFilterDeptIds(qry, allowedDeptIds);
 
-        // 计算最终的筛选部门集合
-        final Set<Long> filterDeptIds;
-        if (qry.getDeptId() != null) {
-            if (Boolean.TRUE.equals(qry.getIncludeSubDept())) {
-                Set<Long> subDeptIds = getAllSubDeptIds(qry.getDeptId());
-                subDeptIds.add(qry.getDeptId());
-                filterDeptIds = allowedDeptIds.stream()
-                        .filter(subDeptIds::contains)
-                        .collect(Collectors.toSet());
-            } else {
-                filterDeptIds = allowedDeptIds.stream()
-                        .filter(id -> id.equals(qry.getDeptId()))
-                        .collect(Collectors.toSet());
-            }
-        } else {
-            filterDeptIds = allowedDeptIds;
+        List<UserDTO> filteredUsers = filterUsers(qry, filterDeptIds);
+        return paginateUsers(filteredUsers, qry.getPageNum(), qry.getPageSize());
+    }
+
+    /**
+     * 获取当前用户角色
+     */
+    private RoleDO getCurrentRole(UserDTO currentUser) {
+        if (currentUser.getRoleId() == null) {
+            return null;
+        }
+        return roleMapper.selectById(currentUser.getRoleId());
+    }
+
+    /**
+     * 计算筛选部门集合
+     */
+    private Set<Long> calculateFilterDeptIds(UserGetListWithFilterQry qry, Set<Long> allowedDeptIds) {
+        if (qry.getDeptId() == null) {
+            return allowedDeptIds;
         }
 
-        // 获取所有用户并筛选
+        if (Boolean.TRUE.equals(qry.getIncludeSubDept())) {
+            return calculateFilterDeptIdsWithSubDept(qry.getDeptId(), allowedDeptIds);
+        } else {
+            return calculateFilterDeptIdsWithoutSubDept(qry.getDeptId(), allowedDeptIds);
+        }
+    }
+
+    /**
+     * 计算筛选部门集合（包含子部门）
+     */
+    private Set<Long> calculateFilterDeptIdsWithSubDept(Long deptId, Set<Long> allowedDeptIds) {
+        Set<Long> subDeptIds = getAllSubDeptIds(deptId);
+        subDeptIds.add(deptId);
+        return allowedDeptIds.stream()
+                .filter(subDeptIds::contains)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * 计算筛选部门集合（不包含子部门）
+     */
+    private Set<Long> calculateFilterDeptIdsWithoutSubDept(Long deptId, Set<Long> allowedDeptIds) {
+        return allowedDeptIds.stream()
+                .filter(id -> id.equals(deptId))
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * 筛选用户
+     */
+    private List<UserDTO> filterUsers(UserGetListWithFilterQry qry, Set<Long> filterDeptIds) {
         List<UserDO> allUsers = userMapper.selectList(new UserQuery());
-        List<UserDTO> filteredUsers = allUsers.stream()
-                .filter(user -> {
-                    // 部门筛选
-                    if (user.getDeptId() == null || !filterDeptIds.contains(user.getDeptId())) {
-                        return false;
-                    }
-                    // 角色筛选
-                    if (qry.getRoleIds() != null && !qry.getRoleIds().isEmpty()) {
-                        if (user.getRoleId() == null || !qry.getRoleIds().contains(user.getRoleId())) {
-                            return false;
-                        }
-                    }
-                    // 关键词筛选（匹配姓名或用户名）
-                    if (StringUtils.hasText(qry.getKeyword())) {
-                        String keyword = qry.getKeyword().toLowerCase();
-                        boolean matchName = user.getRealName() != null &&
-                                user.getRealName().toLowerCase().contains(keyword);
-                        boolean matchUsername = user.getUsername() != null &&
-                                user.getUsername().toLowerCase().contains(keyword);
-                        if (!matchName && !matchUsername) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
+        return allUsers.stream()
+                .filter(user -> matchesFilterCriteria(user, qry, filterDeptIds))
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
 
-        // 分页处理
-        int total = filteredUsers.size();
-        int start = (qry.getPageNum() - 1) * qry.getPageSize();
-        int end = Math.min(start + qry.getPageSize(), total);
+    /**
+     * 检查用户是否匹配筛选条件
+     */
+    private boolean matchesFilterCriteria(UserDO user, UserGetListWithFilterQry qry, Set<Long> filterDeptIds) {
+        if (!matchesDepartmentFilter(user, filterDeptIds)) {
+            return false;
+        }
+        if (!matchesRoleFilter(user, qry)) {
+            return false;
+        }
+        if (!matchesKeywordFilter(user, qry)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 检查部门筛选条件
+     */
+    private boolean matchesDepartmentFilter(UserDO user, Set<Long> filterDeptIds) {
+        return user.getDeptId() != null && filterDeptIds.contains(user.getDeptId());
+    }
+
+    /**
+     * 检查角色筛选条件
+     */
+    private boolean matchesRoleFilter(UserDO user, UserGetListWithFilterQry qry) {
+        if (qry.getRoleIds() == null || qry.getRoleIds().isEmpty()) {
+            return true;
+        }
+        return user.getRoleId() != null && qry.getRoleIds().contains(user.getRoleId());
+    }
+
+    /**
+     * 检查关键词筛选条件
+     */
+    private boolean matchesKeywordFilter(UserDO user, UserGetListWithFilterQry qry) {
+        if (!StringUtils.hasText(qry.getKeyword())) {
+            return true;
+        }
+
+        String keyword = qry.getKeyword().toLowerCase();
+        boolean matchName = user.getRealName() != null &&
+                user.getRealName().toLowerCase().contains(keyword);
+        boolean matchUsername = user.getUsername() != null &&
+                user.getUsername().toLowerCase().contains(keyword);
+
+        return matchName || matchUsername;
+    }
+
+    /**
+     * 用户列表分页
+     */
+    private PageResult<UserDTO> paginateUsers(List<UserDTO> users, Integer pageNum, Integer pageSize) {
+        int total = users.size();
+        int start = (pageNum - 1) * pageSize;
+        int end = Math.min(start + pageSize, total);
 
         List<UserDTO> pagedUsers = start < total ?
-                filteredUsers.subList(start, end) : new ArrayList<>();
+                users.subList(start, end) : new ArrayList<>();
 
-        return PageResult.of(pagedUsers, (long) total, qry.getPageNum(), qry.getPageSize());
+        return PageResult.of(pagedUsers, (long) total, pageNum, pageSize);
     }
 
     /**

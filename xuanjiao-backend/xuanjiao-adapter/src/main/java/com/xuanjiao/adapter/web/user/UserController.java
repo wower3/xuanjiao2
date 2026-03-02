@@ -51,6 +51,9 @@ import java.util.Set;
 @RequestMapping("/user")
 public class UserController {
 
+    /** 角色类型常量 */
+    private static final String ROLE_TYPE_BRANCH_MGMT = "BRANCH_MGMT";
+
     /**
      * 用户服务
      *
@@ -108,7 +111,7 @@ public class UserController {
             UserDTO currentUser = userService.getCurrentUser(userId);
             if (currentUser != null) {
                 RoleDO currentRole = roleMapper.selectById(currentUser.getRoleId());
-                if (currentRole != null && "BRANCH_MGMT".equals(currentRole.getRoleType())) {
+                if (currentRole != null && ROLE_TYPE_BRANCH_MGMT.equals(currentRole.getRoleType())) {
                     return Result.success(userService.listByBranchDept(userId));
                 }
             }
@@ -182,7 +185,7 @@ public class UserController {
         result.setRootDeptId(null);
 
         // 分消保管理岗需要默认筛选其二级机构，且部门选择受限
-        if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
+        if (ROLE_TYPE_BRANCH_MGMT.equals(currentRole.getRoleType())) {
             Long secondaryDeptId = userService.getSecondaryDeptId(userId);
             if (secondaryDeptId != null) {
                 Set<Long> allowedDeptIds = userService.getAllowedDeptIds(currentUser, currentRole);
@@ -334,7 +337,7 @@ public class UserController {
         }
 
         // 分消保管理岗只能操作其允许查询的部门的用户
-        if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
+        if (ROLE_TYPE_BRANCH_MGMT.equals(currentRole.getRoleType())) {
             Set<Long> allowedDeptIds = userService.getAllowedDeptIds(currentUser, currentRole);
             if (targetDeptId == null || !allowedDeptIds.contains(targetDeptId)) {
                 throw new PermissionException("分消保管理岗只能管理其所属二级机构的用户");
@@ -374,7 +377,7 @@ public class UserController {
         }
 
         // 分消保管理岗不能分配系统管理员(1)和总消保管理岗(4)
-        if ("BRANCH_MGMT".equals(currentRole.getRoleType())) {
+        if (ROLE_TYPE_BRANCH_MGMT.equals(currentRole.getRoleType())) {
             if (targetRoleId != null) {
                 if (targetRoleId.equals(1L) || targetRoleId.equals(4L)) {
                     throw new PermissionException("分消保管理岗不能分配系统管理员和总消保管理岗角色");

@@ -60,6 +60,14 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     private static final String MSG_APPLICATION_NOT_FOUND = "申请单不存在";
     private static final String MSG_ONLY_DRAFT_CAN_MODIFY = "只有草稿状态可以修改";
 
+    /** 状态常量 */
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_MATERIAL_ENTRY = "MATERIAL_ENTRY";
+
     @Autowired
     private MaterialApplicationRepository materialApplicationRepository;
 
@@ -102,7 +110,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         application.setMaintainerId(cmd.getMaintainerId() != null ? cmd.getMaintainerId() : userId);
         application.setDeptId(cmd.getDeptId() != null ? cmd.getDeptId() : currentUser.getDeptId());
         application.setGuaranteeDeclaration(cmd.getGuaranteeDeclaration() != null ? cmd.getGuaranteeDeclaration() : 0);
-        application.setStatus("DRAFT");
+        application.setStatus(STATUS_DRAFT);
         application.setCreateTime(LocalDateTime.now());
         application.setDeleted(0);
 
@@ -119,7 +127,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         // 只有草稿状态可以修改，且只能修改自己的申请单
-        if (!"DRAFT".equals(application.getStatus())) {
+        if (!STATUS_DRAFT.equals(application.getStatus())) {
             throw new BusinessException(MSG_ONLY_DRAFT_CAN_MODIFY);
         }
         if (!application.getApplicantId().equals(userId)) {
@@ -150,7 +158,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         // 只有草稿或已驳回状态可以提交，且只能提交自己的申请单
-        if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
+        if (!STATUS_DRAFT.equals(application.getStatus()) && !STATUS_REJECTED.equals(application.getStatus())) {
             throw new BusinessException("只有草稿或已驳回状态可以提交");
         }
         if (!application.getApplicantId().equals(userId)) {
@@ -167,24 +175,24 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         // 更新素材状态：将所有关联素材的状态统一更新为PENDING
         // 注意：可能存在部分素材已经是PENDING状态的情况（如复制后添加新素材）
-        assetService.updateStatusByApplicationId(id, "PENDING");
+        assetService.updateStatusByApplicationId(id, STATUS_PENDING);
 
         // 再次验证所有素材状态是否正确
         AssetQuery verifyQuery = new AssetQuery();
         verifyQuery.setApplicationId(id);
         List<com.xuanjiao.infrastructure.dataobject.AssetDO> allAssets = assetMapper.selectList(verifyQuery);
-        boolean allPending = allAssets.stream().allMatch(a -> "PENDING".equals(a.getStatus()));
+        boolean allPending = allAssets.stream().allMatch(a -> STATUS_PENDING.equals(a.getStatus()));
         if (!allPending) {
             logger.warn("申请单{}存在非PENDING状态的素材，强制更新", id);
-            assetService.updateStatusByApplicationId(id, "PENDING");
+            assetService.updateStatusByApplicationId(id, STATUS_PENDING);
         }
 
         application.setWorkflowId(workflowId);
-        application.setStatus("PENDING");
+        application.setStatus(STATUS_PENDING);
         materialApplicationRepository.update(application);
 
         // 启动审批流程
-        Long instanceId = workflowEngineService.startProcess(workflowId, "MATERIAL_ENTRY", id, userId);
+        Long instanceId = workflowEngineService.startProcess(workflowId, BUSINESS_TYPE_MATERIAL_ENTRY, id, userId);
         return instanceId;
     }
 
@@ -197,7 +205,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         }
 
         // 只有草稿状态可以删除，且只能删除自己的申请单
-        if (!"DRAFT".equals(application.getStatus())) {
+        if (!STATUS_DRAFT.equals(application.getStatus())) {
             throw new BusinessException("只有草稿状态可以删除");
         }
         if (!application.getApplicantId().equals(userId)) {
@@ -243,7 +251,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         // 过滤出草稿状态
         List<MaterialApplicationDTO> dtoList = list.stream()
-            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .filter(app -> STATUS_DRAFT.equals(app.getStatus()))
             .map(this::convertWithDetails)
             .collect(Collectors.toList());
         return PageResult.of(dtoList, total, pageNum, pageSize);
@@ -263,7 +271,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
 
         // 过滤出草稿状态
         List<MaterialApplicationWithDetailsDO> filteredList = list.stream()
-            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .filter(app -> STATUS_DRAFT.equals(app.getStatus()))
             .collect(Collectors.toList());
 
         // 按标题筛选
@@ -302,6 +310,23 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
      */
     private MaterialApplicationDTO convertWithDetails(MaterialApplicationWithDetailsDO details) {
         if (details == null) return null;
+
+        MaterialApplicationDTO dto = createBaseDTO(details);
+
+        // 填充素材信息
+        List<AssetDO> assets = getAssetsForApplication(details.getId());
+        if (!assets.isEmpty()) {
+            Map<Long, List<TagDTO>> tagsMap = loadTagsForAssets(assets);
+            dto.setAssets(convertAssetsWithTags(assets, tagsMap));
+        }
+
+        return dto;
+    }
+
+    /**
+     * 创建基础 DTO
+     */
+    private MaterialApplicationDTO createBaseDTO(MaterialApplicationWithDetailsDO details) {
         MaterialApplicationDTO dto = new MaterialApplicationDTO();
         dto.setId(details.getId());
         dto.setTitle(details.getTitle());
@@ -316,77 +341,121 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         dto.setGuaranteeDeclaration(details.getGuaranteeDeclaration());
         dto.setCreateTime(details.getCreateTime());
         dto.setUpdateTime(details.getUpdateTime());
+        return dto;
+    }
 
-        // 查询关联的素材文件
-        if (details.getId() != null) {
-            AssetQuery wrapper = new AssetQuery();
-            wrapper.setApplicationId(details.getId());
-            List<AssetDO> assets = assetMapper.selectList(wrapper);
+    /**
+     * 获取申请关联的素材列表
+     */
+    private List<AssetDO> getAssetsForApplication(Long applicationId) {
+        if (applicationId == null) {
+            return new ArrayList<>();
+        }
+        AssetQuery wrapper = new AssetQuery();
+        wrapper.setApplicationId(applicationId);
+        return assetMapper.selectList(wrapper);
+    }
 
-            if (!assets.isEmpty()) {
-                // 批量查询所有素材的标签（优化N+1问题）
-                List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
-                Map<Long, List<TagDTO>> tagsMap = new java.util.HashMap<>();
+    /**
+     * 为素材列表加载标签（优化版）
+     */
+    private Map<Long, List<TagDTO>> loadTagsForAssets(List<AssetDO> assets) {
+        Map<Long, List<TagDTO>> tagsMap = new java.util.HashMap<>();
 
-                if (!assetIds.isEmpty()) {
-                    List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags =
-                        assetTagMapper.selectByAssetIds(assetIds);
-
-                    if (!allAssetTags.isEmpty()) {
-                        List<Long> tagIds = allAssetTags.stream()
-                            .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
-                            .distinct()
-                            .collect(Collectors.toList());
-
-                        List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
-                        Map<Long, TagDO> tagIdToTag = new java.util.HashMap<>();
-                        for (TagDO tag : allTags) {
-                            tagIdToTag.put(tag.getId(), tag);
-                        }
-
-                        Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
-                            .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
-
-                        for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
-                            List<TagDTO> tagsForAsset = new ArrayList<>();
-                            for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : entry.getValue()) {
-                                TagDO tag = tagIdToTag.get(assetTag.getTagId());
-                                if (tag != null) {
-                                    TagDTO tagDTO = new TagDTO();
-                                    tagDTO.setId(tag.getId());
-                                    tagDTO.setName(tag.getName());
-                                    tagDTO.setCategory(tag.getCategory());
-                                    tagDTO.setCreateTime(tag.getCreateTime());
-                                    tagsForAsset.add(tagDTO);
-                                }
-                            }
-                            tagsMap.put(entry.getKey(), tagsForAsset);
-                        }
-                    }
-                }
-
-                // 转换为 DTO
-                List<AssetDTO> assetDTOs = new ArrayList<>();
-                for (AssetDO asset : assets) {
-                    AssetDTO assetDTO = new AssetDTO();
-                    ConvertUtils.copyProperties(asset, assetDTO);
-                    assetDTO.setTags(tagsMap.get(asset.getId()));
-                    assetDTOs.add(assetDTO);
-                }
-                dto.setAssets(assetDTOs);
-            }
+        List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+        if (assetIds.isEmpty()) {
+            return tagsMap;
         }
 
-        return dto;
+        List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags = assetTagMapper.selectByAssetIds(assetIds);
+        if (allAssetTags.isEmpty()) {
+            return tagsMap;
+        }
+
+        List<Long> tagIds = allAssetTags.stream()
+            .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
+            .distinct()
+            .collect(Collectors.toList());
+
+        List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
+        Map<Long, TagDO> tagIdToTag = allTags.stream()
+            .collect(Collectors.toMap(TagDO::getId, t -> t));
+
+        Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
+            .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
+
+        for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
+            List<TagDTO> tagsForAsset = convertTagsToDTO(entry.getValue(), tagIdToTag);
+            tagsMap.put(entry.getKey(), tagsForAsset);
+        }
+
+        return tagsMap;
+    }
+
+    /**
+     * 将标签实体转换为 DTO 列表
+     */
+    private List<TagDTO> convertTagsToDTO(List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags, Map<Long, TagDO> tagIdToTag) {
+        List<TagDTO> tagsForAsset = new ArrayList<>();
+        for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : assetTags) {
+            TagDO tag = tagIdToTag.get(assetTag.getTagId());
+            if (tag != null) {
+                tagsForAsset.add(convertTagToDTO(tag));
+            }
+        }
+        return tagsForAsset;
+    }
+
+    /**
+     * 将标签实体转换为 DTO
+     */
+    private TagDTO convertTagToDTO(TagDO tag) {
+        TagDTO tagDTO = new TagDTO();
+        tagDTO.setId(tag.getId());
+        tagDTO.setName(tag.getName());
+        tagDTO.setCategory(tag.getCategory());
+        tagDTO.setCreateTime(tag.getCreateTime());
+        return tagDTO;
+    }
+
+    /**
+     * 将素材列表转换为 DTO 列表
+     */
+    private List<AssetDTO> convertAssetsWithTags(List<AssetDO> assets, Map<Long, List<TagDTO>> tagsMap) {
+        List<AssetDTO> assetDTOs = new ArrayList<>();
+        for (AssetDO asset : assets) {
+            AssetDTO assetDTO = new AssetDTO();
+            ConvertUtils.copyProperties(asset, assetDTO);
+            assetDTO.setTags(tagsMap.get(asset.getId()));
+            assetDTOs.add(assetDTO);
+        }
+        return assetDTOs;
     }
 
     private MaterialApplicationDTO convert(MaterialApplication application) {
         if (application == null) return null;
+
         MaterialApplicationDTO dto = new MaterialApplicationDTO();
         ConvertUtils.copyProperties(application, dto);
 
         logger.info("MaterialApplication.convert - applicationId: {}, title: {}", application.getId(), application.getTitle());
 
+        // 填充申请人、维护人和部门名称
+        populateUserInfo(dto, application);
+
+        // 填充关联的素材文件
+        if (application.getId() != null) {
+            List<AssetDTO> assetDTOs = convertAssetsWithTags(application.getId());
+            dto.setAssets(assetDTOs);
+        }
+
+        return dto;
+    }
+
+    /**
+     * 填充用户信息（申请人、维护人、部门）
+     */
+    private void populateUserInfo(MaterialApplicationDTO dto, MaterialApplication application) {
         // 填充申请人名称
         if (application.getApplicantId() != null) {
             UserDO user = userMapper.selectById(application.getApplicantId());
@@ -410,71 +479,82 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
                 dto.setDeptName(dept.getName());
             }
         }
+    }
 
-        // 填充关联的素材文件
-        if (application.getId() != null) {
-            AssetQuery wrapper = new AssetQuery();
-            wrapper.setApplicationId(application.getId());
-            logger.info("MaterialApplication.convert - 查询assets，applicationId: {}", application.getId());
-            List<AssetDO> assets = assetMapper.selectList(wrapper);
-            logger.info("MaterialApplication.convert - 查询到 {} 条assets记录", assets.size());
-            for (AssetDO assetDO : assets) {
-                logger.info("MaterialApplication.convert - asset: id={}, name={}, applicationId={}",
-                    assetDO.getId(), assetDO.getName(), assetDO.getApplicationId());
-            }
+    /**
+     * 转换素材列表（带标签）
+     */
+    private List<AssetDTO> convertAssetsWithTags(Long applicationId) {
+        AssetQuery wrapper = new AssetQuery();
+        wrapper.setApplicationId(applicationId);
+        logger.info("MaterialApplication.convert - 查询assets，applicationId: {}", applicationId);
+        List<AssetDO> assets = assetMapper.selectList(wrapper);
+        logger.info("MaterialApplication.convert - 查询到 {} 条assets记录", assets.size());
 
-            // 批量查询所有素材的标签（优化N+1问题）
-            // 1. 获取所有素材ID
-            List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
-
-            // 2. 批量查询素材-标签关联
-            Map<Long, List<TagDO>> tagsMap = new java.util.HashMap<>();
-            if (!assetIds.isEmpty()) {
-                List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags =
-                    assetTagMapper.selectByAssetIds(assetIds);
-
-                if (!allAssetTags.isEmpty()) {
-                    // 3. 收集所有标签ID
-                    List<Long> tagIds = allAssetTags.stream()
-                        .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
-                        .distinct()
-                        .collect(Collectors.toList());
-
-                    // 4. 批量查询所有标签
-                    List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
-
-                    // 5. 建立标签ID到标签对象的映射
-                    Map<Long, TagDO> tagIdToTag = new java.util.HashMap<>();
-                    for (TagDO tag : allTags) {
-                        tagIdToTag.put(tag.getId(), tag);
-                    }
-
-                    // 6. 按素材ID分组，建立素材ID到标签列表的映射
-                    Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
-                        .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
-
-                    for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
-                        List<TagDO> tagsForAsset = new ArrayList<>();
-                        for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : entry.getValue()) {
-                            TagDO tag = tagIdToTag.get(assetTag.getTagId());
-                            if (tag != null) {
-                                tagsForAsset.add(tag);
-                            }
-                        }
-                        tagsMap.put(entry.getKey(), tagsForAsset);
-                    }
-                }
-            }
-
-            // 6. 转换素材为DTO，使用预加载的标签
-            List<AssetDTO> assetDTOs = assets.stream()
-                .map(asset -> convertAssetWithPreloadedTags(asset, tagsMap))
-                .collect(Collectors.toList());
-            dto.setAssets(assetDTOs);
-            logger.info("MaterialApplication.convert - 设置后 dto.assets 数量: {}", dto.getAssets() != null ? dto.getAssets().size() : 0);
+        for (AssetDO assetDO : assets) {
+            logger.info("MaterialApplication.convert - asset: id={}, name={}, applicationId={}",
+                assetDO.getId(), assetDO.getName(), assetDO.getApplicationId());
         }
 
-        return dto;
+        // 预加载标签并转换
+        Map<Long, List<TagDO>> tagsMap = loadTagDOsForAssets(assets);
+        List<AssetDTO> assetDTOs = assets.stream()
+            .map(asset -> convertAssetWithPreloadedTags(asset, tagsMap))
+            .collect(Collectors.toList());
+
+        logger.info("MaterialApplication.convert - 设置后 dto.assets 数量: {}", assetDTOs.size());
+        return assetDTOs;
+    }
+
+    /**
+     * 批量加载素材的标签（优化N+1问题，返回 TagDO）
+     */
+    private Map<Long, List<TagDO>> loadTagDOsForAssets(List<AssetDO> assets) {
+        Map<Long, List<TagDO>> tagsMap = new java.util.HashMap<>();
+
+        List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+        if (assetIds.isEmpty()) {
+            return tagsMap;
+        }
+
+        List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> allAssetTags =
+            assetTagMapper.selectByAssetIds(assetIds);
+
+        if (allAssetTags.isEmpty()) {
+            return tagsMap;
+        }
+
+        // 收集所有标签ID并批量查询
+        List<Long> tagIds = allAssetTags.stream()
+            .map(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getTagId)
+            .distinct()
+            .collect(Collectors.toList());
+
+        List<TagDO> allTags = tagMapper.selectBatchIds(tagIds);
+
+        // 建立标签ID到标签对象的映射
+        Map<Long, TagDO> tagIdToTag = new java.util.HashMap<>();
+        for (TagDO tag : allTags) {
+            tagIdToTag.put(tag.getId(), tag);
+        }
+
+        // 按素材ID分组
+        Map<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> assetTagsGrouped = allAssetTags.stream()
+            .collect(Collectors.groupingBy(com.xuanjiao.infrastructure.dataobject.AssetTagDO::getAssetId));
+
+        // 构建素材ID到标签列表的映射
+        for (Map.Entry<Long, List<com.xuanjiao.infrastructure.dataobject.AssetTagDO>> entry : assetTagsGrouped.entrySet()) {
+            List<TagDO> tagsForAsset = new ArrayList<>();
+            for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : entry.getValue()) {
+                TagDO tag = tagIdToTag.get(assetTag.getTagId());
+                if (tag != null) {
+                    tagsForAsset.add(tag);
+                }
+            }
+            tagsMap.put(entry.getKey(), tagsForAsset);
+        }
+
+        return tagsMap;
     }
 
     @Override
@@ -518,119 +598,157 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     @Override
     @Transactional
     public Long copyApplication(Long id, Long userId) {
-        // 1. 获取原申请单
         MaterialApplication original = materialApplicationRepository.findById(id);
         if (original == null) {
             throw new NotFoundException("原申请单不存在");
         }
 
-        // 2. 创建新申请单（草稿状态）
+        MaterialApplication saved = createDraftCopyApplication(original, userId);
+        copyAssetsFromOriginal(id, saved.getId());
+        verifyDraftStatus(saved.getId());
+
+        return saved.getId();
+    }
+
+    /**
+     * 创建草稿副本申请单
+     */
+    private MaterialApplication createDraftCopyApplication(MaterialApplication original, Long userId) {
         MaterialApplication newApplication = new MaterialApplication();
         newApplication.setTitle(original.getTitle() + " - 副本");
         newApplication.setApplicantId(userId);
         newApplication.setMaintainerId(userId);
+
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser != null) {
             newApplication.setDeptId(currentUser.getDeptId());
         }
         newApplication.setGuaranteeDeclaration(original.getGuaranteeDeclaration());
-        newApplication.setStatus("DRAFT");
+        newApplication.setStatus(STATUS_DRAFT);
         newApplication.setCreateTime(LocalDateTime.now());
         newApplication.setDeleted(0);
 
-        MaterialApplication saved = materialApplicationRepository.save(newApplication);
+        return materialApplicationRepository.save(newApplication);
+    }
 
-        // 3. 复制素材文件
+    /**
+     * 复制素材文件
+     */
+    private void copyAssetsFromOriginal(Long originalApplicationId, Long newApplicationId) {
         AssetQuery wrapper = new AssetQuery();
-        wrapper.setApplicationId(id);
+        wrapper.setApplicationId(originalApplicationId);
         List<AssetDO> originalAssets = assetMapper.selectList(wrapper);
 
         for (AssetDO originalAsset : originalAssets) {
-            AssetDO newAsset = new AssetDO();
-            ConvertUtils.copyProperties(originalAsset, newAsset);
-            newAsset.setId(null);
-            newAsset.setApplicationId(saved.getId());
-            newAsset.setStatus("DRAFT");
-            newAsset.setCreateTime(LocalDateTime.now());
-            newAsset.setUpdateTime(LocalDateTime.now());
-            newAsset.setDeleted(0);
-
-            // 复制文件到新路径
-            if (originalAsset.getFilePath() != null) {
-                try {
-                    java.nio.file.Path sourcePath = java.nio.file.Paths.get(originalAsset.getFilePath());
-                    if (java.nio.file.Files.exists(sourcePath)) {
-                        // 生成新的文件名（添加时间戳避免冲突）
-                        String timestamp = String.valueOf(System.currentTimeMillis());
-                        String newFileName = timestamp + "_" + sourcePath.getFileName().toString();
-                        java.nio.file.Path targetPath = sourcePath.resolveSibling(newFileName);
-                        java.nio.file.Files.copy(sourcePath, targetPath);
-                        newAsset.setFilePath(targetPath.toString());
-                    }
-                } catch (Exception e) {
-                    throw new SystemException("复制文件失败: " + originalAsset.getName(), e);
-                }
-            }
-
-            // 复制缩略图
-            if (originalAsset.getThumbnailPath() != null) {
-                try {
-                    java.nio.file.Path sourceThumb = java.nio.file.Paths.get(originalAsset.getThumbnailPath());
-                    if (java.nio.file.Files.exists(sourceThumb)) {
-                        String timestamp = String.valueOf(System.currentTimeMillis());
-                        String newThumbName = timestamp + "_" + sourceThumb.getFileName().toString();
-                        java.nio.file.Path targetThumb = sourceThumb.resolveSibling(newThumbName);
-                        java.nio.file.Files.copy(sourceThumb, targetThumb);
-                        newAsset.setThumbnailPath(targetThumb.toString());
-                    }
-                } catch (Exception e) {
-                    // 缩略图复制失败不影响主流程
-                    newAsset.setThumbnailPath(null);
-                }
-            }
-
-            // 复制版权文件
-            if (originalAsset.getCopyrightFilePath() != null) {
-                try {
-                    java.nio.file.Path sourceCopyright = java.nio.file.Paths.get(originalAsset.getCopyrightFilePath());
-                    if (java.nio.file.Files.exists(sourceCopyright)) {
-                        String timestamp = String.valueOf(System.currentTimeMillis());
-                        String newCopyrightName = timestamp + "_" + sourceCopyright.getFileName().toString();
-                        java.nio.file.Path targetCopyright = sourceCopyright.resolveSibling(newCopyrightName);
-                        java.nio.file.Files.copy(sourceCopyright, targetCopyright);
-                        newAsset.setCopyrightFilePath(targetCopyright.toString());
-                    }
-                } catch (Exception e) {
-                    // 版权文件复制失败不影响主流程
-                    newAsset.setCopyrightFilePath(null);
-                }
-            }
-
+            AssetDO newAsset = createAssetCopy(originalAsset, newApplicationId);
+            copyAssetFiles(originalAsset, newAsset);
             assetMapper.insert(newAsset);
+            copyAssetTags(originalAsset.getId(), newAsset.getId());
+        }
+    }
 
-            // 复制标签关联
-            AssetTagQuery tagQuery = new AssetTagQuery();
-            tagQuery.setAssetId(originalAsset.getId());
-            List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagQuery);
-            for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : assetTags) {
-                com.xuanjiao.infrastructure.dataobject.AssetTagDO newAssetTag = new com.xuanjiao.infrastructure.dataobject.AssetTagDO();
-                newAssetTag.setAssetId(newAsset.getId());
-                newAssetTag.setTagId(assetTag.getTagId());
-                assetTagMapper.insert(newAssetTag);
-            }
+    /**
+     * 创建素材副本对象
+     */
+    private AssetDO createAssetCopy(AssetDO originalAsset, Long newApplicationId) {
+        AssetDO newAsset = new AssetDO();
+        ConvertUtils.copyProperties(originalAsset, newAsset);
+        newAsset.setId(null);
+        newAsset.setApplicationId(newApplicationId);
+        newAsset.setStatus(STATUS_DRAFT);
+        newAsset.setCreateTime(LocalDateTime.now());
+        newAsset.setUpdateTime(LocalDateTime.now());
+        newAsset.setDeleted(0);
+        return newAsset;
+    }
+
+    /**
+     * 复制素材相关文件
+     */
+    private void copyAssetFiles(AssetDO originalAsset, AssetDO newAsset) {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+
+        // 复制主文件（关键操作，失败抛出异常）
+        if (originalAsset.getFilePath() != null) {
+            newAsset.setFilePath(copyFileWithTimestamp(originalAsset.getFilePath(), timestamp, originalAsset.getName()));
         }
 
-        // 复制完成后，确保所有复制的素材状态都是 DRAFT（草稿状态）
+        // 复制缩略图（非关键操作，失败时设为null）
+        if (originalAsset.getThumbnailPath() != null) {
+            newAsset.setThumbnailPath(copyFileSafely(originalAsset.getThumbnailPath(), timestamp));
+        }
+
+        // 复制版权文件（非关键操作，失败时设为null）
+        if (originalAsset.getCopyrightFilePath() != null) {
+            newAsset.setCopyrightFilePath(copyFileSafely(originalAsset.getCopyrightFilePath(), timestamp));
+        }
+    }
+
+    /**
+     * 复制文件（关键操作）
+     */
+    private String copyFileWithTimestamp(String originalPath, String timestamp, String assetName) {
+        try {
+            java.nio.file.Path sourcePath = java.nio.file.Paths.get(originalPath);
+            if (!java.nio.file.Files.exists(sourcePath)) {
+                return originalPath;
+            }
+            String newFileName = timestamp + "_" + sourcePath.getFileName().toString();
+            java.nio.file.Path targetPath = sourcePath.resolveSibling(newFileName);
+            java.nio.file.Files.copy(sourcePath, targetPath);
+            return targetPath.toString();
+        } catch (Exception e) {
+            throw new SystemException("复制文件失败: " + assetName, e);
+        }
+    }
+
+    /**
+     * 复制文件（安全操作，失败返回null）
+     */
+    private String copyFileSafely(String originalPath, String timestamp) {
+        try {
+            java.nio.file.Path sourcePath = java.nio.file.Paths.get(originalPath);
+            if (!java.nio.file.Files.exists(sourcePath)) {
+                return null;
+            }
+            String newFileName = timestamp + "_" + sourcePath.getFileName().toString();
+            java.nio.file.Path targetPath = sourcePath.resolveSibling(newFileName);
+            java.nio.file.Files.copy(sourcePath, targetPath);
+            return targetPath.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 复制素材标签关联
+     */
+    private void copyAssetTags(Long originalAssetId, Long newAssetId) {
+        AssetTagQuery tagQuery = new AssetTagQuery();
+        tagQuery.setAssetId(originalAssetId);
+        List<com.xuanjiao.infrastructure.dataobject.AssetTagDO> assetTags = assetTagMapper.selectList(tagQuery);
+
+        for (com.xuanjiao.infrastructure.dataobject.AssetTagDO assetTag : assetTags) {
+            com.xuanjiao.infrastructure.dataobject.AssetTagDO newAssetTag = new com.xuanjiao.infrastructure.dataobject.AssetTagDO();
+            newAssetTag.setAssetId(newAssetId);
+            newAssetTag.setTagId(assetTag.getTagId());
+            assetTagMapper.insert(newAssetTag);
+        }
+    }
+
+    /**
+     * 验证并确保所有复制的素材状态都是 DRAFT
+     */
+    private void verifyDraftStatus(Long applicationId) {
         AssetQuery verifyQuery = new AssetQuery();
-        verifyQuery.setApplicationId(saved.getId());
+        verifyQuery.setApplicationId(applicationId);
         List<com.xuanjiao.infrastructure.dataobject.AssetDO> copiedAssets = assetMapper.selectList(verifyQuery);
+
         for (com.xuanjiao.infrastructure.dataobject.AssetDO asset : copiedAssets) {
-            if (!"DRAFT".equals(asset.getStatus())) {
-                asset.setStatus("DRAFT");
+            if (!STATUS_DRAFT.equals(asset.getStatus())) {
+                asset.setStatus(STATUS_DRAFT);
                 assetMapper.updateById(asset);
             }
         }
-
-        return saved.getId();
     }
 }

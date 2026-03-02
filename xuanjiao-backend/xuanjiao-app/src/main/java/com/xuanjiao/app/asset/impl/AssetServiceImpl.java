@@ -70,6 +70,13 @@ public class AssetServiceImpl implements AssetService {
     private static final String MSG_USER_NOT_FOUND = "用户不存在";
     private static final String MSG_ASSET_NOT_FOUND = "素材不存在";
 
+    /** 资产状态常量 */
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_REJECTED = "REJECTED";
+    private static final String STATUS_DELETED = "DELETED";
+
     @Resource
     private AssetRepository assetRepository;
 
@@ -112,90 +119,164 @@ public class AssetServiceImpl implements AssetService {
     @Override
     @Transactional
     public AssetDTO upload(MultipartFile file, MultipartFile thumbnailFile, AssetUploadCmd cmd, Long userId) {
-        // 文件格式校验
         validateFileFormat(file, cmd.getType());
 
         try {
             logger.info("Asset.upload - 开始上传，applicationId: {}, tagIds: {}", cmd.getApplicationId(), cmd.getTagIds());
 
-            String md5 = DigestUtil.md5Hex(file.getInputStream());
-            String originalName = file.getOriginalFilename();
-            String ext = originalName.substring(originalName.lastIndexOf("."));
-            String fileName = UUID.randomUUID().toString() + ext;
-            String filePath = uploadPath + cmd.getType() + "/" + fileName;
-            File dest = new File(filePath);
-            if (!dest.getParentFile().exists()) {
-                dest.getParentFile().mkdirs();
-            }
-            file.transferTo(dest);
+            // 处理文件上传
+            FileUploadResult uploadResult = handleFileUpload(file, thumbnailFile, cmd.getType());
 
-            // 保存视频缩略图
-            String thumbnailPath = null;
-            if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
-                String thumbFileName = UUID.randomUUID().toString() + ".jpg";
-                thumbnailPath = uploadPath + "thumbnail/" + thumbFileName;
-                File thumbDest = new File(thumbnailPath);
-                if (!thumbDest.getParentFile().exists()) {
-                    thumbDest.getParentFile().mkdirs();
-                }
-                thumbnailFile.transferTo(thumbDest);
-                logger.info("视频缩略图已保存: {}", thumbnailPath);
-            }
+            // 创建素材实体
+            Asset asset = buildAsset(cmd, uploadResult, userId);
 
-            Asset asset = new Asset();
-            asset.setName(cmd.getName());
-            asset.setType(cmd.getType());
-            asset.setFilePath(filePath);
-            asset.setThumbnailPath(thumbnailPath);
-            asset.setFileSize(file.getSize());
-            asset.setMd5(md5);
-            asset.setCopyright(cmd.getCopyright());
-            asset.setUploadUserId(userId);
-            asset.setCreateTime(LocalDateTime.now());
-            asset.setUpdateTime(LocalDateTime.now());
-            asset.setDeleted(0);
+            // 根据场景设置状态并保存
+            saveAssetWithStatus(asset, cmd, userId);
 
-            // New fields for material entry
-            asset.setApplicationId(cmd.getApplicationId());
-            asset.setCopyrightFilePath(cmd.getCopyrightFilePath());
-            asset.setCopyrightText(cmd.getCopyrightText());
-            asset.setDescription(cmd.getDescription());
-            asset.setPublishChannel(cmd.getPublishChannel());
-            asset.setTagIds(cmd.getTagIds());
-
-            logger.info("Asset.upload - asset设置完成，applicationId: {}, tagIds: {}", asset.getApplicationId(), asset.getTagIds());
-
-            // For draft applications, status is DRAFT, otherwise follow workflow logic
-            if (cmd.getApplicationId() != null) {
-                // Check if the application is still in draft status
-                // If yes, set asset status to DRAFT
-                // If no (submitted), set to PENDING
-                asset.setStatus("DRAFT");
-                assetRepository.save(asset);
-            } else if (cmd.getWorkflowId() != null) {
-                asset.setStatus("PENDING");
-                assetRepository.save(asset);
-                // 启动审批流程
-                workflowEngineService.startProcess(
-                    cmd.getWorkflowId(), "ASSET", asset.getId(), userId);
-            } else {
-                asset.setStatus("APPROVED");
-                assetRepository.save(asset);
-            }
-
-            // Save tag associations
-            if (cmd.getTagIds() != null && !cmd.getTagIds().isEmpty() && asset.getId() != null) {
-                for (Long tagId : cmd.getTagIds()) {
-                    AssetTagDO assetTag = new AssetTagDO();
-                    assetTag.setAssetId(asset.getId());
-                    assetTag.setTagId(tagId);
-                    assetTagMapper.insert(assetTag);
-                }
-            }
+            // 保存标签关联
+            saveTagAssociations(asset, cmd.getTagIds());
 
             return convertWithTags(asset);
         } catch (IOException e) {
             throw new SystemException("文件上传失败", e);
+        }
+    }
+
+    /**
+     * 处理文件上传
+     */
+    private FileUploadResult handleFileUpload(MultipartFile file, MultipartFile thumbnailFile, String type) throws IOException {
+        String md5 = DigestUtil.md5Hex(file.getInputStream());
+        String originalName = file.getOriginalFilename();
+        String ext = originalName.substring(originalName.lastIndexOf("."));
+        String fileName = UUID.randomUUID().toString() + ext;
+        String filePath = uploadPath + type + "/" + fileName;
+        File dest = new File(filePath);
+        if (!dest.getParentFile().exists()) {
+            dest.getParentFile().mkdirs();
+        }
+        file.transferTo(dest);
+
+        String thumbnailPath = saveThumbnail(thumbnailFile);
+
+        return new FileUploadResult(md5, filePath, thumbnailPath, file.getSize());
+    }
+
+    /**
+     * 保存缩略图
+     */
+    private String saveThumbnail(MultipartFile thumbnailFile) throws IOException {
+        if (thumbnailFile == null || thumbnailFile.isEmpty()) {
+            return null;
+        }
+
+        String thumbFileName = UUID.randomUUID().toString() + ".jpg";
+        String thumbnailPath = uploadPath + "thumbnail/" + thumbFileName;
+        File thumbDest = new File(thumbnailPath);
+        if (!thumbDest.getParentFile().exists()) {
+            thumbDest.getParentFile().mkdirs();
+        }
+        thumbnailFile.transferTo(thumbDest);
+        logger.info("视频缩略图已保存: {}", thumbnailPath);
+        return thumbnailPath;
+    }
+
+    /**
+     * 构建素材实体
+     */
+    private Asset buildAsset(AssetUploadCmd cmd, FileUploadResult uploadResult, Long userId) {
+        Asset asset = new Asset();
+        asset.setName(cmd.getName());
+        asset.setType(cmd.getType());
+        asset.setFilePath(uploadResult.getFilePath());
+        asset.setThumbnailPath(uploadResult.getThumbnailPath());
+        asset.setFileSize(uploadResult.getFileSize());
+        asset.setMd5(uploadResult.getMd5());
+        asset.setCopyright(cmd.getCopyright());
+        asset.setUploadUserId(userId);
+        asset.setCreateTime(LocalDateTime.now());
+        asset.setUpdateTime(LocalDateTime.now());
+        asset.setDeleted(0);
+
+        // Material entry fields
+        asset.setApplicationId(cmd.getApplicationId());
+        asset.setCopyrightFilePath(cmd.getCopyrightFilePath());
+        asset.setCopyrightText(cmd.getCopyrightText());
+        asset.setDescription(cmd.getDescription());
+        asset.setPublishChannel(cmd.getPublishChannel());
+        asset.setTagIds(cmd.getTagIds());
+
+        logger.info("Asset.upload - asset设置完成，applicationId: {}, tagIds: {}",
+            asset.getApplicationId(), asset.getTagIds());
+        return asset;
+    }
+
+    /**
+     * 根据场景设置状态并保存
+     */
+    private void saveAssetWithStatus(Asset asset, AssetUploadCmd cmd, Long userId) {
+        if (cmd.getApplicationId() != null) {
+            // 草稿状态
+            asset.setStatus(STATUS_DRAFT);
+            assetRepository.save(asset);
+        } else if (cmd.getWorkflowId() != null) {
+            // 需要审批
+            asset.setStatus(STATUS_PENDING);
+            assetRepository.save(asset);
+            workflowEngineService.startProcess(cmd.getWorkflowId(), "ASSET", asset.getId(), userId);
+        } else {
+            // 直接通过
+            asset.setStatus(STATUS_APPROVED);
+            assetRepository.save(asset);
+        }
+    }
+
+    /**
+     * 保存标签关联
+     */
+    private void saveTagAssociations(Asset asset, List<Long> tagIds) {
+        if (tagIds == null || tagIds.isEmpty() || asset.getId() == null) {
+            return;
+        }
+
+        for (Long tagId : tagIds) {
+            AssetTagDO assetTag = new AssetTagDO();
+            assetTag.setAssetId(asset.getId());
+            assetTag.setTagId(tagId);
+            assetTagMapper.insert(assetTag);
+        }
+    }
+
+    /**
+     * 文件上传结果
+     */
+    private static class FileUploadResult {
+        private final String md5;
+        private final String filePath;
+        private final String thumbnailPath;
+        private final long fileSize;
+
+        public FileUploadResult(String md5, String filePath, String thumbnailPath, long fileSize) {
+            this.md5 = md5;
+            this.filePath = filePath;
+            this.thumbnailPath = thumbnailPath;
+            this.fileSize = fileSize;
+        }
+
+        public String getMd5() {
+            return md5;
+        }
+
+        public String getFilePath() {
+            return filePath;
+        }
+
+        public String getThumbnailPath() {
+            return thumbnailPath;
+        }
+
+        public long getFileSize() {
+            return fileSize;
         }
     }
 
@@ -217,69 +298,132 @@ public class AssetServiceImpl implements AssetService {
 
     @Override
     public PageResult<AssetDTO> queryWithRoleFilter(AssetQueryCmd cmd, Long userId) {
-        // Get user's role to determine filtering rules
+        UserDO user = validateAndGetUser(userId);
+        RoleDO role = validateAndGetRole(user.getRoleId());
+
+        AssetQueryResult result = queryAssetsByRole(cmd, role.getRoleType());
+        List<AssetDTO> dtoList = convertToDTOWithDownloadPermission(result.list, userId);
+
+        return PageResult.of(dtoList, result.total, cmd.getPageNum(), cmd.getPageSize());
+    }
+
+    /**
+     * 验证并获取用户
+     */
+    private UserDO validateAndGetUser(Long userId) {
         UserDO user = userMapper.selectById(userId);
         if (user == null) {
             throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
+        return user;
+    }
 
-        RoleDO role = roleMapper.selectById(user.getRoleId());
+    /**
+     * 验证并获取角色
+     */
+    private RoleDO validateAndGetRole(Long roleId) {
+        RoleDO role = roleMapper.selectById(roleId);
         if (role == null) {
             throw new NotFoundException("用户角色不存在");
         }
+        return role;
+    }
 
-        // Determine allowed statuses based on role
-        String roleType = role.getRoleType();
-
+    /**
+     * 根据角色查询素材
+     */
+    private AssetQueryResult queryAssetsByRole(AssetQueryCmd cmd, String roleType) {
         int offset = (cmd.getPageNum() - 1) * cmd.getPageSize();
+
+        if (isAdminRole(roleType)) {
+            return queryAssetsForAdmin(cmd, offset);
+        } else {
+            return queryAssetsForRegularUser(cmd, offset);
+        }
+    }
+
+    /**
+     * 判断是否为管理员角色
+     */
+    private boolean isAdminRole(String roleType) {
+        return "SYSTEM_ADMIN".equals(roleType) || "GENERAL_MGMT".equals(roleType);
+    }
+
+    /**
+     * 管理员查询素材（可看到 APPROVED, PENDING, DELETED）
+     */
+    private AssetQueryResult queryAssetsForAdmin(AssetQueryCmd cmd, int offset) {
         List<Asset> list;
         long total;
 
-        // SYSTEM_ADMIN and GENERAL_MGMT can see APPROVED, PENDING, and DELETED
-        // All other users can only see APPROVED and DELETED
-        // DRAFT assets are never shown in asset list
-        // Soft deleted assets (deleted=1) are excluded from all queries
-        if ("SYSTEM_ADMIN".equals(roleType) || "GENERAL_MGMT".equals(roleType)) {
-            if (cmd.getStatus() != null && !cmd.getStatus().isEmpty()) {
-                // User specified a status filter, use it
-                list = assetRepository.findByCondition(
+        if (cmd.getStatus() != null && !cmd.getStatus().isEmpty()) {
+            list = assetRepository.findByCondition(
                     cmd.getName(), cmd.getType(), cmd.getStatus(), offset, cmd.getPageSize());
-                total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
-            } else {
-                // Admin default: Show APPROVED, PENDING, and DELETED
-                List<String> statusList = Arrays.asList("APPROVED", "PENDING", "DELETED");
-                list = assetRepository.findByStatusList(
-                    cmd.getName(), cmd.getType(), statusList, offset, cmd.getPageSize());
-                total = assetRepository.countByStatusList(cmd.getName(), cmd.getType(), statusList);
-            }
+            total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
         } else {
-            // Regular users: APPROVED and DELETED
-            if (cmd.getStatus() != null && !cmd.getStatus().isEmpty()) {
-                // User specified a status filter, use it
-                list = assetRepository.findByCondition(
-                    cmd.getName(), cmd.getType(), cmd.getStatus(), offset, cmd.getPageSize());
-                total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
-            } else {
-                // Regular user default: Show APPROVED and DELETED
-                List<String> statusList = Arrays.asList("APPROVED", "DELETED");
-                list = assetRepository.findByStatusList(
+            List<String> statusList = Arrays.asList(STATUS_APPROVED, STATUS_PENDING, STATUS_DELETED);
+            list = assetRepository.findByStatusList(
                     cmd.getName(), cmd.getType(), statusList, offset, cmd.getPageSize());
-                total = assetRepository.countByStatusList(cmd.getName(), cmd.getType(), statusList);
-            }
+            total = assetRepository.countByStatusList(cmd.getName(), cmd.getType(), statusList);
         }
 
-        // 转换为DTO并填充下载权限
-        List<AssetDTO> dtoList = list.stream().map(asset -> {
-            AssetDTO dto = convert(asset);
-            if (dto != null && "APPROVED".equals(asset.getStatus())) {
-                // 只有 APPROVED 状态的素材需要检查下载权限
-                dto.setCanDownload(usageApplyService.canUseAsset(asset.getId(), userId));
-            } else {
-                dto.setCanDownload(false);
-            }
-            return dto;
-        }).collect(Collectors.toList());
-        return PageResult.of(dtoList, total, cmd.getPageNum(), cmd.getPageSize());
+        return new AssetQueryResult(list, total);
+    }
+
+    /**
+     * 普通用户查询素材（只能看到 APPROVED, DELETED）
+     */
+    private AssetQueryResult queryAssetsForRegularUser(AssetQueryCmd cmd, int offset) {
+        List<Asset> list;
+        long total;
+
+        if (cmd.getStatus() != null && !cmd.getStatus().isEmpty()) {
+            list = assetRepository.findByCondition(
+                    cmd.getName(), cmd.getType(), cmd.getStatus(), offset, cmd.getPageSize());
+            total = assetRepository.countByCondition(cmd.getName(), cmd.getType(), cmd.getStatus());
+        } else {
+            List<String> statusList = Arrays.asList(STATUS_APPROVED, STATUS_DELETED);
+            list = assetRepository.findByStatusList(
+                    cmd.getName(), cmd.getType(), statusList, offset, cmd.getPageSize());
+            total = assetRepository.countByStatusList(cmd.getName(), cmd.getType(), statusList);
+        }
+
+        return new AssetQueryResult(list, total);
+    }
+
+    /**
+     * 转换为DTO并填充下载权限
+     */
+    private List<AssetDTO> convertToDTOWithDownloadPermission(List<Asset> assets, Long userId) {
+        return assets.stream()
+                .map(asset -> convertWithDownloadPermission(asset, userId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 转换单个素材为DTO并设置下载权限
+     */
+    private AssetDTO convertWithDownloadPermission(Asset asset, Long userId) {
+        AssetDTO dto = convert(asset);
+        if (dto != null && STATUS_APPROVED.equals(asset.getStatus())) {
+            dto.setCanDownload(usageApplyService.canUseAsset(asset.getId(), userId));
+        } else {
+            dto.setCanDownload(false);
+        }
+        return dto;
+    }
+
+    /**
+     * 素材查询结果
+     */
+    private static class AssetQueryResult {
+        List<Asset> list;
+        long total;
+
+        AssetQueryResult(List<Asset> list, long total) {
+            this.list = list;
+            this.total = total;
+        }
     }
 
     @Override
@@ -345,7 +489,7 @@ public class AssetServiceImpl implements AssetService {
             asset.getId(), asset.getName(), asset.getStatus(), asset.getDeleted());
 
         // 只能删除已通过审批的素材或已删除状态的素材
-        if (!"APPROVED".equals(asset.getStatus()) && !"DELETED".equals(asset.getStatus())) {
+        if (!STATUS_APPROVED.equals(asset.getStatus()) && !STATUS_DELETED.equals(asset.getStatus())) {
             throw new BusinessException("只能删除已通过审批或已删除状态的素材");
         }
 
@@ -387,7 +531,7 @@ public class AssetServiceImpl implements AssetService {
         }
 
         // 只能对DELETED状态的素材执行模拟时间操作
-        if (!"DELETED".equals(asset.getStatus())) {
+        if (!STATUS_DELETED.equals(asset.getStatus())) {
             throw new BusinessException("只能对已删除状态的素材执行此操作");
         }
 
@@ -413,7 +557,7 @@ public class AssetServiceImpl implements AssetService {
         // 查询当前用户申请录入的素材，状态为APPROVED
         AssetQuery query = new AssetQuery();
         query.setUploadUserId(userId);
-        query.setStatus("APPROVED");
+        query.setStatus(STATUS_APPROVED);
         query.setName(name);
         query.setType(type);
         query.setOrderByField("create_time");

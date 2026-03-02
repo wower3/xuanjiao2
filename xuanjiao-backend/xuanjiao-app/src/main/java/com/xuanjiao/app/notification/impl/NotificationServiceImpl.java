@@ -428,22 +428,50 @@ public class NotificationServiceImpl implements NotificationService {
             return null;
         }
         try {
-            switch (businessType) {
-                case "MATERIAL_ENTRY":
-                    MaterialApplicationDO materialApp = materialApplicationMapper.selectById(businessId);
-                    return materialApp != null ? materialApp.getTitle() : null;
-                case "ASSET_DELETION":
-                    AssetDeletionApplicationDO deletionApp = assetDeletionApplicationMapper.selectById(businessId);
-                    return deletionApp != null ? deletionApp.getTitle() : null;
-                case "ASSET_USAGE":
-                    UsageApplyDO usageApp = usageApplyMapper.selectById(businessId);
-                    return usageApp != null ? usageApp.getTitle() : null;
-                default:
-                    return null;
-            }
+            return fetchBusinessTitleByType(businessType, businessId);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 根据业务类型获取业务标题
+     */
+    private String fetchBusinessTitleByType(String businessType, Long businessId) {
+        switch (businessType) {
+            case "MATERIAL_ENTRY":
+                return getMaterialApplicationTitle(businessId);
+            case "ASSET_DELETION":
+                return getAssetDeletionApplicationTitle(businessId);
+            case "ASSET_USAGE":
+                return getUsageApplyTitle(businessId);
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 获取素材录入申请标题
+     */
+    private String getMaterialApplicationTitle(Long businessId) {
+        MaterialApplicationDO materialApp = materialApplicationMapper.selectById(businessId);
+        return materialApp != null ? materialApp.getTitle() : null;
+    }
+
+    /**
+     * 获取素材删除申请标题
+     */
+    private String getAssetDeletionApplicationTitle(Long businessId) {
+        AssetDeletionApplicationDO deletionApp = assetDeletionApplicationMapper.selectById(businessId);
+        return deletionApp != null ? deletionApp.getTitle() : null;
+    }
+
+    /**
+     * 获取素材使用申请标题
+     */
+    private String getUsageApplyTitle(Long businessId) {
+        UsageApplyDO usageApp = usageApplyMapper.selectById(businessId);
+        return usageApp != null ? usageApp.getTitle() : null;
     }
 
     /**

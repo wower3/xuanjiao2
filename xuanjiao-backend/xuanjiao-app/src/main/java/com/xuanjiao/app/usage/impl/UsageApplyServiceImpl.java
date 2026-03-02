@@ -52,6 +52,14 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     private static final String MSG_ASSET_NOT_FOUND = "素材不存在";
     private static final String MSG_ONLY_DRAFT_CAN_MODIFY = "只有草稿状态可以修改";
 
+    /** 状态常量 */
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_APPROVED = "APPROVED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_ASSET_USAGE = "ASSET_USAGE";
+
     @Autowired
     private UsageApplyRepository usageApplyRepository;
 
@@ -78,116 +86,180 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     @Override
     @Transactional
     public UsageApplyDTO createDraft(UsageApplyCmd cmd, Long userId) {
-        // 获取当前用户信息
+        UserDO currentUser = validateAndGetUser(userId);
+        UsageApply usageApply = createDraftApplication(cmd, currentUser);
+        saveAssetConfigurations(usageApply.getId(), cmd.getAssetConfigs());
+        return convert(usageApply);
+    }
+
+    /**
+     * 验证并获取用户
+     */
+    private UserDO validateAndGetUser(Long userId) {
         UserDO currentUser = userMapper.selectById(userId);
         if (currentUser == null) {
             throw new NotFoundException(MSG_USER_NOT_FOUND);
         }
+        return currentUser;
+    }
 
-        // 创建使用申请单
+    /**
+     * 创建草稿申请单
+     */
+    private UsageApply createDraftApplication(UsageApplyCmd cmd, UserDO currentUser) {
         UsageApply usageApply = new UsageApply();
         usageApply.setTitle(cmd.getTitle());
-        usageApply.setUserId(userId);
+        usageApply.setUserId(currentUser.getId());
         usageApply.setDeptId(currentUser.getDeptId());
-        usageApply.setStatus("DRAFT");
+        usageApply.setStatus(STATUS_DRAFT);
         usageApply.setDraft(1);
         usageApply.setCreateTime(LocalDateTime.now());
-
         usageApplyRepository.save(usageApply);
+        return usageApply;
+    }
 
-        // 保存素材关联配置到中间表
-        if (cmd.getAssetConfigs() != null && !cmd.getAssetConfigs().isEmpty()) {
-            List<UsageApplyAsset> assets = new ArrayList<>();
-            for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
-                AssetDO asset = assetMapper.selectById(config.getAssetId());
-                if (asset == null) {
-                    throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + config.getAssetId());
-                }
-
-                // 检查素材状态：只能使用APPROVED状态的素材
-                // DRAFT/PENDING/DELETED状态的素材不允许使用
-                // 软删除（deleted=1）的素材不允许使用
-                if (asset.getDeleted() != null && asset.getDeleted() == 1) {
-                    throw new BusinessException("该素材已被删除，无法使用: " + asset.getName());
-                }
-                if (!"APPROVED".equals(asset.getStatus())) {
-                    String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
-                                     "PENDING".equals(asset.getStatus()) ? "待审批" :
-                                     "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
-                    throw new BusinessException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
-                }
-
-                UsageApplyAsset applyAsset = new UsageApplyAsset();
-                applyAsset.setUsageApplyId(usageApply.getId());
-                applyAsset.setAssetId(config.getAssetId());
-                applyAsset.setUsageDescription(config.getUsageDescription());
-                applyAsset.setUsagePublishChannel(config.getUsagePublishChannel());
-                applyAsset.setUsageIsSecondaryCreation(config.getUsageIsSecondaryCreation() != null ? config.getUsageIsSecondaryCreation() : 0);
-                applyAsset.setUsageAttachmentPath(config.getUsageAttachmentPath());
-                assets.add(applyAsset);
-            }
-            usageApplyAssetRepository.batchSave(assets);
+    /**
+     * 保存素材配置（用于创建草稿）
+     */
+    private void saveAssetConfigurations(Long usageApplyId, List<UsageApplyCmd.AssetUsageConfig> assetConfigs) {
+        if (assetConfigs == null || assetConfigs.isEmpty()) {
+            return;
         }
 
-        return convert(usageApply);
+        List<UsageApplyAsset> assets = buildInitialUsageApplyAssets(usageApplyId, assetConfigs);
+        usageApplyAssetRepository.batchSave(assets);
+    }
+
+    /**
+     * 构建初始素材使用记录列表（用于创建草稿）
+     */
+    private List<UsageApplyAsset> buildInitialUsageApplyAssets(Long usageApplyId, List<UsageApplyCmd.AssetUsageConfig> assetConfigs) {
+        List<UsageApplyAsset> assets = new ArrayList<>();
+        for (UsageApplyCmd.AssetUsageConfig config : assetConfigs) {
+            findAndValidateAsset(config.getAssetId()); // 验证素材存在且可用
+            UsageApplyAsset applyAsset = createUsageApplyAsset(usageApplyId, config);
+            assets.add(applyAsset);
+        }
+        return assets;
     }
 
     @Override
     @Transactional
     public UsageApplyDTO updateDraft(Long id, UsageApplyCmd cmd, Long userId) {
+        UsageApply usageApply = findAndValidateDraft(id, userId);
+        updateApplicationTitle(usageApply, cmd.getTitle());
+        updateAssetConfigurations(id, cmd.getAssetConfigs());
+        return convert(usageApply);
+    }
+
+    /**
+     * 查找并验证草稿状态
+     */
+    private UsageApply findAndValidateDraft(Long id, Long userId) {
         UsageApply usageApply = usageApplyRepository.findById(id);
         if (usageApply == null) {
             throw new NotFoundException(MSG_APPLICATION_NOT_FOUND);
         }
+        validateDraftModification(usageApply, userId);
+        return usageApply;
+    }
 
-        // 只有草稿状态可以修改
+    /**
+     * 验证是否可以修改草稿
+     */
+    private void validateDraftModification(UsageApply usageApply, Long userId) {
         if (usageApply.getDraft() != 1) {
             throw new BusinessException(MSG_ONLY_DRAFT_CAN_MODIFY);
         }
         if (!usageApply.getUserId().equals(userId)) {
             throw new BusinessException("只能修改自己的申请单");
         }
+    }
 
-        // 更新标题
-        usageApply.setTitle(cmd.getTitle());
+    /**
+     * 更新申请标题
+     */
+    private void updateApplicationTitle(UsageApply usageApply, String title) {
+        usageApply.setTitle(title);
         usageApplyRepository.update(usageApply);
+    }
 
-        // 先清除之前关联的素材配置
-        usageApplyAssetRepository.deleteByUsageApplyId(id);
+    /**
+     * 更新素材配置
+     */
+    private void updateAssetConfigurations(Long usageApplyId, List<UsageApplyCmd.AssetUsageConfig> assetConfigs) {
+        usageApplyAssetRepository.deleteByUsageApplyId(usageApplyId);
 
-        // 保存新的素材关联配置到中间表
-        if (cmd.getAssetConfigs() != null && !cmd.getAssetConfigs().isEmpty()) {
-            List<UsageApplyAsset> assets = new ArrayList<>();
-            for (UsageApplyCmd.AssetUsageConfig config : cmd.getAssetConfigs()) {
-                AssetDO asset = assetMapper.selectById(config.getAssetId());
-                if (asset == null) {
-                    throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + config.getAssetId());
-                }
-
-                // 检查素材状态：只能使用APPROVED状态的素材
-                if (asset.getDeleted() != null && asset.getDeleted() == 1) {
-                    throw new BusinessException("该素材已被删除，无法使用: " + asset.getName());
-                }
-                if (!"APPROVED".equals(asset.getStatus())) {
-                    String statusMsg = "DRAFT".equals(asset.getStatus()) ? "草稿" :
-                                     "PENDING".equals(asset.getStatus()) ? "待审批" :
-                                     "DELETED".equals(asset.getStatus()) ? "已删除" : asset.getStatus();
-                    throw new BusinessException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
-                }
-
-                UsageApplyAsset applyAsset = new UsageApplyAsset();
-                applyAsset.setUsageApplyId(id);
-                applyAsset.setAssetId(config.getAssetId());
-                applyAsset.setUsageDescription(config.getUsageDescription());
-                applyAsset.setUsagePublishChannel(config.getUsagePublishChannel());
-                applyAsset.setUsageIsSecondaryCreation(config.getUsageIsSecondaryCreation() != null ? config.getUsageIsSecondaryCreation() : 0);
-                applyAsset.setUsageAttachmentPath(config.getUsageAttachmentPath());
-                assets.add(applyAsset);
-            }
-            usageApplyAssetRepository.batchSave(assets);
+        if (assetConfigs == null || assetConfigs.isEmpty()) {
+            return;
         }
 
-        return convert(usageApply);
+        List<UsageApplyAsset> assets = buildUsageApplyAssets(usageApplyId, assetConfigs);
+        usageApplyAssetRepository.batchSave(assets);
+    }
+
+    /**
+     * 构建素材使用记录列表
+     */
+    private List<UsageApplyAsset> buildUsageApplyAssets(Long usageApplyId, List<UsageApplyCmd.AssetUsageConfig> assetConfigs) {
+        List<UsageApplyAsset> assets = new ArrayList<>();
+        for (UsageApplyCmd.AssetUsageConfig config : assetConfigs) {
+            AssetDO asset = findAndValidateAsset(config.getAssetId());
+            UsageApplyAsset applyAsset = createUsageApplyAsset(usageApplyId, config);
+            assets.add(applyAsset);
+        }
+        return assets;
+    }
+
+    /**
+     * 查找并验证素材
+     */
+    private AssetDO findAndValidateAsset(Long assetId) {
+        AssetDO asset = assetMapper.selectById(assetId);
+        if (asset == null) {
+            throw new NotFoundException(MSG_ASSET_NOT_FOUND + ": " + assetId);
+        }
+        validateAssetForUsage(asset);
+        return asset;
+    }
+
+    /**
+     * 验证素材是否可用于使用
+     */
+    private void validateAssetForUsage(AssetDO asset) {
+        if (asset.getDeleted() != null && asset.getDeleted() == 1) {
+            throw new BusinessException("该素材已被删除，无法使用: " + asset.getName());
+        }
+        if (!STATUS_APPROVED.equals(asset.getStatus())) {
+            String statusMsg = getStatusDescription(asset.getStatus());
+            throw new BusinessException("只能使用已通过审批的素材，当前素材状态为" + statusMsg + ": " + asset.getName());
+        }
+    }
+
+    /**
+     * 获取状态描述
+     */
+    private String getStatusDescription(String status) {
+        switch (status) {
+            case STATUS_DRAFT: return "草稿";
+            case STATUS_PENDING: return "待审批";
+            case "DELETED": return "已删除";
+            default: return status;
+        }
+    }
+
+    /**
+     * 创建素材使用记录
+     */
+    private UsageApplyAsset createUsageApplyAsset(Long usageApplyId, UsageApplyCmd.AssetUsageConfig config) {
+        UsageApplyAsset applyAsset = new UsageApplyAsset();
+        applyAsset.setUsageApplyId(usageApplyId);
+        applyAsset.setAssetId(config.getAssetId());
+        applyAsset.setUsageDescription(config.getUsageDescription());
+        applyAsset.setUsagePublishChannel(config.getUsagePublishChannel());
+        applyAsset.setUsageIsSecondaryCreation(config.getUsageIsSecondaryCreation() != null ? config.getUsageIsSecondaryCreation() : 0);
+        applyAsset.setUsageAttachmentPath(config.getUsageAttachmentPath());
+        return applyAsset;
     }
 
     @Override
@@ -221,12 +293,12 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         }
 
         usageApply.setWorkflowId(workflowId);
-        usageApply.setStatus("PENDING");
+        usageApply.setStatus(STATUS_PENDING);
         usageApply.setDraft(0);
         usageApplyRepository.update(usageApply);
 
         // 启动审批流程
-        Long instanceId = workflowEngineService.startProcess(workflowId, "ASSET_USAGE", id, userId);
+        Long instanceId = workflowEngineService.startProcess(workflowId, BUSINESS_TYPE_ASSET_USAGE, id, userId);
         logger.info("UsageApply.submit - 提交成功，instanceId: {}", instanceId);
         return instanceId;
     }
@@ -372,9 +444,9 @@ public class UsageApplyServiceImpl implements UsageApplyService {
                 logger.info("使用申请详情 - userId: {}, status: {}, 申请用户匹配: {}, 状态匹配: {}",
                     apply.getUserId(), apply.getStatus(),
                     apply.getUserId().equals(userId),
-                    "APPROVED".equals(apply.getStatus()));
+                    STATUS_APPROVED.equals(apply.getStatus()));
             }
-            if (apply != null && apply.getUserId().equals(userId) && "APPROVED".equals(apply.getStatus())) {
+            if (apply != null && apply.getUserId().equals(userId) && STATUS_APPROVED.equals(apply.getStatus())) {
                 logger.info("用户有下载权限");
                 return true;
             }
@@ -412,7 +484,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         if (currentUser != null) {
             newApplication.setDeptId(currentUser.getDeptId());
         }
-        newApplication.setStatus("DRAFT");
+        newApplication.setStatus(STATUS_DRAFT);
         newApplication.setDraft(1);
         newApplication.setCreateTime(LocalDateTime.now());
 

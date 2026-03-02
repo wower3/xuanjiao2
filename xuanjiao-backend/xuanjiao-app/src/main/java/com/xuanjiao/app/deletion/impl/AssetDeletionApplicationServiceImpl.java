@@ -55,6 +55,13 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
     private static final String MSG_ASSET_NOT_FOUND = "素材不存在";
     private static final String MSG_ONLY_DRAFT_CAN_MODIFY = "只有草稿状态可以修改";
 
+    /** 状态常量 */
+    private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_ASSET_DELETION = "ASSET_DELETION";
+
     @Autowired
     private AssetDeletionApplicationRepository deletionApplicationRepository;
 
@@ -91,7 +98,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         application.setApplicantId(userId);
         application.setDeptId(currentUser.getDeptId());
         application.setWorkflowId(cmd.getWorkflowId());
-        application.setStatus("DRAFT");
+        application.setStatus(STATUS_DRAFT);
         application.setDeleteReason(cmd.getDeleteReason());
         application.setAttachmentPath(cmd.getAttachmentPath());
         application.setCreateTime(LocalDateTime.now());
@@ -135,7 +142,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 只有草稿状态可以修改
-        if (!"DRAFT".equals(application.getStatus())) {
+        if (!STATUS_DRAFT.equals(application.getStatus())) {
             throw new BusinessException(MSG_ONLY_DRAFT_CAN_MODIFY);
         }
 
@@ -208,7 +215,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         // 查询草稿状态的申请（状态为DRAFT）
         List<AssetDeletionApplication> applications = deletionApplicationRepository.findByApplicant(userId, (pageNum - 1) * pageSize, pageSize);
         List<AssetDeletionApplication> filteredList = applications.stream()
-            .filter(app -> "DRAFT".equals(app.getStatus()))
+            .filter(app -> STATUS_DRAFT.equals(app.getStatus()))
             .collect(Collectors.toList());
 
         // 按标题筛选
@@ -236,7 +243,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 只有草稿或已驳回状态可以删除
-        if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
+        if (!STATUS_DRAFT.equals(application.getStatus()) && !STATUS_REJECTED.equals(application.getStatus())) {
             throw new BusinessException("只有草稿或已驳回状态可以删除");
         }
 
@@ -256,7 +263,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 只有草稿或已驳回状态可以提交
-        if (!"DRAFT".equals(application.getStatus()) && !"REJECTED".equals(application.getStatus())) {
+        if (!STATUS_DRAFT.equals(application.getStatus()) && !STATUS_REJECTED.equals(application.getStatus())) {
             throw new BusinessException("只有草稿或已驳回状态可以提交");
         }
 
@@ -271,7 +278,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         deletionApplicationRepository.update(application);
 
         // 创建审批实例
-        Long instanceId = workflowEngineService.startProcess(workflowId, "ASSET_DELETION", id, userId);
+        Long instanceId = workflowEngineService.startProcess(workflowId, BUSINESS_TYPE_ASSET_DELETION, id, userId);
         return instanceId;
     }
 
@@ -357,7 +364,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         if (currentUser != null) {
             newApplication.setDeptId(currentUser.getDeptId());
         }
-        newApplication.setStatus("DRAFT");
+        newApplication.setStatus(STATUS_DRAFT);
         newApplication.setDeleteReason(original.getDeleteReason());
         newApplication.setAttachmentPath(original.getAttachmentPath());
         newApplication.setCreateTime(LocalDateTime.now());

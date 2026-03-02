@@ -60,6 +60,7 @@ import com.xuanjiao.infrastructure.usage.UsageApplyAssetMapper;
 import com.xuanjiao.common.exception.NotFoundException;
 import com.xuanjiao.common.exception.SystemException;
 import com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO;
+import com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionApplicationMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetMapper;
 import com.xuanjiao.infrastructure.deletion.AssetDeletionAssetQuery;
@@ -96,6 +97,16 @@ public class ApprovalServiceImpl implements ApprovalService {
     /** 消息常量 */
     private static final String MSG_INSTANCE_NOT_FOUND = "审批实例不存在";
     private static final String MSG_TASK_NOT_FOUND = "任务不存在";
+
+    /** 审批状态常量 */
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_MATERIAL_ENTRY = "MATERIAL_ENTRY";
+    private static final String BUSINESS_TYPE_ASSET_USAGE = "ASSET_USAGE";
+    private static final String BUSINESS_TYPE_ASSET_DELETION = "ASSET_DELETION";
 
     @Resource
     private ApprovalTaskMapper taskMapper;
@@ -434,17 +445,17 @@ public class ApprovalServiceImpl implements ApprovalService {
         dto.setApplicantName(item.getApplicantName());
 
         // 根据业务类型设置业务名称和申请单信息
-        if ("MATERIAL_ENTRY".equals(item.getBusinessType())) {
+        if (BUSINESS_TYPE_MATERIAL_ENTRY.equals(item.getBusinessType())) {
             dto.setApplicationId(item.getMaterialApplicationId());
             dto.setApplicationTitle(item.getMaterialApplicationTitle());
             dto.setBusinessName(item.getMaterialApplicationTitle());
             dto.setAssetCount(item.getAssetCount());
             dto.setAssetType(item.getAssetType());
-        } else if ("ASSET_USAGE".equals(item.getBusinessType())) {
+        } else if (BUSINESS_TYPE_ASSET_USAGE.equals(item.getBusinessType())) {
             dto.setApplicationId(item.getUsageApplyId());
             dto.setApplicationTitle(item.getUsageApplyTitle());
             dto.setBusinessName(item.getUsageApplyTitle());
-        } else if ("ASSET_DELETION".equals(item.getBusinessType())) {
+        } else if (BUSINESS_TYPE_ASSET_DELETION.equals(item.getBusinessType())) {
             dto.setApplicationId(item.getDeletionApplicationId());
             dto.setApplicationTitle(item.getDeletionApplicationTitle());
             dto.setBusinessName(item.getDeletionApplicationTitle());
@@ -455,180 +466,273 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private Map<String, Object> buildInstanceInfo(ApprovalInstanceDO instance) {
         Map<String, Object> map = new HashMap<>();
+
+        // 基础信息
         map.put("id", instance.getId());
         map.put("status", instance.getStatus());
         map.put("businessType", instance.getBusinessType());
         map.put("businessId", instance.getBusinessId());
         map.put("createTime", instance.getCreateTime());
 
-        // 获取流程信息
+        // 流程信息
+        populateWorkflowInfo(map, instance);
+
+        // 业务详情
+        populateBusinessInfo(map, instance);
+
+        // 申请人信息
+        populateApplicantInfo(map, instance);
+
+        // 当前阶段信息
+        populateCurrentStageInfo(map, instance);
+
+        // 待审批审批人
+        populatePendingApprovers(map, instance);
+
+        // 审批进度
+        List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(instance.getId());
+        map.put("approvalProgress", progress);
+
+        return map;
+    }
+
+    /**
+     * 填充流程信息
+     */
+    private void populateWorkflowInfo(Map<String, Object> map, ApprovalInstanceDO instance) {
         WorkflowDO workflow = workflowMapper.selectById(instance.getWorkflowId());
         if (workflow != null) {
             map.put("workflowName", workflow.getName());
             map.put("workflowId", workflow.getId());
         }
+    }
 
-        // 获取业务名称和详情
-        if ("MATERIAL_ENTRY".equals(instance.getBusinessType())) {
-            // 获取申请单信息
-            MaterialApplicationDO application = materialApplicationMapper.selectById(instance.getBusinessId());
-            if (application != null) {
-                // 申请单ID和标题
-                map.put("applicationId", application.getId());
-                map.put("applicationTitle", application.getTitle());
-                map.put("businessName", application.getTitle()); // 兼容旧字段
-
-                // 获取关联的素材文件列表（一个申请单可能有多个素材）
-                AssetQuery assetQuery = new AssetQuery();
-                assetQuery.setApplicationId(application.getId());
-                List<AssetDO> assets = assetMapper.selectList(assetQuery);
-                if (assets != null && !assets.isEmpty()) {
-                    // 取第一个素材作为主要信息
-                    AssetDO firstAsset = assets.get(0);
-                    map.put("assetType", firstAsset.getType());
-                    map.put("assetStatus", firstAsset.getStatus());
-                    map.put("assetCount", assets.size()); // 素材数量
-
-                    // 批量查询素材标签
-                    List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
-                    List<AssetTagDO> assetTags = assetTagMapper.selectByAssetIds(assetIds);
-
-                    // 批量查询标签详情
-                    List<Long> tagIds = assetTags.stream()
-                        .map(AssetTagDO::getTagId)
-                        .distinct()
-                        .collect(Collectors.toList());
-                    List<TagDO> tags = tagIds.isEmpty() ? new ArrayList<>() : tagMapper.selectBatchIds(tagIds);
-
-                    // 转换为 Map 以便快速查找
-                    Map<Long, TagDO> tagMap = tags.stream()
-                        .collect(Collectors.toMap(TagDO::getId, t -> t));
-
-                    // 按素材ID分组标签
-                    Map<Long, List<Map<String, Object>>> tagsMap = assetTags.stream()
-                        .collect(Collectors.groupingBy(AssetTagDO::getAssetId,
-                            Collectors.mapping(tag -> {
-                                Map<String, Object> tagInfo = new HashMap<>();
-                                TagDO tagDetail = tagMap.get(tag.getTagId());
-                                tagInfo.put("id", tagDetail.getId());
-                                tagInfo.put("name", tagDetail.getName());
-                                return tagInfo;
-                            },
-                            Collectors.toList())));
-
-                    // 构建素材列表（包含完整信息）
-                    List<Map<String, Object>> assetList = new ArrayList<>();
-                    for (AssetDO asset : assets) {
-                        Map<String, Object> assetInfo = new HashMap<>();
-                        assetInfo.put("id", asset.getId());
-                        assetInfo.put("name", asset.getName());
-                        assetInfo.put("type", asset.getType());
-                        assetInfo.put("status", asset.getStatus());
-                        // 文件路径（用于预览和下载）
-                        assetInfo.put("filePath", asset.getFilePath());
-                        assetInfo.put("thumbnailPath", asset.getThumbnailPath());
-                        assetInfo.put("fileSize", asset.getFileSize());
-                        // 申请单填写信息
-                        assetInfo.put("description", asset.getDescription());
-                        assetInfo.put("publishChannel", asset.getPublishChannel());
-                        // 添加标签
-                        assetInfo.put("tags", tagsMap.getOrDefault(asset.getId(), new ArrayList<>()));
-                        // 附件文件路径
-                        assetInfo.put("copyrightFilePath", asset.getCopyrightFilePath());
-                        assetList.add(assetInfo);
-                    }
-                    map.put("assets", assetList);
-                }
-            }
-        } else if ("ASSET_USAGE".equals(instance.getBusinessType())) {
-            // 通过中间表查询关联的素材
-            List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(instance.getBusinessId());
-            if (applyAssets != null && !applyAssets.isEmpty()) {
-                UsageApplyAssetDO firstAsset = applyAssets.get(0);
-                map.put("businessName", "使用申请：" + firstAsset.getAssetName());
-                // 业务详情
-                map.put("assetType", firstAsset.getAssetType());
-                map.put("assetId", firstAsset.getAssetId());
-                map.put("assetCount", applyAssets.size());
-            }
-        } else if ("ASSET_DELETION".equals(instance.getBusinessType())) {
-            // 素材删除申请：获取申请单信息
-            com.xuanjiao.infrastructure.dataobject.AssetDeletionApplicationDO deletionApplication =
-                assetDeletionApplicationMapper.selectById(instance.getBusinessId());
-            if (deletionApplication != null) {
-                map.put("applicationId", deletionApplication.getId());
-                map.put("applicationTitle", deletionApplication.getTitle());
-                map.put("businessName", deletionApplication.getTitle());
-                map.put("deleteReason", deletionApplication.getDeleteReason());
-
-                // 获取关联的素材ID列表
-                AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
-                query.setDeletionApplicationId(instance.getBusinessId());
-                List<com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO> deletionAssets =
-                    assetDeletionAssetMapper.selectList(query);
-
-                if (deletionAssets != null && !deletionAssets.isEmpty()) {
-                    map.put("assetCount", deletionAssets.size());
-
-                    // 优化：批量查询素材信息（避免N+1问题）
-                    List<Long> assetIds = deletionAssets.stream()
-                        .map(com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO::getAssetId)
-                        .collect(Collectors.toList());
-                    List<AssetDO> assetDOList = assetMapper.selectByIds(assetIds);
-
-                    // 转换为 Map 以便快速查找
-                    Map<Long, AssetDO> assetMap = assetDOList.stream()
-                        .collect(Collectors.toMap(AssetDO::getId, a -> a));
-
-                    // 构建素材列表
-                    List<Map<String, Object>> assetList = new ArrayList<>();
-                    for (com.xuanjiao.infrastructure.dataobject.AssetDeletionAssetDO deletionAsset : deletionAssets) {
-                        AssetDO asset = assetMap.get(deletionAsset.getAssetId());
-                        if (asset != null) {
-                            Map<String, Object> assetInfo = new HashMap<>();
-                            assetInfo.put("id", asset.getId());
-                            assetInfo.put("name", asset.getName());
-                            assetInfo.put("type", asset.getType());
-                            assetInfo.put("status", asset.getStatus());
-                            assetInfo.put("filePath", asset.getFilePath());
-                            assetInfo.put("thumbnailPath", asset.getThumbnailPath());
-                            assetInfo.put("fileSize", asset.getFileSize());
-                            assetInfo.put("description", asset.getDescription());
-                            assetInfo.put("publishChannel", asset.getPublishChannel());
-                            assetList.add(assetInfo);
-                        }
-                    }
-                    map.put("assets", assetList);
-                }
-            }
+    /**
+     * 填充业务详情
+     */
+    private void populateBusinessInfo(Map<String, Object> map, ApprovalInstanceDO instance) {
+        String businessType = instance.getBusinessType();
+        if (businessType == null) {
+            return;
         }
 
-        // 获取申请人信息
+        switch (businessType) {
+            case BUSINESS_TYPE_MATERIAL_ENTRY:
+                populateMaterialEntryInfo(map, instance.getBusinessId());
+                break;
+            case BUSINESS_TYPE_ASSET_USAGE:
+                populateAssetUsageInfo(map, instance.getBusinessId());
+                break;
+            case BUSINESS_TYPE_ASSET_DELETION:
+                populateAssetDeletionInfo(map, instance.getBusinessId());
+                break;
+        }
+    }
+
+    /**
+     * 填充素材录入业务详情
+     */
+    private void populateMaterialEntryInfo(Map<String, Object> map, Long businessId) {
+        MaterialApplicationDO application = materialApplicationMapper.selectById(businessId);
+        if (application == null) {
+            return;
+        }
+
+        map.put("applicationId", application.getId());
+        map.put("applicationTitle", application.getTitle());
+        map.put("businessName", application.getTitle());
+
+        AssetQuery assetQuery = new AssetQuery();
+        assetQuery.setApplicationId(application.getId());
+        List<AssetDO> assets = assetMapper.selectList(assetQuery);
+
+        if (assets != null && !assets.isEmpty()) {
+            AssetDO firstAsset = assets.get(0);
+            map.put("assetType", firstAsset.getType());
+            map.put("assetStatus", firstAsset.getStatus());
+            map.put("assetCount", assets.size());
+
+            List<Map<String, Object>> assetList = buildAssetListWithTags(assets);
+            map.put("assets", assetList);
+        }
+    }
+
+    /**
+     * 构建素材列表（带标签）
+     */
+    private List<Map<String, Object>> buildAssetListWithTags(List<AssetDO> assets) {
+        List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
+        List<AssetTagDO> assetTags = assetTagMapper.selectByAssetIds(assetIds);
+
+        List<Long> tagIds = assetTags.stream()
+            .map(AssetTagDO::getTagId)
+            .distinct()
+            .collect(Collectors.toList());
+        List<TagDO> tags = tagIds.isEmpty() ? new ArrayList<>() : tagMapper.selectBatchIds(tagIds);
+
+        Map<Long, TagDO> tagMap = tags.stream()
+            .collect(Collectors.toMap(TagDO::getId, t -> t));
+
+        Map<Long, List<Map<String, Object>>> tagsMap = assetTags.stream()
+            .collect(Collectors.groupingBy(AssetTagDO::getAssetId,
+                Collectors.mapping(tag -> {
+                    Map<String, Object> tagInfo = new HashMap<>();
+                    TagDO tagDetail = tagMap.get(tag.getTagId());
+                    tagInfo.put("id", tagDetail.getId());
+                    tagInfo.put("name", tagDetail.getName());
+                    return tagInfo;
+                },
+                Collectors.toList())));
+
+        List<Map<String, Object>> assetList = new ArrayList<>();
+        for (AssetDO asset : assets) {
+            Map<String, Object> assetInfo = new HashMap<>();
+            assetInfo.put("id", asset.getId());
+            assetInfo.put("name", asset.getName());
+            assetInfo.put("type", asset.getType());
+            assetInfo.put("status", asset.getStatus());
+            assetInfo.put("filePath", asset.getFilePath());
+            assetInfo.put("thumbnailPath", asset.getThumbnailPath());
+            assetInfo.put("fileSize", asset.getFileSize());
+            assetInfo.put("description", asset.getDescription());
+            assetInfo.put("publishChannel", asset.getPublishChannel());
+            assetInfo.put("tags", tagsMap.getOrDefault(asset.getId(), new ArrayList<>()));
+            assetInfo.put("copyrightFilePath", asset.getCopyrightFilePath());
+            assetList.add(assetInfo);
+        }
+        return assetList;
+    }
+
+    /**
+     * 填充素材使用业务详情
+     */
+    private void populateAssetUsageInfo(Map<String, Object> map, Long businessId) {
+        List<UsageApplyAssetDO> applyAssets = usageApplyAssetMapper.findByUsageApplyIdWithAsset(businessId);
+        if (applyAssets != null && !applyAssets.isEmpty()) {
+            UsageApplyAssetDO firstAsset = applyAssets.get(0);
+            map.put("businessName", "使用申请：" + firstAsset.getAssetName());
+            map.put("assetType", firstAsset.getAssetType());
+            map.put("assetId", firstAsset.getAssetId());
+            map.put("assetCount", applyAssets.size());
+        }
+    }
+
+    /**
+     * 填充素材删除业务详情
+     */
+    private void populateAssetDeletionInfo(Map<String, Object> map, Long businessId) {
+        AssetDeletionApplicationDO deletionApplication = assetDeletionApplicationMapper.selectById(businessId);
+        if (deletionApplication == null) {
+            return;
+        }
+
+        populateDeletionApplicationInfo(map, deletionApplication);
+        populateDeletionAssetsInfo(map, businessId);
+    }
+
+    /**
+     * 填充删除申请信息
+     */
+    private void populateDeletionApplicationInfo(Map<String, Object> map, AssetDeletionApplicationDO deletionApplication) {
+        map.put("applicationId", deletionApplication.getId());
+        map.put("applicationTitle", deletionApplication.getTitle());
+        map.put("businessName", deletionApplication.getTitle());
+        map.put("deleteReason", deletionApplication.getDeleteReason());
+    }
+
+    /**
+     * 填充删除的素材信息
+     */
+    private void populateDeletionAssetsInfo(Map<String, Object> map, Long businessId) {
+        AssetDeletionAssetQuery query = new AssetDeletionAssetQuery();
+        query.setDeletionApplicationId(businessId);
+        List<AssetDeletionAssetDO> deletionAssets = assetDeletionAssetMapper.selectList(query);
+
+        if (deletionAssets == null || deletionAssets.isEmpty()) {
+            return;
+        }
+
+        map.put("assetCount", deletionAssets.size());
+        List<Map<String, Object>> assetList = buildDeletionAssetList(deletionAssets);
+        map.put("assets", assetList);
+    }
+
+    /**
+     * 构建删除素材列表
+     */
+    private List<Map<String, Object>> buildDeletionAssetList(List<AssetDeletionAssetDO> deletionAssets) {
+        List<Long> assetIds = deletionAssets.stream()
+            .map(AssetDeletionAssetDO::getAssetId)
+            .collect(Collectors.toList());
+        List<AssetDO> assetDOList = assetMapper.selectByIds(assetIds);
+
+        Map<Long, AssetDO> assetMap = assetDOList.stream()
+            .collect(Collectors.toMap(AssetDO::getId, a -> a));
+
+        List<Map<String, Object>> assetList = new ArrayList<>();
+        for (AssetDeletionAssetDO deletionAsset : deletionAssets) {
+            AssetDO asset = assetMap.get(deletionAsset.getAssetId());
+            if (asset != null) {
+                assetList.add(buildAssetInfoMap(asset));
+            }
+        }
+        return assetList;
+    }
+
+    /**
+     * 构建素材信息 Map
+     */
+    private Map<String, Object> buildAssetInfoMap(AssetDO asset) {
+        Map<String, Object> assetInfo = new HashMap<>();
+        assetInfo.put("id", asset.getId());
+        assetInfo.put("name", asset.getName());
+        assetInfo.put("type", asset.getType());
+        assetInfo.put("status", asset.getStatus());
+        assetInfo.put("filePath", asset.getFilePath());
+        assetInfo.put("thumbnailPath", asset.getThumbnailPath());
+        assetInfo.put("fileSize", asset.getFileSize());
+        assetInfo.put("description", asset.getDescription());
+        assetInfo.put("publishChannel", asset.getPublishChannel());
+        return assetInfo;
+    }
+
+    /**
+     * 填充申请人信息
+     */
+    private void populateApplicantInfo(Map<String, Object> map, ApprovalInstanceDO instance) {
         UserDO applicant = userMapper.selectById(instance.getApplicantId());
         if (applicant != null) {
             map.put("applicantId", applicant.getId());
             map.put("applicantName", applicant.getRealName());
         }
+    }
 
-        // 获取当前阶段信息
-        if (instance.getCurrentStageId() != null) {
-            WorkflowStageDO currentStage = workflowStageMapper.selectById(instance.getCurrentStageId());
-            if (currentStage != null) {
-                map.put("currentStageId", currentStage.getId());
-                map.put("currentStageName", currentStage.getName());
-                map.put("approveType", currentStage.getApproveType());
-            }
+    /**
+     * 填充当前阶段信息
+     */
+    private void populateCurrentStageInfo(Map<String, Object> map, ApprovalInstanceDO instance) {
+        if (instance.getCurrentStageId() == null) {
+            return;
         }
+        WorkflowStageDO currentStage = workflowStageMapper.selectById(instance.getCurrentStageId());
+        if (currentStage != null) {
+            map.put("currentStageId", currentStage.getId());
+            map.put("currentStageName", currentStage.getName());
+            map.put("approveType", currentStage.getApproveType());
+        }
+    }
 
-        // 获取当前阶段的待审批任务（优化：批量查询审批人，避免N+1问题）
+    /**
+     * 填充待审批审批人信息
+     */
+    private void populatePendingApprovers(Map<String, Object> map, ApprovalInstanceDO instance) {
         ApprovalTaskQuery pendingTaskQuery = new ApprovalTaskQuery();
         pendingTaskQuery.setInstanceId(instance.getId());
-        pendingTaskQuery.setStatus("PENDING");
+        pendingTaskQuery.setStatus(STATUS_PENDING);
         List<ApprovalTaskDO> pendingTasks = taskMapper.selectList(pendingTaskQuery);
 
         List<Map<String, Object>> pendingApprovers = new ArrayList<>();
         if (!pendingTasks.isEmpty()) {
-            // 批量查询审批人信息
             List<Long> approverIds = pendingTasks.stream()
                 .map(ApprovalTaskDO::getApproverId)
                 .distinct()
@@ -638,7 +742,6 @@ public class ApprovalServiceImpl implements ApprovalService {
             userQuery.setUserIds(approverIds);
             List<UserDO> approverUsers = userMapper.selectList(userQuery);
 
-            // 转换为 Map 以便快速查找
             Map<Long, UserDO> userMap = approverUsers.stream()
                 .collect(Collectors.toMap(UserDO::getId, u -> u));
 
@@ -653,12 +756,6 @@ public class ApprovalServiceImpl implements ApprovalService {
             }
         }
         map.put("pendingApprovers", pendingApprovers);
-
-        // 获取审批进度
-        List<ApprovalProgressDTO> progress = approverSelectionService.getApprovalProgress(instance.getId());
-        map.put("approvalProgress", progress);
-
-        return map;
     }
 
     @Override
@@ -878,11 +975,11 @@ public class ApprovalServiceImpl implements ApprovalService {
     private void loadBusinessInfo(TaskDetailDTO result, ApprovalInstanceDO instance) {
         String businessType = instance.getBusinessType();
 
-        if ("MATERIAL_ENTRY".equals(businessType)) {
+        if (BUSINESS_TYPE_MATERIAL_ENTRY.equals(businessType)) {
             loadMaterialEntryInfo(result, instance.getBusinessId());
-        } else if ("ASSET_USAGE".equals(businessType)) {
+        } else if (BUSINESS_TYPE_ASSET_USAGE.equals(businessType)) {
             loadAssetUsageInfo(result, instance.getBusinessId());
-        } else if ("ASSET_DELETION".equals(businessType)) {
+        } else if (BUSINESS_TYPE_ASSET_DELETION.equals(businessType)) {
             loadAssetDeletionInfo(result, instance.getBusinessId());
         }
     }
@@ -971,7 +1068,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         ApprovalTaskQuery query = new ApprovalTaskQuery();
         query.setInstanceId(task.getInstanceId());
         query.setStageId(task.getStageId());
-        query.setStatus("APPROVED");
+        query.setStatus(STATUS_APPROVED);
         List<ApprovalTaskDO> completedTasks = taskMapper.selectList(query);
         return completedTasks.isEmpty();
     }
@@ -1050,7 +1147,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         query.setInstanceId(task.getInstanceId());
         query.setStageId(task.getStageId());
         query.setIdNotEqual(task.getId());
-        query.setStatus("PENDING");
+        query.setStatus(STATUS_PENDING);
         List<ApprovalTaskDO> otherTasks = taskMapper.selectList(query);
 
         Set<Long> approverIds = new HashSet<>();
@@ -1094,102 +1191,120 @@ public class ApprovalServiceImpl implements ApprovalService {
      * @return 可选用户列表
      */
     private List<Map<String, Object>> getAvailableUsersForConfig(StageApproverDO config, Long applicantId) {
-        List<Map<String, Object>> result = new ArrayList<>();
         String approverType = config.getApproverType();
         Long approverId = config.getApproverId();
 
-        if ("USER".equals(approverType)) {
-            // 指定用户：返回该用户
-            UserDO user = userMapper.selectById(approverId);
-            if (user != null && user.getStatus() == 1) {
-                Map<String, Object> userInfo = new HashMap<>();
-                userInfo.put("id", user.getId());
-                userInfo.put("username", user.getUsername());
-                userInfo.put("realName", user.getRealName());
-                // 获取部门和角色信息
-                if (user.getDeptId() != null) {
-                    DeptDO dept = deptMapper.selectById(user.getDeptId());
-                    if (dept != null) {
-                        userInfo.put("deptName", dept.getName());
-                    }
-                }
-                if (user.getRoleId() != null) {
-                    RoleDO role = roleMapper.selectById(user.getRoleId());
-                    if (role != null) {
-                        userInfo.put("roleName", role.getName());
-                    }
-                }
-                result.add(userInfo);
-            }
-        } else if ("ROLE".equals(approverType)) {
-            // 指定角色：根据是否校验二级部门返回用户列表
-            boolean checkSecondary = config.getCheckSecondaryDept() != null && config.getCheckSecondaryDept() == 1;
+        switch (approverType) {
+            case "USER":
+                return getSingleUser(approverId);
+            case "ROLE":
+                return getRoleUsers(approverId, config, applicantId);
+            case "DEPT":
+                return getDeptUsers(approverId);
+            default:
+                return new ArrayList<>();
+        }
+    }
 
-            UserQuery userQuery = new UserQuery();
-            userQuery.setRoleId(approverId);
-            userQuery.setStatus(1);
+    /**
+     * 获取单个用户
+     */
+    private List<Map<String, Object>> getSingleUser(Long userId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        UserDO user = userMapper.selectById(userId);
+        if (user != null && user.getStatus() == 1) {
+            result.add(buildUserInfoMap(user));
+        }
+        return result;
+    }
 
-            if (checkSecondary && applicantId != null) {
-                // 获取申请人的二级部门
-                Long applicantSecondaryDeptId = getSecondaryDeptId(applicantId);
-                if (applicantSecondaryDeptId != null) {
-                    List<Long> deptIds = new ArrayList<>();
-                    deptIds.add(applicantSecondaryDeptId);
-                    deptIds.addAll(getAllSubDeptIds(applicantSecondaryDeptId));
-                    userQuery.setDeptIds(deptIds);
-                }
-            }
+    /**
+     * 获取角色用户列表（支持二级部门校验）
+     */
+    private List<Map<String, Object>> getRoleUsers(Long roleId, StageApproverDO config, Long applicantId) {
+        UserQuery userQuery = new UserQuery();
+        userQuery.setRoleId(roleId);
+        userQuery.setStatus(1);
 
-            List<UserDO> users = userMapper.selectList(userQuery);
-            for (UserDO user : users) {
-                Map<String, Object> userInfo = new HashMap<>();
-                userInfo.put("id", user.getId());
-                userInfo.put("username", user.getUsername());
-                userInfo.put("realName", user.getRealName());
-                // 获取部门和角色信息
-                if (user.getDeptId() != null) {
-                    DeptDO dept = deptMapper.selectById(user.getDeptId());
-                    if (dept != null) {
-                        userInfo.put("deptName", dept.getName());
-                    }
-                }
-                if (user.getRoleId() != null) {
-                    RoleDO role = roleMapper.selectById(user.getRoleId());
-                    if (role != null) {
-                        userInfo.put("roleName", role.getName());
-                    }
-                }
-                result.add(userInfo);
-            }
-        } else if ("DEPT".equals(approverType)) {
-            // 指定部门：返回该部门的所有用户
-            UserQuery userQuery = new UserQuery();
-            userQuery.setDeptId(approverId);
-            userQuery.setStatus(1);
-            List<UserDO> users = userMapper.selectList(userQuery);
-            for (UserDO user : users) {
-                Map<String, Object> userInfo = new HashMap<>();
-                userInfo.put("id", user.getId());
-                userInfo.put("username", user.getUsername());
-                userInfo.put("realName", user.getRealName());
-                // 获取部门和角色信息
-                if (user.getDeptId() != null) {
-                    DeptDO dept = deptMapper.selectById(user.getDeptId());
-                    if (dept != null) {
-                        userInfo.put("deptName", dept.getName());
-                    }
-                }
-                if (user.getRoleId() != null) {
-                    RoleDO role = roleMapper.selectById(user.getRoleId());
-                    if (role != null) {
-                        userInfo.put("roleName", role.getName());
-                    }
-                }
-                result.add(userInfo);
-            }
+        boolean checkSecondary = config.getCheckSecondaryDept() != null && config.getCheckSecondaryDept() == 1;
+        if (checkSecondary && applicantId != null) {
+            userQuery.setDeptIds(getDeptIdsForSecondaryCheck(applicantId));
         }
 
+        List<UserDO> users = userMapper.selectList(userQuery);
+        return buildUserInfoList(users);
+    }
+
+    /**
+     * 获取部门用户列表
+     */
+    private List<Map<String, Object>> getDeptUsers(Long deptId) {
+        UserQuery userQuery = new UserQuery();
+        userQuery.setDeptId(deptId);
+        userQuery.setStatus(1);
+        List<UserDO> users = userMapper.selectList(userQuery);
+        return buildUserInfoList(users);
+    }
+
+    /**
+     * 获取用于二级部门校验的部门 ID 列表
+     */
+    private List<Long> getDeptIdsForSecondaryCheck(Long applicantId) {
+        List<Long> deptIds = new ArrayList<>();
+        Long applicantSecondaryDeptId = getSecondaryDeptId(applicantId);
+        if (applicantSecondaryDeptId != null) {
+            deptIds.add(applicantSecondaryDeptId);
+            deptIds.addAll(getAllSubDeptIds(applicantSecondaryDeptId));
+        }
+        return deptIds;
+    }
+
+    /**
+     * 从用户列表构建用户信息 Map 列表
+     */
+    private List<Map<String, Object>> buildUserInfoList(List<UserDO> users) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (UserDO user : users) {
+            result.add(buildUserInfoMap(user));
+        }
         return result;
+    }
+
+    /**
+     * 从单个用户构建用户信息 Map
+     */
+    private Map<String, Object> buildUserInfoMap(UserDO user) {
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", user.getId());
+        userInfo.put("username", user.getUsername());
+        userInfo.put("realName", user.getRealName());
+        addDeptInfo(userInfo, user);
+        addRoleInfo(userInfo, user);
+        return userInfo;
+    }
+
+    /**
+     * 添加部门信息到用户 Map
+     */
+    private void addDeptInfo(Map<String, Object> userInfo, UserDO user) {
+        if (user.getDeptId() != null) {
+            DeptDO dept = deptMapper.selectById(user.getDeptId());
+            if (dept != null) {
+                userInfo.put("deptName", dept.getName());
+            }
+        }
+    }
+
+    /**
+     * 添加角色信息到用户 Map
+     */
+    private void addRoleInfo(Map<String, Object> userInfo, UserDO user) {
+        if (user.getRoleId() != null) {
+            RoleDO role = roleMapper.selectById(user.getRoleId());
+            if (role != null) {
+                userInfo.put("roleName", role.getName());
+            }
+        }
     }
 
     /**
