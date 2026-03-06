@@ -15,6 +15,7 @@ import com.xuanjiao.client.approval.MyAppliedDTO;
 import com.xuanjiao.client.approval.PendingTaskDTO;
 import com.xuanjiao.client.approval.TaskDetailDTO;
 import com.xuanjiao.client.asset.AssetDTO;
+import com.xuanjiao.client.asset.TagDTO;
 import com.xuanjiao.client.user.UserDTO;
 import com.xuanjiao.client.workflow.StageApproverDTO;
 import com.xuanjiao.client.workflow.SubWorkflowDTO;
@@ -107,6 +108,9 @@ public class ApprovalServiceImpl implements ApprovalService {
     private static final String BUSINESS_TYPE_MATERIAL_ENTRY = "MATERIAL_ENTRY";
     private static final String BUSINESS_TYPE_ASSET_USAGE = "ASSET_USAGE";
     private static final String BUSINESS_TYPE_ASSET_DELETION = "ASSET_DELETION";
+
+    /** 排序方向常量 */
+    private static final String ORDER_ASC = "ASC";
 
     @Resource
     private ApprovalTaskMapper taskMapper;
@@ -552,7 +556,7 @@ public class ApprovalServiceImpl implements ApprovalService {
             map.put("assetStatus", firstAsset.getStatus());
             map.put("assetCount", assets.size());
 
-            List<Map<String, Object>> assetList = buildAssetListWithTags(assets);
+            List<AssetDTO> assetList = buildAssetListWithTags(assets);
             map.put("assets", assetList);
         }
     }
@@ -560,7 +564,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     /**
      * 构建素材列表（带标签）
      */
-    private List<Map<String, Object>> buildAssetListWithTags(List<AssetDO> assets) {
+    private List<AssetDTO> buildAssetListWithTags(List<AssetDO> assets) {
         List<Long> assetIds = assets.stream().map(AssetDO::getId).collect(Collectors.toList());
         List<AssetTagDO> assetTags = assetTagMapper.selectByAssetIds(assetIds);
 
@@ -570,35 +574,47 @@ public class ApprovalServiceImpl implements ApprovalService {
             .collect(Collectors.toList());
         List<TagDO> tags = tagIds.isEmpty() ? new ArrayList<>() : tagMapper.selectBatchIds(tagIds);
 
-        Map<Long, TagDO> tagMap = tags.stream()
-            .collect(Collectors.toMap(TagDO::getId, t -> t));
-
-        Map<Long, List<Map<String, Object>>> tagsMap = assetTags.stream()
+        Map<Long, List<TagDTO>> tagsMap = assetTags.stream()
             .collect(Collectors.groupingBy(AssetTagDO::getAssetId,
                 Collectors.mapping(tag -> {
-                    Map<String, Object> tagInfo = new HashMap<>();
-                    TagDO tagDetail = tagMap.get(tag.getTagId());
-                    tagInfo.put("id", tagDetail.getId());
-                    tagInfo.put("name", tagDetail.getName());
-                    return tagInfo;
+                    TagDO tagDetail = tags.stream()
+                        .filter(t -> t.getId().equals(tag.getTagId()))
+                        .findFirst()
+                        .orElse(null);
+                    // 转换 TagDO 为 TagDTO，过滤掉 null 值
+                    if (tagDetail == null) {
+                        return null;
+                    }
+                    TagDTO tagDTO = new TagDTO();
+                    tagDTO.setId(tagDetail.getId());
+                    tagDTO.setName(tagDetail.getName());
+                    tagDTO.setCategory(tagDetail.getCategory());
+                    return tagDTO;
                 },
                 Collectors.toList())));
 
-        List<Map<String, Object>> assetList = new ArrayList<>();
+        // 清理掉 null 值
+        tagsMap.entrySet().forEach(entry ->
+            entry.setValue(entry.getValue().stream()
+                .filter(t -> t != null)
+                .collect(Collectors.toList()))
+        );
+
+        List<AssetDTO> assetList = new ArrayList<>();
         for (AssetDO asset : assets) {
-            Map<String, Object> assetInfo = new HashMap<>();
-            assetInfo.put("id", asset.getId());
-            assetInfo.put("name", asset.getName());
-            assetInfo.put("type", asset.getType());
-            assetInfo.put("status", asset.getStatus());
-            assetInfo.put("filePath", asset.getFilePath());
-            assetInfo.put("thumbnailPath", asset.getThumbnailPath());
-            assetInfo.put("fileSize", asset.getFileSize());
-            assetInfo.put("description", asset.getDescription());
-            assetInfo.put("publishChannel", asset.getPublishChannel());
-            assetInfo.put("tags", tagsMap.getOrDefault(asset.getId(), new ArrayList<>()));
-            assetInfo.put("copyrightFilePath", asset.getCopyrightFilePath());
-            assetList.add(assetInfo);
+            AssetDTO assetDTO = new AssetDTO();
+            assetDTO.setId(asset.getId());
+            assetDTO.setName(asset.getName());
+            assetDTO.setType(asset.getType());
+            assetDTO.setStatus(asset.getStatus());
+            assetDTO.setFilePath(asset.getFilePath());
+            assetDTO.setThumbnailPath(asset.getThumbnailPath());
+            assetDTO.setFileSize(asset.getFileSize());
+            assetDTO.setDescription(asset.getDescription());
+            assetDTO.setPublishChannel(asset.getPublishChannel());
+            assetDTO.setCopyrightFilePath(asset.getCopyrightFilePath());
+            assetDTO.setTags(tagsMap.getOrDefault(asset.getId(), new ArrayList<>()));
+            assetList.add(assetDTO);
         }
         return assetList;
     }
@@ -889,7 +905,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(instance.getWorkflowId());
         query.setOrderByField("stage_order");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> allStages = workflowStageMapper.selectList(query);
 
         for (WorkflowStageDO stage : allStages) {
@@ -934,7 +950,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         query.setStageId(nextStage.getId());
         query.setSubWorkflowIdNull(true);
         query.setOrderByField("id");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<StageApproverDO> approverConfigs = stageApproverMapper.selectList(query);
 
         List<StageApproverDTO> configs = new ArrayList<>();
@@ -1392,7 +1408,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(workflowId);
         query.setOrderByField("stage_order");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(query);
         return stages.isEmpty() ? null : stages.get(0);
     }
@@ -1452,7 +1468,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         query.setStageId(firstStage.getId());
         query.setSubWorkflowIdNull(true);
         query.setOrderByField("id");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<StageApproverDO> configs = stageApproverMapper.selectList(query);
 
         List<StageApproverDTO> dtoList = new ArrayList<>();

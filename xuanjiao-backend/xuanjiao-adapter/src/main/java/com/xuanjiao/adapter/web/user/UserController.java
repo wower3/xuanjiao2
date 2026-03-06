@@ -52,6 +52,8 @@ import java.util.Set;
 public class UserController {
 
     /** 角色类型常量 */
+    private static final String ROLE_TYPE_SYSTEM_ADMIN = "SYSTEM_ADMIN";
+    private static final String ROLE_TYPE_GENERAL_MGMT = "GENERAL_MGMT";
     private static final String ROLE_TYPE_BRANCH_MGMT = "BRANCH_MGMT";
 
     /**
@@ -331,8 +333,8 @@ public class UserController {
         }
 
         // 系统管理员和总消保管理岗可以操作所有用户
-        if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) ||
-            "GENERAL_MGMT".equals(currentRole.getRoleType())) {
+        if (ROLE_TYPE_SYSTEM_ADMIN.equals(currentRole.getRoleType()) ||
+            ROLE_TYPE_GENERAL_MGMT.equals(currentRole.getRoleType())) {
             return;
         }
 
@@ -371,8 +373,8 @@ public class UserController {
         }
 
         // 系统管理员和总消保管理岗可以分配所有角色
-        if ("SYSTEM_ADMIN".equals(currentRole.getRoleType()) ||
-            "GENERAL_MGMT".equals(currentRole.getRoleType())) {
+        if (ROLE_TYPE_SYSTEM_ADMIN.equals(currentRole.getRoleType()) ||
+            ROLE_TYPE_GENERAL_MGMT.equals(currentRole.getRoleType())) {
             return;
         }
 

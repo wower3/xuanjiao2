@@ -31,6 +31,9 @@ public class AssetDeletionCleanupTask {
 
     private static final Logger logger = LoggerFactory.getLogger(AssetDeletionCleanupTask.class);
 
+    /** 素材状态常量 */
+    private static final String STATUS_DELETED = "DELETED";
+
     @Resource
     private AssetMapper assetMapper;
 
@@ -79,7 +82,7 @@ public class AssetDeletionCleanupTask {
 
             // 先查询符合条件的记录（用于日志）
             AssetQuery query = new AssetQuery();
-            query.setStatus("DELETED");
+            query.setStatus(STATUS_DELETED);
             query.setDeletionApproveTimeBefore(oneWeekAgo);
             query.setDeleted(0);
 
@@ -97,7 +100,7 @@ public class AssetDeletionCleanupTask {
 
             // 验证更新结果（查询所有符合条件的记录，包括deleted=1）
             AssetQuery verifyQuery = new AssetQuery();
-            verifyQuery.setStatus("DELETED");
+            verifyQuery.setStatus(STATUS_DELETED);
             verifyQuery.setDeletionApproveTimeBefore(oneWeekAgo);
             verifyQuery.setDeleted(null); // 不过滤deleted，查询所有
             long remainingCount = assetMapper.selectCount(verifyQuery);

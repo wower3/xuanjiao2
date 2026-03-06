@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
 @Service
 public class TagServiceImpl implements TagService {
 
+    /** 排序方向常量 */
+    private static final String ORDER_ASC = "ASC";
+
     @Autowired
     private TagMapper tagMapper;
 
@@ -43,7 +46,7 @@ public class TagServiceImpl implements TagService {
     public List<TagDTO> list() {
         TagQuery query = new TagQuery();
         query.setOrderByField("category");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<TagDO> tagList = tagMapper.selectList(query);
         return tagList.stream().map(this::convert).collect(Collectors.toList());
     }
@@ -55,7 +58,7 @@ public class TagServiceImpl implements TagService {
             query.setCategory(category);
         }
         query.setOrderByField("name");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<TagDO> tagList = tagMapper.selectList(query);
         return tagList.stream().map(this::convert).collect(Collectors.toList());
     }

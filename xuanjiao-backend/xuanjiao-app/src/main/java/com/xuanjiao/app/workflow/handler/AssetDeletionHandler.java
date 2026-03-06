@@ -26,6 +26,13 @@ public class AssetDeletionHandler implements WorkflowCompletionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(AssetDeletionHandler.class);
 
+    /** 状态常量 */
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_ASSET_DELETION = "ASSET_DELETION";
+
     @Resource
     private ApplicationContext applicationContext;
 
@@ -63,7 +70,7 @@ public class AssetDeletionHandler implements WorkflowCompletionHandler {
 
             if (deletionApplicationService != null) {
                 // 更新申请单状态为已通过
-                deletionApplicationService.updateStatus(businessId, "APPROVED");
+                deletionApplicationService.updateStatus(businessId, STATUS_APPROVED);
 
                 // 执行素材删除逻辑（标记素材状态为DELETED）
                 deletionApplicationService.approveDeletion(businessId);
@@ -88,7 +95,7 @@ public class AssetDeletionHandler implements WorkflowCompletionHandler {
 
             if (deletionApplicationService != null) {
                 // 更新申请单状态为已驳回
-                deletionApplicationService.updateStatus(businessId, "REJECTED");
+                deletionApplicationService.updateStatus(businessId, STATUS_REJECTED);
             }
 
             logger.info("素材删除审批驳回处理完成: businessId={}", businessId);
@@ -104,6 +111,6 @@ public class AssetDeletionHandler implements WorkflowCompletionHandler {
      */
     @Override
     public String getSupportedBusinessType() {
-        return "ASSET_DELETION";
+        return BUSINESS_TYPE_ASSET_DELETION;
     }
 }

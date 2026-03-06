@@ -27,6 +27,13 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(MaterialEntryHandler.class);
 
+    /** 状态常量 */
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_MATERIAL_ENTRY = "MATERIAL_ENTRY";
+
     @Resource
     private ApplicationContext applicationContext;
 
@@ -79,10 +86,10 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
             AssetService assetService = getAssetService();
 
             if (materialApplicationService != null) {
-                materialApplicationService.updateStatus(businessId, "APPROVED");
+                materialApplicationService.updateStatus(businessId, STATUS_APPROVED);
             }
             if (assetService != null) {
-                assetService.updateStatusByApplicationId(businessId, "APPROVED");
+                assetService.updateStatusByApplicationId(businessId, STATUS_APPROVED);
             }
             logger.info("素材录入审批通过处理完成: businessId={}", businessId);
         } catch (Exception e) {
@@ -107,10 +114,10 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
             AssetService assetService = getAssetService();
 
             if (materialApplicationService != null) {
-                materialApplicationService.updateStatus(businessId, "REJECTED");
+                materialApplicationService.updateStatus(businessId, STATUS_REJECTED);
             }
             if (assetService != null) {
-                assetService.updateStatusByApplicationId(businessId, "REJECTED");
+                assetService.updateStatusByApplicationId(businessId, STATUS_REJECTED);
             }
             logger.info("素材录入审批驳回处理完成: businessId={}", businessId);
         } catch (Exception e) {
@@ -125,6 +132,6 @@ public class MaterialEntryHandler implements WorkflowCompletionHandler {
      */
     @Override
     public String getSupportedBusinessType() {
-        return "MATERIAL_ENTRY";
+        return BUSINESS_TYPE_MATERIAL_ENTRY;
     }
 }

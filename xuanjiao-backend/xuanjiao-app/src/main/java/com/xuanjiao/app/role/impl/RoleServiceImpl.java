@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
 @Service
 public class RoleServiceImpl implements RoleService {
 
+    /** 排序方向常量 */
+    private static final String ORDER_DESC = "DESC";
+
     @Resource
     private RoleMapper roleMapper;
 
@@ -36,7 +39,7 @@ public class RoleServiceImpl implements RoleService {
     public List<RoleDTO> list() {
         RoleQuery query = new RoleQuery();
         query.setOrderByField("id");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         List<RoleDO> list = roleMapper.selectList(query);
         return list.stream().map(this::convert).collect(Collectors.toList());
     }

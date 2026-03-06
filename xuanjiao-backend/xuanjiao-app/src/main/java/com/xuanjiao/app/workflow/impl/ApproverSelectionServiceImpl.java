@@ -79,8 +79,18 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
     private static final String STATUS_NOT_STARTED = "NOT_STARTED";
     private static final String STATUS_CANCELLED = "CANCELLED";
 
+    /** 审批人类型常量 */
+    private static final String APPROVER_TYPE_USER = "USER";
+    private static final String APPROVER_TYPE_ROLE = "ROLE";
+    private static final String APPROVER_TYPE_DEPT = "DEPT";
+    private static final String APPROVER_TYPE_SUB_WORKFLOW = "SUB_WORKFLOW";
+
     /** 数据库列名常量 */
     private static final String COLUMN_STAGE_ORDER = "stage_order";
+
+    /** 排序方向常量 */
+    private static final String ORDER_ASC = "ASC";
+    private static final String ORDER_DESC = "DESC";
 
     @Resource
     private WorkflowStageMapper workflowStageMapper;
@@ -155,13 +165,13 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
 
         for (StageApproverDO approver : approvers) {
             switch (approver.getApproverType()) {
-                case "USER":
+                case APPROVER_TYPE_USER:
                     userIdSet.add(approver.getApproverId());
                     break;
-                case "ROLE":
+                case APPROVER_TYPE_ROLE:
                     roleIdSet.add(approver.getApproverId());
                     break;
-                case "DEPT":
+                case APPROVER_TYPE_DEPT:
                     deptIdSet.add(approver.getApproverId());
                     break;
             }
@@ -200,7 +210,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
             .collect(Collectors.toSet());
 
         for (Long roleId : roleIds) {
-            StageApproverDO approverConfig = findApproverConfig(approvers, roleId, "ROLE");
+            StageApproverDO approverConfig = findApproverConfig(approvers, roleId, APPROVER_TYPE_ROLE);
             List<UserDO> users = queryUsersByRole(roleId, approverConfig, applicantSecondaryDeptId, keyword);
 
             for (UserDO user : users) {
@@ -353,7 +363,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(instance.getWorkflowId());
         stageQuery.setOrderByField(COLUMN_STAGE_ORDER);
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(stageQuery);
         WorkflowStageDO firstStage = stages.isEmpty() ? null : stages.get(0);
         if (firstStage == null) {
@@ -563,7 +573,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(workflowId);
         stageQuery.setOrderByField(COLUMN_STAGE_ORDER);
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(stageQuery);
 
         List<WorkflowStageDTO> stageDTOs = new ArrayList<>();
@@ -617,13 +627,13 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
      * 获取审批人名称
      */
     private String getApproverName(String type, Long id) {
-        if ("USER".equals(type)) {
+        if (APPROVER_TYPE_USER.equals(type)) {
             UserDO user = userMapper.selectById(id);
             return user != null ? "[用户] " + (user.getRealName() != null ? user.getRealName() : user.getUsername()) : "[用户] 未知";
-        } else if ("ROLE".equals(type)) {
+        } else if (APPROVER_TYPE_ROLE.equals(type)) {
             RoleDO role = roleMapper.selectById(id);
             return role != null ? "[角色] " + role.getName() : "[角色] 未知";
-        } else if ("DEPT".equals(type)) {
+        } else if (APPROVER_TYPE_DEPT.equals(type)) {
             DeptDO dept = deptMapper.selectById(id);
             return dept != null ? "[部门] " + dept.getName() : "[部门] 未知";
         }
@@ -684,7 +694,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(workflowId);
         stageQuery.setOrderByField(COLUMN_STAGE_ORDER);
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(stageQuery);
         return stages.isEmpty() ? null : stages.get(0);
     }
@@ -746,19 +756,19 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         info.subWorkflowId = null;
 
         switch (config.getApproverType()) {
-            case "USER":
+            case APPROVER_TYPE_USER:
                 info.typeName = "指定用户";
                 info.name = config.getRealName() != null ? config.getRealName() : config.getUsername();
                 break;
-            case "ROLE":
+            case APPROVER_TYPE_ROLE:
                 info.typeName = "指定角色";
                 info.name = config.getRoleName();
                 break;
-            case "DEPT":
+            case APPROVER_TYPE_DEPT:
                 info.typeName = "指定部门";
                 info.name = config.getDeptName();
                 break;
-            case "SUB_WORKFLOW":
+            case APPROVER_TYPE_SUB_WORKFLOW:
                 info.typeName = "子流程";
                 info.name = config.getSubWorkflowName() != null ? config.getSubWorkflowName() : "子流程";
                 info.subWorkflowId = config.getSubWorkflowId();
@@ -792,7 +802,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(instance.getWorkflowId());
         stageQuery.setOrderByField(COLUMN_STAGE_ORDER);
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = workflowStageMapper.selectList(stageQuery);
         WorkflowStageDO firstStage = stages.isEmpty() ? null : stages.get(0);
         if (firstStage == null) {
@@ -1058,17 +1068,17 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         ApproverTypeBasicInfo info = new ApproverTypeBasicInfo();
 
         switch (config.getApproverType()) {
-            case "USER":
+            case APPROVER_TYPE_USER:
                 info.typeName = "指定用户";
                 UserDO user = userMapper.selectById(config.getApproverId());
                 info.name = user != null ? (user.getRealName() != null ? user.getRealName() : user.getUsername()) : "";
                 break;
-            case "ROLE":
+            case APPROVER_TYPE_ROLE:
                 info.typeName = "指定角色";
                 RoleDO role = roleMapper.selectById(config.getApproverId());
                 info.name = role != null ? role.getName() : "";
                 break;
-            case "DEPT":
+            case APPROVER_TYPE_DEPT:
                 info.typeName = "指定部门";
                 DeptDO dept = deptMapper.selectById(config.getApproverId());
                 info.name = dept != null ? dept.getName() : "";
@@ -1109,11 +1119,11 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
      */
     private List<ApproverSelectionDTO> getAvailableUsersForConfigOptimizedDTO(StageApproverWithDetailsDO config, Long applicantId, String keyword) {
         switch (config.getApproverType()) {
-            case "USER":
+            case APPROVER_TYPE_USER:
                 return getUsersForUserType(config, keyword);
-            case "ROLE":
+            case APPROVER_TYPE_ROLE:
                 return getUsersForRoleType(config, applicantId, keyword);
-            case "DEPT":
+            case APPROVER_TYPE_DEPT:
                 return getUsersForDeptType(config, keyword);
             default:
                 return new ArrayList<>();
@@ -1272,11 +1282,11 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
      */
     private List<Map<String, Object>> getAvailableUsersForConfigOptimized(StageApproverWithDetailsDO config, Long applicantId, String keyword) {
         switch (config.getApproverType()) {
-            case "USER":
+            case APPROVER_TYPE_USER:
                 return getUsersMapForUserType(config, keyword);
-            case "ROLE":
+            case APPROVER_TYPE_ROLE:
                 return getUsersMapForRoleType(config, applicantId, keyword);
-            case "DEPT":
+            case APPROVER_TYPE_DEPT:
                 return getUsersMapForDeptType(config, keyword);
             default:
                 return new ArrayList<>();
@@ -1396,7 +1406,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         WorkflowStageQuery firstStageQuery = new WorkflowStageQuery();
         firstStageQuery.setWorkflowId(subInstance.getWorkflowId());
         firstStageQuery.setOrderByField(COLUMN_STAGE_ORDER);
-        firstStageQuery.setOrderByDirection("ASC");
+        firstStageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> firstStageList = workflowStageMapper.selectList(firstStageQuery);
         WorkflowStageDO firstStage = firstStageList.isEmpty() ? null : firstStageList.get(0);
         if (firstStage == null) {
@@ -1426,7 +1436,7 @@ public class ApproverSelectionServiceImpl implements ApproverSelectionService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(workflowId);
         stageQuery.setOrderByField(COLUMN_STAGE_ORDER);
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         return workflowStageMapper.selectList(stageQuery);
     }
 

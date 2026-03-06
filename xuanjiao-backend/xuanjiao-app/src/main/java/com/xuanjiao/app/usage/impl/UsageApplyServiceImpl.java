@@ -56,9 +56,13 @@ public class UsageApplyServiceImpl implements UsageApplyService {
     private static final String STATUS_DRAFT = "DRAFT";
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_REJECTED = "REJECTED";
 
     /** 业务类型常量 */
     private static final String BUSINESS_TYPE_ASSET_USAGE = "ASSET_USAGE";
+
+    /** 排序方向常量 */
+    private static final String ORDER_DESC = "DESC";
 
     @Autowired
     private UsageApplyRepository usageApplyRepository;
@@ -277,7 +281,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         }
 
         // 只有草稿或已驳回状态可以提交
-        if (usageApply.getDraft() != 1 && !"REJECTED".equals(usageApply.getStatus())) {
+        if (usageApply.getDraft() != 1 && !STATUS_REJECTED.equals(usageApply.getStatus())) {
             throw new BusinessException("只有草稿或已驳回状态可以提交");
         }
         if (!usageApply.getUserId().equals(userId)) {
@@ -336,7 +340,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         query.setUserId(userId);
         query.setDraft(1);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((pageNum - 1) * pageSize);
         query.setLimit(pageSize);
 
@@ -354,7 +358,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         query.setUserId(userId);
         query.setDraft(1);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((pageNum - 1) * pageSize);
         query.setLimit(pageSize);
         if (title != null && !title.isEmpty()) {
@@ -374,7 +378,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         UsageApplyQuery query = new UsageApplyQuery();
         query.setUserId(userId);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((pageNum - 1) * pageSize);
         query.setLimit(pageSize);
 
@@ -387,6 +391,11 @@ public class UsageApplyServiceImpl implements UsageApplyService {
 
     // ========== 旧API（保持兼容） ==========
 
+    /**
+     * 创建使用申请（已废弃）
+     *
+     * @deprecated 此方法已废弃，请使用 {@link #createDraft(UsageApplyCmd, Long)} 替代
+     */
     @Deprecated
     @Override
     @Transactional
@@ -395,6 +404,11 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         return createDraft(cmd, userId);
     }
 
+    /**
+     * 查询我的使用申请列表（已废弃）
+     *
+     * @deprecated 此方法已废弃，建议使用带分页参数的新接口
+     */
     @Deprecated
     @Override
     public PageResult<UsageApplyDTO> queryMyApplications(UsageApplyQueryCmd cmd, Long userId) {
@@ -403,7 +417,7 @@ public class UsageApplyServiceImpl implements UsageApplyService {
         query.setUserId(userId);
         query.setStatus(cmd.getStatus());
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((cmd.getPageNum() - 1) * cmd.getPageSize());
         query.setLimit(cmd.getPageSize());
 

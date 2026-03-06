@@ -78,6 +78,13 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
     /** 审批实例状态常量 */
     private static final String INSTANCE_STATUS_MAIN_COMPLETED = "MAIN_COMPLETED";
 
+    /** 任务类型常量 */
+    private static final String TASK_TYPE_NORMAL = "NORMAL";
+    private static final String TASK_TYPE_RESTART_SUB_WORKFLOW = "RESTART_SUB_WORKFLOW";
+
+    /** 排序方向常量 */
+    private static final String ORDER_ASC = "ASC";
+
     @Resource
     private WorkflowMapper workflowMapper;
     @Resource
@@ -550,7 +557,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         restartTask.setStageId(0L);
         restartTask.setApproverId(approverId);
         restartTask.setStatus(STATUS_PENDING);
-        restartTask.setTaskType("RESTART_SUB_WORKFLOW");
+        restartTask.setTaskType(TASK_TYPE_RESTART_SUB_WORKFLOW);
         restartTask.setIsFirstApprover(0);
         // 保存子流程ID，用于前端显示哪个子流程需要重新发起
         try {
@@ -582,7 +589,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         restartTask.setStageId(0L);
         restartTask.setApproverId(applicantId);
         restartTask.setStatus(STATUS_PENDING);
-        restartTask.setTaskType("RESTART_SUB_WORKFLOW");
+        restartTask.setTaskType(TASK_TYPE_RESTART_SUB_WORKFLOW);
         restartTask.setIsFirstApprover(0);
         restartTask.setSelectedByUserId(applicantId);
         // 保存子流程ID，用于前端显示哪个子流程需要重新发起
@@ -1088,7 +1095,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         WorkflowStageQuery nextStageQuery = new WorkflowStageQuery();
         nextStageQuery.setWorkflowId(workflowId);
         nextStageQuery.setOrderByField("stage_order");
-        nextStageQuery.setOrderByDirection("ASC");
+        nextStageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> allStages = stageMapper.selectList(nextStageQuery);
 
         for (WorkflowStageDO stage : allStages) {
@@ -1194,7 +1201,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
      * 标记主流程已完成（等待子流程）
      */
     private void markMainWorkflowCompleted(ApprovalInstanceDO instance) {
-        instance.setStatus("MAIN_COMPLETED");
+        instance.setStatus(INSTANCE_STATUS_MAIN_COMPLETED);
         instanceMapper.updateById(instance);
         logger.info("主流程已完成，等待子流程: instanceId={}", instance.getId());
     }
@@ -1217,7 +1224,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
 
         // 检查主流程是否已完成
         boolean mainCompleted = STATUS_APPROVED.equals(parentInstance.getStatus()) ||
-                               "MAIN_COMPLETED".equals(parentInstance.getStatus());
+                               INSTANCE_STATUS_MAIN_COMPLETED.equals(parentInstance.getStatus());
 
         if (mainCompleted) {
             // 主流程和所有子流程都已完成
@@ -1689,7 +1696,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         WorkflowStageQuery query = new WorkflowStageQuery();
         query.setWorkflowId(workflowId);
         query.setOrderByField("stage_order");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = stageMapper.selectList(query);
         return stages.isEmpty() ? null : stages.get(0);
     }
@@ -1935,7 +1942,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
         if (!task.getApproverId().equals(userId)) {
             throw new BusinessException("无权操作此任务");
         }
-        if (!"RESTART_SUB_WORKFLOW".equals(task.getTaskType())) {
+        if (!TASK_TYPE_RESTART_SUB_WORKFLOW.equals(task.getTaskType())) {
             throw new BusinessException("该任务不是重新发起子流程任务");
         }
         if (!STATUS_PENDING.equals(task.getStatus())) {
@@ -2002,7 +2009,7 @@ public class WorkflowEngineServiceImpl implements WorkflowEngineService {
             newTask.setApproverId(approverId);
             newTask.setStatus(STATUS_PENDING);
             newTask.setIsFirstApprover(isFirst ? 1 : 0);
-            newTask.setTaskType("NORMAL");
+            newTask.setTaskType(TASK_TYPE_NORMAL);
             taskMapper.insert(newTask);
             isFirst = false;
         }

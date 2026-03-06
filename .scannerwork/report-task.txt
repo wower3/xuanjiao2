@@ -1,0 +1,6 @@
+projectKey=xuanjiao-backend
+serverUrl=http://localhost:19000
+serverVersion=9.9.8.100196
+dashboardUrl=http://localhost:19000/dashboard?id=xuanjiao-backend
+ceTaskId=AZysfGpSe_wIa4XllQrc
+ceTaskUrl=http://localhost:19000/api/ce/task?id=AZysfGpSe_wIa4XllQrc

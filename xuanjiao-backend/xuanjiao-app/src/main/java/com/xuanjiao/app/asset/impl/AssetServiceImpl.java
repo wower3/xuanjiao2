@@ -77,6 +77,23 @@ public class AssetServiceImpl implements AssetService {
     private static final String STATUS_REJECTED = "REJECTED";
     private static final String STATUS_DELETED = "DELETED";
 
+    /** 资产类型常量 */
+    private static final String ASSET_TYPE_IMAGE = "IMAGE";
+    private static final String ASSET_TYPE_VIDEO = "VIDEO";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_ASSET = "ASSET";
+
+    /** 角色类型常量 */
+    private static final String ROLE_TYPE_SYSTEM_ADMIN = "SYSTEM_ADMIN";
+    private static final String ROLE_TYPE_GENERAL_MGMT = "GENERAL_MGMT";
+
+    /** 操作类型常量 */
+    private static final String OPERATION_TYPE_ADMIN_DELETE = "ADMIN_DELETE";
+
+    /** 排序方向常量 */
+    private static final String ORDER_DESC = "DESC";
+
     @Resource
     private AssetRepository assetRepository;
 
@@ -223,7 +240,7 @@ public class AssetServiceImpl implements AssetService {
             // 需要审批
             asset.setStatus(STATUS_PENDING);
             assetRepository.save(asset);
-            workflowEngineService.startProcess(cmd.getWorkflowId(), "ASSET", asset.getId(), userId);
+            workflowEngineService.startProcess(cmd.getWorkflowId(), BUSINESS_TYPE_ASSET, asset.getId(), userId);
         } else {
             // 直接通过
             asset.setStatus(STATUS_APPROVED);
@@ -346,7 +363,7 @@ public class AssetServiceImpl implements AssetService {
      * 判断是否为管理员角色
      */
     private boolean isAdminRole(String roleType) {
-        return "SYSTEM_ADMIN".equals(roleType) || "GENERAL_MGMT".equals(roleType);
+        return ROLE_TYPE_SYSTEM_ADMIN.equals(roleType) || ROLE_TYPE_GENERAL_MGMT.equals(roleType);
     }
 
     /**
@@ -404,7 +421,7 @@ public class AssetServiceImpl implements AssetService {
      * 转换单个素材为DTO并设置下载权限
      */
     private AssetDTO convertWithDownloadPermission(Asset asset, Long userId) {
-        AssetDTO dto = convert(asset);
+        AssetDTO dto = convertWithTags(asset);  // 使用 convertWithTags 以包含标签信息
         if (dto != null && STATUS_APPROVED.equals(asset.getStatus())) {
             dto.setCanDownload(usageApplyService.canUseAsset(asset.getId(), userId));
         } else {
@@ -507,8 +524,8 @@ public class AssetServiceImpl implements AssetService {
         operationLogService.log(
             userId,
             user.getRealName(),
-            "ADMIN_DELETE",
-            "ASSET",
+            OPERATION_TYPE_ADMIN_DELETE,
+            BUSINESS_TYPE_ASSET,
             assetId,
             asset.getName(),
             reason,
@@ -561,7 +578,7 @@ public class AssetServiceImpl implements AssetService {
         query.setName(name);
         query.setType(type);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
 
         // 分页查询
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xuanjiao.infrastructure.dataobject.AssetDO> page =
@@ -597,7 +614,7 @@ public class AssetServiceImpl implements AssetService {
             throw new IllegalArgumentException("无法识别文件类型");
         }
 
-        if ("IMAGE".equals(type)) {
+        if (ASSET_TYPE_IMAGE.equals(type)) {
             // 图片允许格式
             java.util.Set<String> imageFormats = new java.util.HashSet<>(java.util.Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".webp"));
             if (!imageFormats.contains(ext)) {
@@ -607,7 +624,7 @@ public class AssetServiceImpl implements AssetService {
             if (!contentType.startsWith("image/")) {
                 throw new IllegalArgumentException("文件类型不匹配，请上传图片文件");
             }
-        } else if ("VIDEO".equals(type)) {
+        } else if (ASSET_TYPE_VIDEO.equals(type)) {
             // 视频允许格式
             java.util.Set<String> videoFormats = new java.util.HashSet<>(java.util.Arrays.asList(".mp4", ".webm", ".ogg", ".mov", ".avi", ".mkv", ".mpg", ".mpeg", ".3gp"));
             if (!videoFormats.contains(ext)) {

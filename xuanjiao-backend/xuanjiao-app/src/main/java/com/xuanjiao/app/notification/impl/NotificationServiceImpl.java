@@ -52,6 +52,11 @@ public class NotificationServiceImpl implements NotificationService {
     /** 消息常量 */
     private static final String MSG_INSTANCE_NOT_FOUND = "审批实例不存在";
 
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_MATERIAL_ENTRY = "MATERIAL_ENTRY";
+    private static final String BUSINESS_TYPE_ASSET_USAGE = "ASSET_USAGE";
+    private static final String BUSINESS_TYPE_ASSET_DELETION = "ASSET_DELETION";
+
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -345,11 +350,11 @@ public class NotificationServiceImpl implements NotificationService {
             return "";
         }
         switch (type) {
-            case "MATERIAL_ENTRY":
+            case BUSINESS_TYPE_MATERIAL_ENTRY:
                 return "素材录入";
-            case "ASSET_USAGE":
+            case BUSINESS_TYPE_ASSET_USAGE:
                 return "素材使用";
-            case "ASSET_DELETION":
+            case BUSINESS_TYPE_ASSET_DELETION:
                 return "素材删除";
             default:
                 return type;
@@ -439,11 +444,11 @@ public class NotificationServiceImpl implements NotificationService {
      */
     private String fetchBusinessTitleByType(String businessType, Long businessId) {
         switch (businessType) {
-            case "MATERIAL_ENTRY":
+            case BUSINESS_TYPE_MATERIAL_ENTRY:
                 return getMaterialApplicationTitle(businessId);
-            case "ASSET_DELETION":
+            case BUSINESS_TYPE_ASSET_DELETION:
                 return getAssetDeletionApplicationTitle(businessId);
-            case "ASSET_USAGE":
+            case BUSINESS_TYPE_ASSET_USAGE:
                 return getUsageApplyTitle(businessId);
             default:
                 return null;

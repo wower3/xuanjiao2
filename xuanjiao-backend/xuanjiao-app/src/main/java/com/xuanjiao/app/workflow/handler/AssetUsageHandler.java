@@ -26,6 +26,13 @@ public class AssetUsageHandler implements WorkflowCompletionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(AssetUsageHandler.class);
 
+    /** 状态常量 */
+    private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_REJECTED = "REJECTED";
+
+    /** 业务类型常量 */
+    private static final String BUSINESS_TYPE_ASSET_USAGE = "ASSET_USAGE";
+
     @Resource
     private ApplicationContext applicationContext;
 
@@ -56,7 +63,7 @@ public class AssetUsageHandler implements WorkflowCompletionHandler {
         try {
             UsageApplyService usageApplyService = getUsageApplyService();
             if (usageApplyService != null) {
-                usageApplyService.updateStatus(businessId, "APPROVED");
+                usageApplyService.updateStatus(businessId, STATUS_APPROVED);
             }
             logger.info("素材使用审批通过处理完成: businessId={}", businessId);
         } catch (Exception e) {
@@ -76,7 +83,7 @@ public class AssetUsageHandler implements WorkflowCompletionHandler {
         try {
             UsageApplyService usageApplyService = getUsageApplyService();
             if (usageApplyService != null) {
-                usageApplyService.updateStatus(businessId, "REJECTED");
+                usageApplyService.updateStatus(businessId, STATUS_REJECTED);
             }
             logger.info("素材使用审批驳回处理完成: businessId={}", businessId);
         } catch (Exception e) {
@@ -92,6 +99,6 @@ public class AssetUsageHandler implements WorkflowCompletionHandler {
      */
     @Override
     public String getSupportedBusinessType() {
-        return "ASSET_USAGE";
+        return BUSINESS_TYPE_ASSET_USAGE;
     }
 }

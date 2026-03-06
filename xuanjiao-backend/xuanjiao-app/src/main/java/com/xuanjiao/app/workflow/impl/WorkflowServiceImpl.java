@@ -46,6 +46,19 @@ import java.util.Objects;
 @Service
 public class WorkflowServiceImpl implements WorkflowService {
 
+    /** 审批人类型常量 */
+    private static final String APPROVER_TYPE_USER = "USER";
+    private static final String APPROVER_TYPE_ROLE = "ROLE";
+    private static final String APPROVER_TYPE_DEPT = "DEPT";
+
+    /** 排序方向常量 */
+    private static final String ORDER_ASC = "ASC";
+    private static final String ORDER_DESC = "DESC";
+
+    /** 流程类型常量 */
+    private static final String WORKFLOW_TYPE_ASSET_UPLOAD = "ASSET_UPLOAD";
+    private static final String WORKFLOW_TYPE_ASSET_USAGE = "ASSET_USAGE";
+
     @Resource
     private WorkflowMapper workflowMapper;
 
@@ -65,7 +78,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     public List<WorkflowDTO> list() {
         WorkflowQuery query = new WorkflowQuery();
         query.setOrderByField("id");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         // 使用JOIN查询一次性获取流程列表和角色名称，不需要加载阶段和审批人
         List<WorkflowDO> list = workflowMapper.selectListWithRoleName(query);
         return list.stream().map(workflow -> {
@@ -91,7 +104,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(id);
         stageQuery.setOrderByField("stage_order");
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> stages = stageMapper.selectList(stageQuery);
 
         // 批量查询所有阶段的审批人（优化N+1问题）
@@ -225,9 +238,9 @@ public class WorkflowServiceImpl implements WorkflowService {
      * 获取流程类型名称
      */
     private String getWorkflowTypeName(String workflowType) {
-        if ("ASSET_UPLOAD".equals(workflowType)) {
+        if (WORKFLOW_TYPE_ASSET_UPLOAD.equals(workflowType)) {
             return "素材录入";
-        } else if ("ASSET_USAGE".equals(workflowType)) {
+        } else if (WORKFLOW_TYPE_ASSET_USAGE.equals(workflowType)) {
             return "素材使用";
         }
         return workflowType != null ? workflowType : "未知类型";
@@ -297,7 +310,7 @@ public class WorkflowServiceImpl implements WorkflowService {
         WorkflowStageQuery stageQuery = new WorkflowStageQuery();
         stageQuery.setWorkflowId(id);
         stageQuery.setOrderByField("stage_order");
-        stageQuery.setOrderByDirection("ASC");
+        stageQuery.setOrderByDirection(ORDER_ASC);
         List<WorkflowStageDO> originalStages = stageMapper.selectList(stageQuery);
 
         // 创建新流程
@@ -362,7 +375,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                 for (StageApproverDTO approverDTO : stageDTO.getApprovers()) {
                     StageApproverDO approver = new StageApproverDO();
                     approver.setStageId(stage.getId());
-                    approver.setApproverType(approverDTO.getApproverType() != null ? approverDTO.getApproverType() : "USER");
+                    approver.setApproverType(approverDTO.getApproverType() != null ? approverDTO.getApproverType() : APPROVER_TYPE_USER);
                     approver.setApproverId(approverDTO.getApproverId());
                     approver.setCheckSecondaryDept(approverDTO.getCheckSecondaryDept() != null ? approverDTO.getCheckSecondaryDept() : 0);
                     approver.setSubWorkflowId(approverDTO.getSubWorkflowId());
@@ -403,25 +416,25 @@ public class WorkflowServiceImpl implements WorkflowService {
      * 从JOIN详情结果中获取审批人名称
      */
     private String getApproverNameFromDetails(StageApproverWithDetailsDO entity) {
-        if ("USER".equals(entity.getApproverType())) {
+        if (APPROVER_TYPE_USER.equals(entity.getApproverType())) {
             String displayName = entity.getRealName() != null ? entity.getRealName() : entity.getUsername();
             return "[用户] " + (displayName != null ? displayName : "未知");
-        } else if ("ROLE".equals(entity.getApproverType())) {
+        } else if (APPROVER_TYPE_ROLE.equals(entity.getApproverType())) {
             return "[角色] " + (entity.getRoleName() != null ? entity.getRoleName() : "未知");
-        } else if ("DEPT".equals(entity.getApproverType())) {
+        } else if (APPROVER_TYPE_DEPT.equals(entity.getApproverType())) {
             return "[部门] " + (entity.getDeptName() != null ? entity.getDeptName() : "未知");
         }
         return "未知";
     }
 
     private String getApproverName(String type, Long id) {
-        if ("USER".equals(type)) {
+        if (APPROVER_TYPE_USER.equals(type)) {
             UserDO user = userMapper.selectById(id);
             return user != null ? "[用户] " + (user.getRealName() != null ? user.getRealName() : user.getUsername()) : "[用户] 未知";
-        } else if ("ROLE".equals(type)) {
+        } else if (APPROVER_TYPE_ROLE.equals(type)) {
             RoleDO role = roleMapper.selectById(id);
             return role != null ? "[角色] " + role.getName() : "[角色] 未知";
-        } else if ("DEPT".equals(type)) {
+        } else if (APPROVER_TYPE_DEPT.equals(type)) {
             DeptDO dept = deptMapper.selectById(id);
             return dept != null ? "[部门] " + dept.getName() : "[部门] 未知";
         }

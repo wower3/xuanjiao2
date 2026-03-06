@@ -30,6 +30,9 @@ public class UsageLogServiceImpl implements UsageLogService {
     @Resource
     private UsageLogMapper logMapper;
 
+    /** 排序方向常量 */
+    private static final String ORDER_DESC = "DESC";
+
     @Resource
     private UserMapper userMapper;
 
@@ -63,7 +66,7 @@ public class UsageLogServiceImpl implements UsageLogService {
             query.setAction(action);
         }
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<UsageLogDTO> list = page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);
@@ -75,7 +78,7 @@ public class UsageLogServiceImpl implements UsageLogService {
         query.setAssetId(assetId);
         query.setAction("DOWNLOAD");
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         Page<UsageLogDO> page = logMapper.selectPage(new Page<>(pageNum, pageSize), query);
         List<UsageLogDTO> list = page.getRecords().stream().map(this::toDTO).collect(Collectors.toList());
         return PageResult.of(list, page.getTotal(), pageNum, pageSize);

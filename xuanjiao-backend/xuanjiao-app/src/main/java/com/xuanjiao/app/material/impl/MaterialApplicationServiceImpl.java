@@ -68,6 +68,9 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
     /** 业务类型常量 */
     private static final String BUSINESS_TYPE_MATERIAL_ENTRY = "MATERIAL_ENTRY";
 
+    /** 排序方向常量 */
+    private static final String ORDER_DESC = "DESC";
+
     @Autowired
     private MaterialApplicationRepository materialApplicationRepository;
 
@@ -243,7 +246,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setApplicantId(userId);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((pageNum - 1) * pageSize);
         query.setLimit(pageSize);
         List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
@@ -263,7 +266,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setApplicantId(userId);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((pageNum - 1) * pageSize);
         query.setLimit(pageSize);
         List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);
@@ -294,7 +297,7 @@ public class MaterialApplicationServiceImpl implements MaterialApplicationServic
         MaterialApplicationQuery query = new MaterialApplicationQuery();
         query.setApplicantId(userId);
         query.setOrderByField("create_time");
-        query.setOrderByDirection("DESC");
+        query.setOrderByDirection(ORDER_DESC);
         query.setOffset((pageNum - 1) * pageSize);
         query.setLimit(pageSize);
         List<MaterialApplicationWithDetailsDO> list = materialApplicationMapper.selectListWithDetails(query);

@@ -31,6 +31,9 @@ import java.util.stream.Collectors;
 @Service
 public class MenuServiceImpl implements MenuService {
 
+    /** 排序方向常量 */
+    private static final String ORDER_ASC = "ASC";
+
     @Resource
     private MenuMapper menuMapper;
 
@@ -43,7 +46,7 @@ public class MenuServiceImpl implements MenuService {
         query.setType("MENU");
         query.setStatus(1);
         query.setOrderByField("sort");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<MenuDO> all = menuMapper.selectList(query);
         return buildTree(all, 0L);
     }
@@ -118,7 +121,7 @@ public class MenuServiceImpl implements MenuService {
         query.setType("MENU");
         query.setStatus(1);
         query.setOrderByField("sort");
-        query.setOrderByDirection("ASC");
+        query.setOrderByDirection(ORDER_ASC);
         List<MenuDO> allMenus = menuMapper.selectList(query);
 
         // 确定需要包含在树中的菜单：用户有权限的菜单 + 所有父级菜单

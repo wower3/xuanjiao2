@@ -57,7 +57,10 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
     /** 状态常量 */
     private static final String STATUS_DRAFT = "DRAFT";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_APPROVED = "APPROVED";
     private static final String STATUS_REJECTED = "REJECTED";
+    private static final String STATUS_DELETED = "DELETED";
 
     /** 业务类型常量 */
     private static final String BUSINESS_TYPE_ASSET_DELETION = "ASSET_DELETION";
@@ -116,7 +119,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
                 }
 
                 // 只能删除已通过审批的素材
-                if (!"APPROVED".equals(asset.getStatus())) {
+                if (!STATUS_APPROVED.equals(asset.getStatus())) {
                     throw new BusinessException("只能删除已通过审批的素材: " + asset.getName());
                 }
 
@@ -168,7 +171,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
                 }
 
                 // 只能删除已通过审批的素材
-                if (!"APPROVED".equals(asset.getStatus())) {
+                if (!STATUS_APPROVED.equals(asset.getStatus())) {
                     throw new BusinessException("只能删除已通过审批的素材: " + asset.getName());
                 }
 
@@ -272,7 +275,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 更新状态为待审批
-        application.setStatus("PENDING");
+        application.setStatus(STATUS_PENDING);
         application.setWorkflowId(workflowId);
         application.setUpdateTime(LocalDateTime.now());
         deletionApplicationRepository.update(application);
@@ -323,12 +326,12 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
 
             if (asset != null) {
                 logger.info("标记素材为已删除: assetId={}, assetName={}", assetId, asset.getName());
-                asset.setStatus("DELETED");
+                asset.setStatus(STATUS_DELETED);
 
                 // 需要通过AssetMapper直接更新deletionApproveTime字段
                 AssetDO assetDO = new AssetDO();
                 assetDO.setId(assetId);
-                assetDO.setStatus("DELETED");
+                assetDO.setStatus(STATUS_DELETED);
                 assetDO.setDeletionApproveTime(LocalDateTime.now());
                 assetMapper.updateById(assetDO);
 
@@ -339,7 +342,7 @@ public class AssetDeletionApplicationServiceImpl implements AssetDeletionApplica
         }
 
         // 更新申请单状态
-        application.setStatus("APPROVED");
+        application.setStatus(STATUS_APPROVED);
         application.setUpdateTime(LocalDateTime.now());
         deletionApplicationRepository.update(application);
 
